@@ -343,9 +343,6 @@ else()
   set(SNDIO_LIBRARIES "")
 endif()
 
-# manage and fetch new data
-add_subdirectory(data)
-
 # external libraries
 add_subdirectory(${CUSTOM_REGEX_DIR})
 add_subdirectory(${CUSTOM_HIDAPI_DIR})
@@ -353,14 +350,6 @@ add_subdirectory(${CUSTOM_MISC_DIR})
 
 # direwolf source code and utilities
 add_subdirectory(src)
-
-# ctest
-if(UNITTEST)
-  message(STATUS "Build unit test binaries")
-  include(CTest)
-  enable_testing()
-  add_subdirectory(test)
-endif(UNITTEST)
 
 # manage scripts
 add_subdirectory(scripts)
