@@ -43,7 +43,6 @@ list(APPEND direwolf_SOURCES
   kiss_frame.c
   kiss.c
   kissnet.c
-  log.c
   multi_modem.c
   ptt.c
   recv.c

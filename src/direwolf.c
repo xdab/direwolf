@@ -101,7 +101,6 @@
 #include "tq.h"
 #include "xmit.h"
 #include "ptt.h"
-#include "log.h"
 #include "recv.h"
 #include "fx25.h"
 #include "dwsock.h"
@@ -1082,7 +1081,6 @@ static BOOL cleanup_win (int ctrltype)
 	if (ctrltype == CTRL_C_EVENT || ctrltype == CTRL_CLOSE_EVENT) {
 	  
 	  printf ("\nQRT\n");
-	  log_term ();
 	  ptt_term ();
 	  ExitProcess (0);
 	}
@@ -1094,9 +1092,7 @@ static BOOL cleanup_win (int ctrltype)
 
 static void cleanup_linux (int x)
 {
-	
 	printf ("\nQRT\n");
-	log_term ();
 	ptt_term ();
 	exit(0);
 }
