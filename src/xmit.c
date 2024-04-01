@@ -72,7 +72,6 @@
 #include "hdlc_rec.h"
 #include "ptt.h"
 #include "dtime_now.h"
-#include "xid.h"
 #include "dlq.h"
 
 
@@ -932,37 +931,8 @@ static int send_one_frame (int c, int p, packet_t pp)
 	dw_printf ("[%d%c%s] ", c, p==TQ_PRIO_0_HI ? 'H' : 'L', ts);
 #endif
 	dw_printf ("%s", stemp);			/* stations followed by : */
-
-/* Demystify non-APRS.  Use same format for received frames in direwolf.c. */
-
-	if ( ! ax25_is_aprs(pp)) {
-	  ax25_frame_type_t ftype;
-	  cmdres_t cr;
-	  char desc[80];
-	  int pf;
-	  int nr;
-	  int ns;
-
-	  ftype = ax25_frame_type (pp, &cr, desc, &pf, &nr, &ns);
-
-	  dw_printf ("(%s)", desc);
-
-	  if (ftype == frame_type_U_XID) {
-	    struct xid_param_s param;
-	    char info2text[150];
-
-	    xid_parse (pinfo, info_len, &param, info2text, sizeof(info2text));
-	    dw_printf (" %s\n", info2text);
-	  }
-	  else {
-	    ax25_safe_print ((char *)pinfo, info_len, ! ax25_is_aprs(pp));
-	    dw_printf ("\n");
-	  }
-	}
-	else {
-	  ax25_safe_print ((char *)pinfo, info_len, ! ax25_is_aprs(pp));
+	ax25_safe_print ((char *)pinfo, info_len, ! ax25_is_aprs(pp));
 	  dw_printf ("\n");
-	}
 
 	(void)ax25_check_addresses (pp);
 

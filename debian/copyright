@@ -15,10 +15,6 @@ Files: *
 Copyright: (C) 2011-2014 John Langner WB2OSZ
 License: GPL-2+
 
-Files: geotranz/*
-Copyright: National Geospatial-Intelligence Agency
-License: Permissive-NGA
-
 Files: regex/*
 Copyright: (C) 2002, 2003, 2005 Free Software Foundation, Inc.
 License: LGPL-2.1+

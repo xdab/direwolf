@@ -12,6 +12,8 @@
         "any": "c",
         "complex": "c",
         "kissserial.h": "c",
-        "kiss_frame.h": "c"
+        "kiss_frame.h": "c",
+        "ax25_pad.h": "c",
+        "fcs_calc.h": "c"
     }
 }

@@ -93,7 +93,6 @@
 #include "hdlc_rec.h"
 #include "hdlc_rec2.h"
 #include "ax25_pad.h"
-#include "xid.h"
 #include "textcolor.h"
 #include "kiss.h"
 #include "kissnet.h"
@@ -352,7 +351,6 @@ int main (int argc, char *argv[])
 	      dw_printf ("\n");
 	      dw_printf ("Dire Wolf requires only privileges available to ordinary users.\n");
 	      dw_printf ("Running this as root is an unnecessary security risk.\n");
-	      //SLEEP_SEC(1);
 	    }
 	}
 #endif
@@ -1130,47 +1128,9 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 	  }
 	}
 
-	dw_printf ("%s", stemp);			/* stations followed by : */
-
-/* Demystify non-APRS.  Use same format for transmitted frames in xmit.c. */
-
-	if ( ! ax25_is_aprs(pp)) {
-	  ax25_frame_type_t ftype;
-	  cmdres_t cr;
-	  char desc[80];
-	  int pf;
-	  int nr;
-	  int ns;
-
-	  ftype = ax25_frame_type (pp, &cr, desc, &pf, &nr, &ns);
-
-	  /* Could change by 1, since earlier call, if we guess at modulo 128. */
-	  info_len = ax25_get_info (pp, &pinfo);
-
-	  dw_printf ("(%s)", desc);
-	  if (ftype == frame_type_U_XID) {
-	    struct xid_param_s param;
-	    char info2text[150];
-
-	    xid_parse (pinfo, info_len, &param, info2text, sizeof(info2text));
-	    dw_printf (" %s\n", info2text);
-	  }
-	  else {
-	    ax25_safe_print ((char *)pinfo, info_len, ( ! ax25_is_aprs(pp)) && ( ! d_u_opt) );
-	    dw_printf ("\n");
-	  }
-	}
-	else {
-
-	  // for APRS we generally want to display non-ASCII to see UTF-8.
-	  // for other, probably want to restrict to ASCII only because we are
-	  // more likely to have compressed data than UTF-8 text.
-
-	  // TODO: Might want to use d_u_opt for transmitted frames too.
-
+		dw_printf ("%s", stemp);			/* stations followed by : */
 	  ax25_safe_print ((char *)pinfo, info_len, ( ! ax25_is_aprs(pp)) && ( ! d_u_opt) );
 	  dw_printf ("\n");
-	}
 
 
 // Also display in pure ASCII if non-ASCII characters and "-d u" option specified.
@@ -1230,8 +1190,6 @@ static BOOL cleanup_win (int ctrltype)
 	  dw_printf ("\nQRT\n");
 	  log_term ();
 	  ptt_term ();
-	  waypoint_term ();
-	  dwgps_term ();
 	  ExitProcess (0);
 	}
 	return (TRUE);

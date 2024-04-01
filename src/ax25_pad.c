@@ -382,10 +382,6 @@ packet_t ax25_from_text (char *monitor, int strict)
 	char info_part[AX25_MAX_INFO_LEN+1];
 	int info_len;
 
-	// text_color_set(DW_COLOR_DEBUG);
-	// dw_printf ("DEBUG: ax25_from_text ('%s', %d)\n", monitor, strict);
-	// fflush(stdout); sleep(1);
-
 	packet_t this_p = ax25_new ();
 
 #if AX25MEMDEBUG	

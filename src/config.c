@@ -48,20 +48,12 @@
 #include "textcolor.h"
 #include "audio.h"
 #include "config.h"
-#include "latlong.h"
 #include "symbols.h"
 #include "xmit.h"
 
 #if USE_CM108		// Current Linux or Windows only
 #include "cm108.h"
 #endif
-
-// geotranz
-
-#include "utm.h"
-#include "mgrs.h"
-#include "usng.h"
-#include "error_string.h"
 
 #define D2R(d) ((d) * M_PI / 180.)
 #define R2D(r) ((r) * 180. / M_PI)

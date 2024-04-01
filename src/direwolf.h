@@ -3,11 +3,9 @@
 
 // TODO:   include this file first before anything else in each .c file.
 
-
 #ifdef NDEBUG
 #undef NDEBUG		// Because it would disable assert().
 #endif
-
 
 #ifndef DIREWOLF_H
 #define DIREWOLF_H 1
@@ -167,31 +165,6 @@
 #define __DARWIN_C_LEVEL  __DARWIN_C_FULL
 
 #endif
-
-
-/* Not sure where to put these. */
-
-/* Prefix with DW_ because /usr/include/gps.h uses a couple of these names. */
-
-#ifndef G_UNKNOWN
-#include "latlong.h"
-#endif
-
-
-#define DW_METERS_TO_FEET(x) ((x) == G_UNKNOWN ? G_UNKNOWN : (x) * 3.2808399)
-#define DW_FEET_TO_METERS(x) ((x) == G_UNKNOWN ? G_UNKNOWN : (x) * 0.3048)
-#define DW_KM_TO_MILES(x) ((x) == G_UNKNOWN ? G_UNKNOWN : (x) * 0.621371192)
-#define DW_MILES_TO_KM(x) ((x) == G_UNKNOWN ? G_UNKNOWN : (x) * 1.609344)
-
-#define DW_KNOTS_TO_MPH(x) ((x) == G_UNKNOWN ? G_UNKNOWN : (x) * 1.15077945)
-#define DW_KNOTS_TO_METERS_PER_SEC(x) ((x) == G_UNKNOWN ? G_UNKNOWN : (x) * 0.51444444444)
-#define DW_MPH_TO_KNOTS(x) ((x) == G_UNKNOWN ? G_UNKNOWN : (x) * 0.868976)
-#define DW_MPH_TO_METERS_PER_SEC(x) ((x) == G_UNKNOWN ? G_UNKNOWN : (x) * 0.44704)
-
-#define DW_MBAR_TO_INHG(x) ((x) == G_UNKNOWN ? G_UNKNOWN : (x) * 0.0295333727)
-
-
-
 
 #if __WIN32__
 

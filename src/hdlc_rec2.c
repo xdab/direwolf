@@ -102,7 +102,6 @@
 #include "multi_modem.h"
 #include "dtime_now.h"
 #include "audio.h"		/* for struct audio_s */
-//#include "ax25_pad.h"		/* for AX25_MAX_ADDR_LEN */
 
 //#define DEBUG 1
 //#define DEBUGx 1

@@ -46,7 +46,6 @@ include_directories(
   ${ALSA_INCLUDE_DIRS}
   ${UDEV_INCLUDE_DIRS}
   ${PORTAUDIO_INCLUDE_DIRS}
-  ${CUSTOM_GEOTRANZ_DIR}
   ${CMAKE_BINARY_DIR}/src
   )
 
@@ -55,25 +54,6 @@ if(WIN32 OR CYGWIN)
     ${CUSTOM_REGEX_DIR}
   )
 endif()
-
-
-# Unit test for location coordinate conversion.
-list(APPEND lltest_SOURCES
-  ${CUSTOM_SRC_DIR}/latlong.c
-  ${CUSTOM_SRC_DIR}/textcolor.c
-  )
-
-add_executable(lltest
-  ${lltest_SOURCES}
-  )
-
-set_target_properties(lltest
-  PROPERTIES COMPILE_FLAGS "-DLLTEST"
-  )
-
-target_link_libraries(lltest
-  ${MISC_LIBRARIES}
-  )
 
 
 # Unit test for KISS encapsulation.
@@ -116,25 +96,6 @@ if(WIN32 OR CYGWIN)
 endif()
 
 
-# Unit Test for XID frame encode/decode.
-list(APPEND xidtest_SOURCES
-  ${CUSTOM_SRC_DIR}/xid.c
-  ${CUSTOM_SRC_DIR}/textcolor.c
-  )
-
-add_executable(xidtest
-  ${xidtest_SOURCES}
-  )
-
-set_target_properties(xidtest
-  PROPERTIES COMPILE_FLAGS "-DXIDTEST"
-  )
-
-target_link_libraries(xidtest
-  ${MISC_LIBRARIES}
-  )
-
-
 # Unit Test FX.25 algorithm.
 
 list(APPEND fxsend_SOURCES
@@ -171,10 +132,8 @@ set_target_properties(fxrec
 
 # doing ctest on previous programs
 
-add_test(lltest lltest)
 add_test(kisstest kisstest)
 add_test(pad2test pad2test)
-add_test(xidtest xidtest)
 
 add_test(check-fx25 "${CUSTOM_TEST_BINARY_DIR}/${TEST_CHECK-FX25_FILE}${CUSTOM_SCRIPT_SUFFIX}")
 add_test(check-modem1200 "${CUSTOM_TEST_BINARY_DIR}/${TEST_CHECK-MODEM1200_FILE}${CUSTOM_SCRIPT_SUFFIX}")
@@ -198,7 +157,6 @@ if(OPTIONAL_TEST)
     ${CUSTOM_SRC_DIR}/ax25_pad.c
     ${CUSTOM_SRC_DIR}/serial_port.c
     ${CUSTOM_SRC_DIR}/dtime_now.c
-    ${CUSTOM_SRC_DIR}/latlong.c
     ${CUSTOM_SRC_DIR}/symbols.c
     ${CUSTOM_SRC_DIR}/textcolor.c
     )
