@@ -83,7 +83,6 @@
 #include "ptt.h"
 #include "dtime_now.h"
 #include "fx25.h"
-#include "il2p.h"
 #include "hdlc_rec.h"
 
 
@@ -191,7 +190,6 @@ static int h_opt = 0;			// Hexadecimal display of received packet.
 static char P_opt[16] = "";		// Demodulator profiles.
 static int d_x_opt = 1;			// FX.25 debug.
 static int d_o_opt = 0;			// "-d o" option for DCD output control. */	
-static int d_2_opt = 0;			// "-d 2" option for IL2P details. */
 static int dcd_count = 0;
 static int dcd_missing_errors = 0;
 
@@ -392,7 +390,6 @@ int main (int argc, char *argv[])
 	        switch (*p) {
 	           case 'x':  d_x_opt++; break;			// FX.25
 	           case 'o':  d_o_opt++; break;			// DCD output control
-	           case '2':  d_2_opt++; break;			// IL2P debug out
 	           default: break;
 	        }
 	       }
@@ -446,84 +443,12 @@ int main (int argc, char *argv[])
 	  my_audio_config.achan[0].mark_freq = DEFAULT_MARK_FREQ;
 	  my_audio_config.achan[0].space_freq = DEFAULT_SPACE_FREQ;
 	}
-	else if (my_audio_config.achan[0].baud < 3600) {
-	  my_audio_config.achan[0].modem_type = MODEM_QPSK;
-	  my_audio_config.achan[0].mark_freq = 0;
-	  my_audio_config.achan[0].space_freq = 0;
-	  strlcpy (my_audio_config.achan[0].profiles, "", sizeof(my_audio_config.achan[0].profiles));
-	}
-	else if (my_audio_config.achan[0].baud < 7200) {
-	  my_audio_config.achan[0].modem_type = MODEM_8PSK;
-	  my_audio_config.achan[0].mark_freq = 0;
-	  my_audio_config.achan[0].space_freq = 0;
-	  strlcpy (my_audio_config.achan[0].profiles, "", sizeof(my_audio_config.achan[0].profiles));
-	}
-	else if (my_audio_config.achan[0].baud == 0xA15A15) {	// Hack for different use of 9600
-	  my_audio_config.achan[0].modem_type = MODEM_AIS;
-	  my_audio_config.achan[0].baud = 9600;
-	  my_audio_config.achan[0].mark_freq = 0;
-	  my_audio_config.achan[0].space_freq = 0;
-	  strlcpy (my_audio_config.achan[0].profiles, " ", sizeof(my_audio_config.achan[0].profiles));	// avoid getting default later.
-	}
-	else if (my_audio_config.achan[0].baud == 0xEA5EA5) {
-	  my_audio_config.achan[0].modem_type = MODEM_EAS;
-	  my_audio_config.achan[0].baud = 521;	// Actually 520.83 but we have an integer field here.
-						// Will make more precise in afsk demod init.
-	  my_audio_config.achan[0].mark_freq = 2083;	// Actually 2083.3 - logic 1.
-	  my_audio_config.achan[0].space_freq = 1563;	// Actually 1562.5 - logic 0.
-	  strlcpy (my_audio_config.achan[0].profiles, "A", sizeof(my_audio_config.achan[0].profiles));
-	}
-	else {
-	  my_audio_config.achan[0].modem_type = MODEM_SCRAMBLE;
-	  my_audio_config.achan[0].mark_freq = 0;
-	  my_audio_config.achan[0].space_freq = 0;
-	  strlcpy (my_audio_config.achan[0].profiles, " ", sizeof(my_audio_config.achan[0].profiles));	// avoid getting default later.
-	}
 
         if (my_audio_config.achan[0].baud < MIN_BAUD || my_audio_config.achan[0].baud > MAX_BAUD) {
 	  text_color_set(DW_COLOR_ERROR);
           dw_printf ("Use a more reasonable bit rate in range of %d - %d.\n", MIN_BAUD, MAX_BAUD);
           exit (EXIT_FAILURE);
         }
-
-/*
- * -g option means force g3RUH regardless of speed.
- */
-
-	if (g_opt) {
-          my_audio_config.achan[0].modem_type = MODEM_SCRAMBLE;
-          my_audio_config.achan[0].mark_freq = 0;
-          my_audio_config.achan[0].space_freq = 0;
-	  strlcpy (my_audio_config.achan[0].profiles, " ", sizeof(my_audio_config.achan[0].profiles));	// avoid getting default later.
-	}
-
-/*
- * We have two different incompatible flavors of V.26.
- */
-	if (j_opt) {
-
-	  // V.26 compatible with earlier versions of direwolf.
-	  //   Example:   -B 2400 -j    or simply   -j
-
-	  my_audio_config.achan[0].v26_alternative = V26_A;
-          my_audio_config.achan[0].modem_type = MODEM_QPSK;
-          my_audio_config.achan[0].mark_freq = 0;
-          my_audio_config.achan[0].space_freq = 0;
-	  my_audio_config.achan[0].baud = 2400;
-	  strlcpy (my_audio_config.achan[0].profiles, "", sizeof(my_audio_config.achan[0].profiles));
-	}
-	if (J_opt) {
-
-	  // V.26 compatible with MFJ and maybe others.
-	  //   Example:   -B 2400 -J     or simply   -J
-
-	  my_audio_config.achan[0].v26_alternative = V26_B;
-          my_audio_config.achan[0].modem_type = MODEM_QPSK;
-          my_audio_config.achan[0].mark_freq = 0;
-          my_audio_config.achan[0].space_freq = 0;
-	  my_audio_config.achan[0].baud = 2400;
-	  strlcpy (my_audio_config.achan[0].profiles, "", sizeof(my_audio_config.achan[0].profiles));
-	}
 
 	// Needs to be after -B, -j, -J.
 	if (strlen(P_opt) > 0) {
@@ -541,7 +466,6 @@ int main (int argc, char *argv[])
 	}
 
 	fx25_init (d_x_opt);
-	il2p_init (d_2_opt);
 
 	start_time = dtime_now();
 
@@ -832,10 +756,6 @@ void dlq_rec_frame (int chan, int subchan, int slice, packet_t pp, alevel_t alev
 	    dw_printf ("%s audio level = %s   FX.25  %s\n", heard, alevel_text, spectrum);
 	    break;
 
-	  case fec_type_il2p:
-	    dw_printf ("%s audio level = %s   IL2P  %s\n", heard, alevel_text, spectrum);
-	    break;
-
 	  case fec_type_none:
 	  default:
 	    if (my_audio_config.achan[chan].fix_bits == RETRY_NONE && my_audio_config.achan[chan].passall == 0) {
@@ -891,27 +811,6 @@ void dlq_rec_frame (int chan, int subchan, int slice, packet_t pp, alevel_t alev
 	  ax25_hex_dump (pp);
 	  dw_printf ("------\n");
 	}
-
-
-
-
-#if 0		// temp experiment
-
-#include "decode_aprs.h"
-#include "log.h"
-
-	if (ax25_is_aprs(pp)) {
-
-	  decode_aprs_t A;
-
-	  decode_aprs (&A, pp, 0, NULL);
-
-	  // Temp experiment to see how different systems set the RR bits in the source and destination.
-	  // log_rr_bits (&A, pp);
-
-	}
-#endif
-
 
 	ax25_delete (pp);
 
@@ -973,18 +872,7 @@ static void usage (void) {
 	dw_printf ("\n");
 	dw_printf ("        atest [ options ] wav-file-in\n");
 	dw_printf ("\n");
-	dw_printf ("        -B n   Bits/second  for data.  Proper modem automatically selected for speed.\n");
-	dw_printf ("               300 bps defaults to AFSK tones of 1600 & 1800.\n");
-	dw_printf ("               1200 bps uses AFSK tones of 1200 & 2200.\n");
-	dw_printf ("               2400 bps uses QPSK based on V.26 standard.\n");
-	dw_printf ("               4800 bps uses 8PSK based on V.27 standard.\n");
-	dw_printf ("               9600 bps and up uses K9NG/G3RUH standard.\n");
-	dw_printf ("               AIS for ship Automatic Identification System.\n");
-	dw_printf ("               EAS for Emergency Alert System (EAS) Specific Area Message Encoding (SAME).\n");
-	dw_printf ("\n");
-	dw_printf ("        -g     Use G3RUH modem rather rather than default for data rate.\n");
-	dw_printf ("        -j     2400 bps QPSK compatible with direwolf <= 1.5.\n");
-	dw_printf ("        -J     2400 bps QPSK compatible with MFJ-2400.\n");
+	dw_printf ("        -B n   Bits/second for data. \n");
 	dw_printf ("\n");
 	dw_printf ("        -D n   Divide audio sample rate by n.\n");
 	dw_printf ("\n");
@@ -1015,13 +903,7 @@ static void usage (void) {
 	dw_printf ("        gen_packets -o test1.wav\n");
 	dw_printf ("        atest test1.wav\n");
 	dw_printf ("\n");
-	dw_printf ("        gen_packets -B 300 -o test3.wav\n");
-	dw_printf ("        atest -B 300 test3.wav\n");
-	dw_printf ("\n");
-	dw_printf ("        gen_packets -B 9600 -o test9.wav\n");
-	dw_printf ("        atest -B 9600 test9.wav\n");
-	dw_printf ("\n");
-	dw_printf ("              This generates and decodes 3 test files with 1200, 300, and 9600\n");
+	dw_printf ("              This generates and decodes a test file\n");
 	dw_printf ("              bits per second.\n");
 	dw_printf ("\n");
 	dw_printf ("        atest 02_Track_2.wav\n");

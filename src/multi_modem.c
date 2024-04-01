@@ -102,7 +102,6 @@
 #include "dlq.h"
 #include "fx25.h"
 #include "version.h"
-#include "ais.h"
 
 
 
@@ -117,7 +116,7 @@ static struct {
 	packet_t packet_p;
 	alevel_t alevel;
 	float speed_error;
-	fec_type_t fec_type;	// Type of FEC: none(0), fx25, il2p
+	fec_type_t fec_type;	// Type of FEC: none(0), fx25
 	retry_t retries;	// For the old "fix bits" strategy, this is the
 				// number of bits that were modified to get a good CRC.
 				// It would be 0 to something around 4.
@@ -180,8 +179,6 @@ void multi_modem_init (struct audio_s *pa)
 	      save_audio_config_p->achan[chan].baud = DEFAULT_BAUD;
 	    }
 	    int real_baud = save_audio_config_p->achan[chan].baud;
-	    if (save_audio_config_p->achan[chan].modem_type == MODEM_QPSK) real_baud = save_audio_config_p->achan[chan].baud / 2;
-	    if (save_audio_config_p->achan[chan].modem_type == MODEM_8PSK) real_baud = save_audio_config_p->achan[chan].baud / 3;
 
 	    process_age[chan] = PROCESS_AFTER_BITS * save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec / real_baud ;
 	    //crc_queue_of_last_to_app[chan] = NULL;
@@ -307,7 +304,7 @@ void multi_modem_process_sample (int chan, int audio_sample)
  *				 display of audio level line.
  *				 Use -2 to indicate DTMF message.)
  *		retries	- Level of correction used.
- *		fec_type	- none(0), fx25, il2p
+ *		fec_type	- none(0), fx25
  *
  * Description:	Add to list of candidates.  Best one will be picked later.
  *
@@ -323,29 +320,7 @@ void multi_modem_process_rec_frame (int chan, int subchan, int slice, unsigned c
 	assert (subchan >= 0 && subchan < MAX_SUBCHANS);
 	assert (slice >= 0 && slice < MAX_SUBCHANS);
 
-// Special encapsulation for AIS & EAS so they can be treated normally pretty much everywhere else.
-
-	if (save_audio_config_p->achan[chan].modem_type == MODEM_AIS) {
-	  char nmea[256];
-	  ais_to_nmea (fbuf, flen, nmea, sizeof(nmea));
-
-	  char monfmt[276];
-	  snprintf (monfmt, sizeof(monfmt), "AIS>%s%1d%1d:{%c%c%s", APP_TOCALL, MAJOR_VERSION, MINOR_VERSION, USER_DEF_USER_ID, USER_DEF_TYPE_AIS, nmea);
-	  pp = ax25_from_text (monfmt, 1);
-
-	  // alevel gets in there somehow making me question why it is passed thru here.
-	}
-	else if (save_audio_config_p->achan[chan].modem_type == MODEM_EAS) {
-	  char monfmt[300];	// EAS SAME message max length is 268
-
-	  snprintf (monfmt, sizeof(monfmt), "EAS>%s%1d%1d:{%c%c%s", APP_TOCALL, MAJOR_VERSION, MINOR_VERSION, USER_DEF_USER_ID, USER_DEF_TYPE_EAS, fbuf);
-	  pp = ax25_from_text (monfmt, 1);
-
-	  // alevel gets in there somehow making me question why it is passed thru here.
-	}
-	else {
-	  pp = ax25_from_frame (fbuf, flen, alevel);
-	}
+	pp = ax25_from_frame (fbuf, flen, alevel);
 
 	multi_modem_process_rec_packet (chan, subchan, slice, pp, alevel, retries, fec_type);
 }
@@ -460,7 +435,7 @@ static void pick_best_candidate (int chan)
 	  if (candidate[chan][j][k].packet_p == NULL) {
 	    spectrum[n] = '_';
 	  }
-	  else if (candidate[chan][j][k].fec_type != fec_type_none) {		// FX.25 or IL2P
+	  else if (candidate[chan][j][k].fec_type != fec_type_none) { // FX.25 
 	    // FIXME: using retries both as an enum and later int too.
 	    if ((int)(candidate[chan][j][k].retries) <= 9) {
 	      spectrum[n] = '0' + candidate[chan][j][k].retries;
@@ -499,8 +474,7 @@ static void pick_best_candidate (int chan)
 	  }
 	}
 
-	// FIXME: IL2p & FX.25 don't have CRC calculated. Must fill it in first.
-
+	// FIXME: FX.25 don't have CRC calculated. Must fill it in first.
 
 	/* Bump it up slightly if others nearby have the same CRC. */
 

@@ -56,8 +56,6 @@ struct demodulator_state_s
  */
 	enum modem_t modem_type;		// MODEM_AFSK, MODEM_8PSK, etc.
 
-//	enum v26_e v26_alt;			// Which alternative when V.26.
-
 	char profile;			// 'A', 'B', etc.	Upper case.
 					// Only needed to see if we are using 'F' to take fast path.
 
@@ -265,7 +263,6 @@ struct demodulator_state_s
 //										//
 //////////////////////////////////////////////////////////////////////////////////
 
-
 	  struct afsk_only_s {
 
 	    unsigned int m_osc_phase;		// Phase for Mark local oscillator.
@@ -303,157 +300,6 @@ struct demodulator_state_s
 	    float normalize_rpsam;	// Normalize to -1 to +1 for expected tones.
 
 	  } afsk;
-
-//////////////////////////////////////////////////////////////////////////////////
-//										//
-//				Baseband only, AKA G3RUH			//
-//										//
-//////////////////////////////////////////////////////////////////////////////////
-
-// TODO: Continue experiments with root raised cosine filter.
-// Either switch to that or take out all the related stuff.
-
-	  struct bb_only_s {
-
-		float rrc_width_sym;		/* Width of RRC filter in number of symbols. */
-
-		float rrc_rolloff;		/* Rolloff factor for RRC.  Between 0 and 1. */
-
-		int rrc_filter_taps;		// Number of elements used in the next two.
-
-// FIXME: TODO: reevaluate max size needed.
-
-		float audio_in[MAX_FILTER_SIZE] __attribute__((aligned(16)));	// Audio samples in.
-
-
-		float lp_filter[MAX_FILTER_SIZE] __attribute__((aligned(16)));	// Low pass filter.
-
-		// New in 1.7 - Polyphase filter to reduce CPU requirements.
-
-		float lp_polyphase_1[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-		float lp_polyphase_2[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-		float lp_polyphase_3[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-		float lp_polyphase_4[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-
-		float lp_1_iir_param;		// very low pass filters to get DC offset.
-		float lp_1_out;
-
-		float lp_2_iir_param;
-		float lp_2_out;
-
-		float agc_1_fast_attack;	// Signal envelope detection.
-		float agc_1_slow_decay;
-		float agc_1_peak;
-		float agc_1_valley;
-
-		float agc_2_fast_attack;
-		float agc_2_slow_decay;
-		float agc_2_peak;
-		float agc_2_valley;
-
-		float agc_3_fast_attack;
-		float agc_3_slow_decay;
-		float agc_3_peak;
-		float agc_3_valley;
-
-		// CIC low pass filters to detect DC bias or low frequency changes.
-		// IIR behaves like an analog R-C filter.
-		// Intuitively, it seems like FIR would be better because it is based on a finite history.
-		// However, it would require MANY taps and a LOT of computation for a low frequency.
-		// We can use a little trick here to keep a running average.
-		// This would be equivalent to convolving with an array of all 1 values.
-		// That would eliminate the need to multiply.
-		// We can also eliminate the need to add them all up each time by keeping a running total.
-		// Add a sample to the total when putting it in our array of recent samples.
-		// Subtract it from the total when it gets pushed off the end.
-		// We can also eliminate the need to shift them all down by using a circular buffer.
-		// This only works with integers because float would have cumulated round off errors.
-
-		cic_t cic_center1;
-		cic_t cic_above;
-		cic_t cic_below;
-
-	  } bb;
-
-//////////////////////////////////////////////////////////////////////////////////
-//										//
-//					PSK only.				//
-//										//
-//////////////////////////////////////////////////////////////////////////////////
-
-
-	  struct psk_only_s {
-
-		enum v26_e v26_alt;		// Which alternative when V.26.
-
-		float sin_table256[256];	// Precomputed sin table for speed.
-
-		
-	// Optional band pass pre-filter before phase detector.
-
-// TODO? put back into common section?
-// TODO? Why was I thinking that?
-
-		int use_prefilter;	// True to enable it.
-
-		float prefilter_baud;	// Cutoff frequencies, as fraction of baud rate, beyond tones used.
-					// In the case of PSK, we use only a single tone of 1800 Hz.
-					// If we were using 2400 bps (= 1200 baud), this would be
-					// the fraction of 1200 for the cutoff below and above 1800.
-
-
-		float pre_filter_width_sym;  /* Length in number of symbol times. */
-
-		int pre_filter_taps;	/* Size of pre filter, in audio samples. */									
-
-		bp_window_t pre_window;
-
-		float audio_in[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-		float pre_filter[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-
-	// Use local oscillator or correlate with previous sample.
-
-		int psk_use_lo;		/* Use local oscillator rather than self correlation. */
-
-		unsigned int lo_step;	/* How much to advance the local oscillator */
-					/* phase for each audio sample. */
-
-		unsigned int lo_phase;	/* Local oscillator phase accumulator for PSK. */
-	
-		// After mixing with LO before low pass filter.
-
-		float I_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));	// signal * LO cos.
-		float Q_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));	// signal * LO sin.
-
-		// Number of delay line taps into previous symbol.
-		// They are one symbol period and + or - 45 degrees of the carrier frequency.
-
-		int boffs;		/* symbol length based on sample rate and baud. */
-		int coffs;		/* to get cos component of previous symbol. */
-		int soffs;		/* to get sin component of previous symbol. */
-
-		float delay_line_width_sym;
-		int delay_line_taps;	// In audio samples.
-
-		float delay_line[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-
-	// Low pass filter Second is frequency as ratio to baud rate for FIR.
-
-// TODO? put back into common section?
-// TODO? What are the tradeoffs?
-		float lpf_baud;			/* Cutoff frequency as fraction of baud. */
-						/* Intuitively we'd expect this to be somewhere */
-						/* in the range of 0.5 to 1. */
-
-		float lp_filter_width_sym;  	/* Length in number of symbol times. */
-
-		int lp_filter_taps;		/* Size of Low Pass filter, in audio samples (i.e. filter taps). */
-
-		bp_window_t lp_window;
-
-		float lp_filter[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-
-	  } psk;
 
 	} u;	// end of union for different demodulator types.
 

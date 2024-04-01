@@ -92,8 +92,8 @@ set(CPACK_PACKAGE_NAME "${CMAKE_PROJECT_NAME}")
 # e.g. Comes out as x86_64 when building for i686 target platform.
 #set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${direwolf_VERSION}_${CMAKE_SYSTEM_PROCESSOR}")
 # We don't know the target yet so this is set after FindCPUflags.
-set(CPACK_PACKAGE_CONTACT "https://github.com/wb2osz/direwolf")
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Dire Wolf is an AX.25 soundcard TNC, digipeater, APRS IGate, GPS tracker, and APRStt gateway")
+set(CPACK_PACKAGE_CONTACT "https://github.com/xdab/direwolf")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Dire Wolf is an AX.25 soundcard TNC")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.md")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
@@ -303,14 +303,6 @@ endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-
-find_package(GPSD)
-if(GPSD_FOUND)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DENABLE_GPSD")
-else()
-  set(GPSD_INCLUDE_DIRS "")
-  set(GPSD_LIBRARIES "")
-endif()
 
 find_package(hamlib)
 if(HAMLIB_FOUND)

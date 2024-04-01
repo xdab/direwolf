@@ -49,10 +49,7 @@
 #include "fsk_gen_filter.h"
 #include "hdlc_rec.h"
 #include "textcolor.h"
-#include "demod_9600.h"
 #include "demod_afsk.h"
-#include "demod_psk.h"
-
 
 
 // Properties of the radio channels.
@@ -129,21 +126,6 @@ int demod_init (struct audio_s *pa)
 	      break;
 
 	    case MODEM_AFSK:
-	    case MODEM_EAS:
-
-	      if (save_audio_config_p->achan[chan].modem_type == MODEM_EAS) {
-		if (save_audio_config_p->achan[chan].fix_bits != RETRY_NONE) {
-	          text_color_set(DW_COLOR_INFO);
-		  dw_printf ("Channel %d: FIX_BITS option has been turned off for EAS.\n", chan);
-	          save_audio_config_p->achan[chan].fix_bits = RETRY_NONE;
-	        }
-		if (save_audio_config_p->achan[chan].passall != 0) {
-	          text_color_set(DW_COLOR_INFO);
-		  dw_printf ("Channel %d: PASSALL option has been turned off for EAS.\n", chan);
-	          save_audio_config_p->achan[chan].passall = 0;
-	        }
-	      }
-
 /*
  * Tear apart the profile and put it back together in a normalized form:
  *	- At least one letter, supply suitable default if necessary.
@@ -306,8 +288,6 @@ int demod_init (struct audio_s *pa)
 		    save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec);
 	      if (save_audio_config_p->achan[chan].decimate != 1) 
 	        dw_printf (" / %d", save_audio_config_p->achan[chan].decimate);
-	      if (save_audio_config_p->achan[chan].dtmf_decode != DTMF_DECODE_OFF) 
-	        dw_printf (", DTMF decoder enabled");
 	      dw_printf (".\n");
 
 
@@ -494,170 +474,8 @@ int demod_init (struct audio_s *pa)
 	      }	
 	      break;
 
-	    case MODEM_QPSK:		// New for 1.4
-
-	      // In versions 1.4 and 1.5, V.26 "Alternative A" was used.
-	      // years later, I discover that the MFJ-2400 used "Alternative B."
-	      // It looks like the other two manufacturers use the same but we
-              // can't be sure until we find one for compatibility testing.
-
-	      // In version 1.6 we add a choice for the user.
-	      // If neither one was explicitly specified, print a message and take
-	      // a default.  My current thinking is that we default to direwolf <= 1.5
-	      // compatible for version 1.6 and MFJ compatible after that.
-
-	      if (save_audio_config_p->achan[chan].v26_alternative == V26_UNSPECIFIED) {
-
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Two incompatible versions of 2400 bps QPSK are now available.\n");
-	        dw_printf ("For compatibility with direwolf <= 1.5, use 'V26A' modem option in config file.\n");
-	        dw_printf ("For compatibility MFJ-2400 use 'V26B' modem option in config file.\n");
-	        dw_printf ("Command line options -j and -J can be used for channel 0.\n");
-	        dw_printf ("For more information, read the Dire Wolf User Guide and\n");
-	        dw_printf ("2400-4800-PSK-for-APRS-Packet-Radio.pdf.\n");
-	        dw_printf ("The default is now MFJ-2400 compatibility mode.\n");
-
-	        save_audio_config_p->achan[chan].v26_alternative = V26_DEFAULT;
-	      }
-
-
-// TODO: See how much CPU this takes on ARM and decide if we should have different defaults.
-
-	      if (strlen(save_audio_config_p->achan[chan].profiles) == 0) {
-//#if __arm__
-//	        strlcpy (save_audio_config_p->achan[chan].profiles, "R", sizeof(save_audio_config_p->achan[chan].profiles));
-//#else
-	        strlcpy (save_audio_config_p->achan[chan].profiles, "PQRS", sizeof(save_audio_config_p->achan[chan].profiles));
-//#endif
-	      }
-	      save_audio_config_p->achan[chan].num_subchan = strlen(save_audio_config_p->achan[chan].profiles);
-
-	      save_audio_config_p->achan[chan].decimate = 1;	// think about this later.
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("Channel %d: %d bps, QPSK, %s, %d sample rate",
-		    chan, save_audio_config_p->achan[chan].baud,
-		    save_audio_config_p->achan[chan].profiles,
-		    save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec);
-	      if (save_audio_config_p->achan[chan].decimate != 1)
-	        dw_printf (" / %d", save_audio_config_p->achan[chan].decimate);
-
-	      if (save_audio_config_p->achan[chan].v26_alternative == V26_B)
-	        dw_printf (", compatible with MFJ-2400");
-	      else
-	        dw_printf (", compatible with earlier direwolf");
-
-	      if (save_audio_config_p->achan[chan].dtmf_decode != DTMF_DECODE_OFF)
-	        dw_printf (", DTMF decoder enabled");
-	      dw_printf (".\n");
-
-	      int d;
-	      for (d = 0; d < save_audio_config_p->achan[chan].num_subchan; d++) {
-
-	        assert (d >= 0 && d < MAX_SUBCHANS);
-	        struct demodulator_state_s *D;
-	        D = &demodulator_state[chan][d];
-	        profile = save_audio_config_p->achan[chan].profiles[d];
-
-	        //text_color_set(DW_COLOR_DEBUG);
-	        //dw_printf ("About to call demod_psk_init for Q-PSK case, modem_type=%d, profile='%c'\n",
-		//	save_audio_config_p->achan[chan].modem_type, profile);
-
-	        demod_psk_init (save_audio_config_p->achan[chan].modem_type,
-			save_audio_config_p->achan[chan].v26_alternative,
-			save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec / save_audio_config_p->achan[chan].decimate, 
-			save_audio_config_p->achan[chan].baud,
-			profile,
-			D);
-
-	        //text_color_set(DW_COLOR_DEBUG);
-	        //dw_printf ("Returned from demod_psk_init\n");
-
-	        /* For signal level reporting, we want a longer term view. */
-		/* Guesses based on 9600.  Maybe revisit someday. */
-
-	        D->quick_attack = 0.080 * 0.2;
-	        D->sluggish_decay = 0.00012 * 0.2;
-	      }
-	      break;
-
-	    case MODEM_8PSK:		// New for 1.4
-
-// TODO: See how much CPU this takes on ARM and decide if we should have different defaults.
-
-	      if (strlen(save_audio_config_p->achan[chan].profiles) == 0) {
-//#if __arm__
-//	        strlcpy (save_audio_config_p->achan[chan].profiles, "V", sizeof(save_audio_config_p->achan[chan].profiles));
-//#else
-	        strlcpy (save_audio_config_p->achan[chan].profiles, "TUVW", sizeof(save_audio_config_p->achan[chan].profiles));
-//#endif
-	      }
-	      save_audio_config_p->achan[chan].num_subchan = strlen(save_audio_config_p->achan[chan].profiles);
-
-	      save_audio_config_p->achan[chan].decimate = 1;	// think about this later
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("Channel %d: %d bps, 8PSK, %s, %d sample rate",
-		    chan, save_audio_config_p->achan[chan].baud,
-		    save_audio_config_p->achan[chan].profiles,
-		    save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec);
-	      if (save_audio_config_p->achan[chan].decimate != 1)
-	        dw_printf (" / %d", save_audio_config_p->achan[chan].decimate);
-	      if (save_audio_config_p->achan[chan].dtmf_decode != DTMF_DECODE_OFF)
-	        dw_printf (", DTMF decoder enabled");
-	      dw_printf (".\n");
-
-	      //int d;
-	      for (d = 0; d < save_audio_config_p->achan[chan].num_subchan; d++) {
-
-	        assert (d >= 0 && d < MAX_SUBCHANS);
-	        struct demodulator_state_s *D;
-	        D = &demodulator_state[chan][d];
-	        profile = save_audio_config_p->achan[chan].profiles[d];
-
-	        //text_color_set(DW_COLOR_DEBUG);
-	        //dw_printf ("About to call demod_psk_init for 8-PSK case, modem_type=%d, profile='%c'\n",
-		//	save_audio_config_p->achan[chan].modem_type, profile);
-
-	        demod_psk_init (save_audio_config_p->achan[chan].modem_type,
-			save_audio_config_p->achan[chan].v26_alternative,
-			save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec / save_audio_config_p->achan[chan].decimate,
-			save_audio_config_p->achan[chan].baud,
-			profile,
-			D);
-
-	        //text_color_set(DW_COLOR_DEBUG);
-	        //dw_printf ("Returned from demod_psk_init\n");
-
-	        /* For signal level reporting, we want a longer term view. */
-		/* Guesses based on 9600.  Maybe revisit someday. */
-
-	        D->quick_attack = 0.080 * 0.2;
-	        D->sluggish_decay = 0.00012 * 0.2;
-	      }
-	      break;
-
-//TODO: how about MODEM_OFF case?
-
-	    case MODEM_BASEBAND:
-	    case MODEM_SCRAMBLE:
-	    case MODEM_AIS:
 	    default:	/* Not AFSK */
 	      {
-
-	      // For AIS we will accept only a good CRC without any fixup attempts.
-	      // Even with that, there are still a lot of CRC false matches with random noise.
-
-	      if (save_audio_config_p->achan[chan].modem_type == MODEM_AIS) {
-		if (save_audio_config_p->achan[chan].fix_bits != RETRY_NONE) {
-	          text_color_set(DW_COLOR_INFO);
-		  dw_printf ("Channel %d: FIX_BITS option has been turned off for AIS.\n", chan);
-	          save_audio_config_p->achan[chan].fix_bits = RETRY_NONE;
-	        }
-		if (save_audio_config_p->achan[chan].passall != 0) {
-	          text_color_set(DW_COLOR_INFO);
-		  dw_printf ("Channel %d: PASSALL option has been turned off for AIS.\n", chan);
-	          save_audio_config_p->achan[chan].passall = 0;
-	        }
-	      }
 
 	      if (strcmp(save_audio_config_p->achan[chan].profiles, "") == 0) {
 
@@ -729,15 +547,13 @@ int demod_init (struct audio_s *pa)
 #endif
 
 	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("Channel %d: %d baud, %s, %s, %d sample rate x %d",
+	      dw_printf ("Channel %d: %d baud, modem type %d, %s, %d sample rate x %d",
 		    chan,
 	            save_audio_config_p->achan[chan].baud,
-	            save_audio_config_p->achan[chan].modem_type == MODEM_AIS ? "AIS" : "K9NG/G3RUH",
+	            save_audio_config_p->achan[chan].modem_type,
 		    save_audio_config_p->achan[chan].profiles,
 		    save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec,
 	            save_audio_config_p->achan[chan].upsample);
-	      if (save_audio_config_p->achan[chan].dtmf_decode != DTMF_DECODE_OFF) 
-	        dw_printf (", DTMF decoder enabled");
 	      dw_printf (".\n");
 	      
 	      struct demodulator_state_s *D;
@@ -780,11 +596,6 @@ int demod_init (struct audio_s *pa)
 	      else {
 	        dw_printf ("This is a suitable ratio for good performance.\n");
 	      }
-
-	      demod_9600_init (save_audio_config_p->achan[chan].modem_type,
-			save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec,
-			save_audio_config_p->achan[chan].upsample,
-			save_audio_config_p->achan[chan].baud, D);
 
 	      if (strchr(save_audio_config_p->achan[chan].profiles, '+') != NULL) {
 
@@ -1000,14 +811,9 @@ void demod_process_sample (int chan, int subchan, int sam)
 	switch (save_audio_config_p->achan[chan].modem_type) {
 
 	  case MODEM_OFF:
-
-	    // Might have channel only listening to DTMF for APRStt gateway.
-	    // Don't waste CPU time running a demodulator here.
 	    break;
 
 	  case MODEM_AFSK:
-	  case MODEM_EAS:
-
 	    if (save_audio_config_p->achan[chan].decimate > 1) {
 
 	      sample_sum[chan][subchan] += sam;
@@ -1023,37 +829,13 @@ void demod_process_sample (int chan, int subchan, int sam)
 	    }
 	    break;
 
-	  case MODEM_QPSK:
-	  case MODEM_8PSK:
-
-	    if (save_audio_config_p->achan[chan].decimate > 1) {
-
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Invalid combination of options.  Exiting.\n");
-	      // Would probably work but haven't thought about it or tested yet.
-	      exit (1);
-	    }
-	    else {
-	      demod_psk_process_sample (chan, subchan, sam, D);
-	    }
-	    break;
-
-	  case MODEM_BASEBAND:
-	  case MODEM_SCRAMBLE:
-	  case MODEM_AIS:
 	  default:
-	
-	    demod_9600_process_sample (chan, sam, save_audio_config_p->achan[chan].upsample, D);
 	    break;
 
 	}  /* switch modem_type */
 	return;
 
 } /* end demod_process_sample */
-
-
-
-
 
 
 /* Doesn't seem right.  Need to revisit this. */
@@ -1083,19 +865,14 @@ alevel_t demod_get_audio_level (int chan, int subchan)
 
 	alevel.rec = (int) (( D->alevel_rec_peak - D->alevel_rec_valley ) * 50.0f + 0.5f);
 
-	if (save_audio_config_p->achan[chan].modem_type == MODEM_AFSK ||
-	    save_audio_config_p->achan[chan].modem_type == MODEM_EAS) {
+	if (save_audio_config_p->achan[chan].modem_type == MODEM_AFSK) {
 
 	  /* For AFSK, we have mark and space amplitudes. */
 
 	  alevel.mark = (int) ((D->alevel_mark_peak ) * 100.0f + 0.5f);
 	  alevel.space = (int) ((D->alevel_space_peak ) * 100.0f + 0.5f);
 	}
-	else if (save_audio_config_p->achan[chan].modem_type == MODEM_QPSK ||
-	         save_audio_config_p->achan[chan].modem_type == MODEM_8PSK) {
-	  alevel.mark = -1;
-	  alevel.space = -1;
-	}
+
 	else {
 
 #if 1	

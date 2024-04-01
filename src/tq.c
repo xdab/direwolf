@@ -49,8 +49,6 @@
 #include "textcolor.h"
 #include "audio.h"
 #include "tq.h"
-#include "dedupe.h"
-#include "igate.h"
 #include "dtime_now.h"
 
 
@@ -279,7 +277,6 @@ void tq_append (int chan, int prio, packet_t pp)
 	  ax25_safe_print ((char *)pinfo, info_len, ! ax25_is_aprs(pp));
 	  dw_printf ("\n");
 
-	  igate_send_rec_packet (chan, pp);
 	  ax25_delete(pp);
 	  return;
 	}

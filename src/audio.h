@@ -107,26 +107,9 @@ struct audio_s {
 	float recv_ber;			/* Receive Bit Error Rate (BER). */
 					/* Probability of inverting a bit coming out of the modem. */
 
-	//int fx25_xmit_enable;		/* Enable transmission of FX.25.  */
-					/* See fx25_init.c for explanation of values. */
-					/* Initially this applies to all channels. */
-					/* This should probably be per channel. One step at a time. */
-					/* v1.7 - replaced by layer2_xmit==LAYER2_FX25 */
-
-	int fx25_auto_enable;		/* Turn on FX.25 for current connected mode session */
-					/* under poor conditions. */
-					/* Set to 0 to disable feature. */
-					/* I put it here, rather than with the rest of the link layer */
-					/* parameters because it is really a part of the HDLC layer */
-					/* and is part of the KISS TNC functionality rather than our data link layer. */
-					/* Future: not used yet. */
-
-
 	char timestamp_format[40];	/* -T option */
 					/* Precede received & transmitted frames with timestamp. */
 					/* Command line option uses "strftime" format string. */
-
-
 
 	/* originally a "channel" was always connected to an internal modem. */
 	/* In version 1.6, this is generalized so that a channel (as seen by client application) */
@@ -167,17 +150,13 @@ struct audio_s {
                                 	/* Could all be the same or different. */
 
 
-	    enum modem_t { MODEM_AFSK, MODEM_BASEBAND, MODEM_SCRAMBLE, MODEM_QPSK, MODEM_8PSK, MODEM_OFF, MODEM_16_QAM, MODEM_64_QAM, MODEM_AIS, MODEM_EAS } modem_type;
+	    enum modem_t { MODEM_AFSK, MODEM_OFF } modem_type;
 
 					/* Usual AFSK. */
-					/* Baseband signal. Not used yet. */
-					/* Scrambled http://www.amsat.org/amsat/articles/g3ruh/109/fig03.gif */
-					/* Might try MFJ-2400 / CCITT v.26 / Bell 201 someday. */
-					/* No modem.  Might want this for DTMF only channel. */
+					/* No modem.  */
 
-	    enum layer2_t { LAYER2_AX25 = 0, LAYER2_FX25, LAYER2_IL2P } layer2_xmit;
+	    enum layer2_t { LAYER2_AX25 = 0, LAYER2_FX25 } layer2_xmit;
 
-					// IL2P - New for version 1.7.
 					// New layer 2 with FEC.  Much less overhead than FX.25 but no longer backward compatible.
 					// Only applies to transmit.
 					// Listening for FEC sync word should add negligible overhead so
@@ -188,38 +167,12 @@ struct audio_s {
 					// 16, 23, 64 for specific number of parity symbols.
 					// 1 for automatic selection based on frame size.
 
-	    int il2p_max_fec;		// 1 for max FEC length, 0 for automatic based on size.
-
-	    int il2p_invert_polarity;	// 1 means invert on transmit.  Receive handles either automatically.
-
-	    enum v26_e { V26_UNSPECIFIED=0, V26_A, V26_B } v26_alternative;
-
-					// Original implementation used alternative A for 2400 bbps PSK.
-					// Years later, we discover that MFJ-2400 used alternative B.
-					// It's likely the others did too.  it also works a little better.
-					// Default to MFJ compatible and print warning if user did not
-					// pick one explicitly.
-
-#define V26_DEFAULT V26_B
-
-	    enum dtmf_decode_t { DTMF_DECODE_OFF, DTMF_DECODE_ON } dtmf_decode; 
-
-					/* Originally the DTMF ("Touch Tone") decoder was always */
-					/* enabled because it took a negligible amount of CPU. */
-					/* There were complaints about the false positives when */
-					/* hearing other modulation schemes on HF SSB so now it */
-					/* is enabled only when needed. */
-
-					/* "On" will send special "t" packet to attached applications */
-					/* and process as APRStt.  Someday we might want to separate */
-					/* these but for now, we have a single off/on. */
-
 	    int decimate;		/* Reduce AFSK sample rate by this factor to */
 					/* decrease computational requirements. */
 
 	    int upsample;		/* Upsample by this factor for G3RUH. */
 
-            int mark_freq;		/* Two tones for AFSK modulation, in Hz. */
+		int mark_freq;		/* Two tones for AFSK modulation, in Hz. */
 	    int space_freq;		/* Standard tones are 1200 and 2200 for 1200 baud. */
 
 	    int baud;			/* Data bits per second. */
@@ -449,7 +402,6 @@ struct audio_s {
 /* TODO: Is 19200 possible with a soundcard at 44100 samples/sec or do we need a higher sample rate? */
 
 #define MIN_BAUD		100
-//#define MAX_BAUD		10000
 #define MAX_BAUD		40000		// Anyone want to try 38.4 k baud?
 
 /*

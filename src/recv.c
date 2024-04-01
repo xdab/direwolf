@@ -90,9 +90,6 @@
 #include <string.h>
 #include <stddef.h>
 #include <sys/types.h>
-//#include <sys/stat.h>
-//#include <sys/ioctl.h>
-//#include <fcntl.h>
 #include <assert.h>
 
 #ifdef __FreeBSD__
@@ -105,9 +102,6 @@
 #include "textcolor.h"
 #include "dlq.h"
 #include "recv.h"
-#include "dtmf.h"
-#include "aprs_tt.h"
-#include "ax25_link.h"
 
 
 #if __WIN32__
@@ -225,7 +219,6 @@ static void * recv_adev_thread (void *arg)
 
 	  int audio_sample;
 	  int c;
-	  char tt;
 
 	  for (c=0; c<num_chan; c++)
 	  {
@@ -237,33 +230,6 @@ static void * recv_adev_thread (void *arg)
 	    // Future?  provide more flexible mapping.
 	    // i.e. for each valid channel where audio_source[] is first_chan+c.
 	    multi_modem_process_sample(first_chan + c, audio_sample);
-
-
-	    /* Originally, the DTMF decoder was always active. */
-	    /* It took very little CPU time and the thinking was that an */
-	    /* attached application might be interested in this even when */
-	    /* the APRStt gateway was not being used.  */
-
-	    /* Unfortunately it resulted in too many false detections of */
-	    /* touch tones when hearing other types of digital communications */
-	    /* on HF.  Starting in version 1.0, the DTMF decoder is active */
-	    /* only when the APRStt gateway is configured. */
-
-	    /* The test below allows us to listen to only a single channel for */
-	    /* for touch tone sequences.  The DTMF decoder and the accumulation */
-	    /* of digits into a sequence maintain separate data for each channel. */
-	    /* We should be able to accept touch tone sequences concurrently on */
-	    /* all channels.  The only issue is when a complete sequence is */
-	    /* sent to aprs_tt_sequence which doesn't have separate data for each */
-	    /* channel.  This shouldn't be a problem unless we have multiple */
-	    /* sequences arriving at the same instant. */
-
-	    if (save_pa->achan[first_chan + c].dtmf_decode != DTMF_DECODE_OFF) {
-	      tt = dtmf_sample (first_chan + c, audio_sample/16384.);
-	      if (tt != ' ') {
-	        aprs_tt_button (first_chan + c, tt);
-	      }
-	    }
 	  }  // for c is just 0 or 0 then 1
 
 		/* When a complete frame is accumulated, */
@@ -283,132 +249,41 @@ static void * recv_adev_thread (void *arg)
 }
 
 
-
-
-
 void recv_process (void) 
 {
 
 	struct dlq_item_s *pitem;
 
 	while (1) {
+		
+		/* Wait for something to show up in the queue. */
+		int timed_out = dlq_wait_while_empty (0.1);
+		if (timed_out) {
+			continue;
+		}
+		
+		pitem = dlq_remove ();
 
-	  int timed_out;
+	#if DEBUG
+		text_color_set(DW_COLOR_DEBUG);
+		dw_printf ("recv_process: dlq_remove() returned pitem=%p\n", pitem);
+	#endif
 
-	  double timeout_value =  ax25_link_get_next_timer_expiry();
-
-	  timed_out = dlq_wait_while_empty (timeout_value);
-
-
-#if DEBUG
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("recv_process: woke up, timed_out=%d\n", timed_out);
-#endif 
-
-	  if (timed_out) {
-
-#if DEBUG
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("recv_process: time waiting on dlq.  call dl_timer_expiry.\n");
-#endif
-
-	    dl_timer_expiry ();
-	  }
-	  else {
-
-	    pitem = dlq_remove ();
-
-#if DEBUG
-	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("recv_process: dlq_remove() returned pitem=%p\n", pitem);
-#endif
-
-	    if (pitem != NULL) {
-	      switch (pitem->type) {
-
-	        case DLQ_REC_FRAME:
-/*
- * This is the traditional processing.
- * For all frames:
- *	- Print in standard monitoring format.
- *	- Send to KISS client applications.
- *	- Send to AGw client applications in raw mode.
- * For APRS frames:
- *	- Explain what it means.
- *	- Send to Igate.
- *	- Digipeater.
- */
-
-		  app_process_rec_packet (pitem->chan, pitem->subchan, pitem->slice, pitem->pp, pitem->alevel, pitem->fec_type, pitem->retries, pitem->spectrum);
-
-
-/*
- * Link processing.
- */
-	          lm_data_indication(pitem);
-
-	          break;
-
-
-	        case DLQ_CONNECT_REQUEST:
-
-	          dl_connect_request (pitem);
-	          break;
-
-	        case DLQ_DISCONNECT_REQUEST:
-
-	          dl_disconnect_request (pitem);
-	          break;
-
-	        case DLQ_XMIT_DATA_REQUEST:
-
-	          dl_data_request (pitem);
-	          break;
-
-	        case DLQ_REGISTER_CALLSIGN:
-
-	          dl_register_callsign (pitem);
-	          break;
-
-	        case DLQ_UNREGISTER_CALLSIGN:
-
-	          dl_unregister_callsign (pitem);
-	          break;
-
-	        case DLQ_OUTSTANDING_FRAMES_REQUEST:
-
-	          dl_outstanding_frames_request (pitem);
-	          break;
-
-		case DLQ_CHANNEL_BUSY:
-
-	          lm_channel_busy (pitem);
-	          break;
-
-		case DLQ_SEIZE_CONFIRM:
-
-	          lm_seize_confirm (pitem);
-	          break;
-
-	        case DLQ_CLIENT_CLEANUP:
-
-	          dl_client_cleanup (pitem);
-	          break;
-
-	      }
-
-	      dlq_delete (pitem);
-	    }
-#if DEBUG
-	    else {
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("recv_process: spurious wakeup. (Temp debugging message - not a problem if only occasional.)\n");
-	    }
-#endif
-	  }
-
+		if (pitem != NULL) {
+				/*
+	* This is the traditional processing.
+	* For all frames:
+	*	- Print in standard monitoring format.
+	*	- Send to KISS client applications.
+	*	- Send to AGw client applications in raw mode.
+	* For APRS frames:
+	*	- Explain what it means.
+	*	- Send to Igate.
+	*	- Digipeater.
+	*/
+			app_process_rec_packet (pitem->chan, pitem->subchan, pitem->slice, pitem->pp, pitem->alevel, pitem->fec_type, pitem->retries, pitem->spectrum);
+		}
 	}
-
 } /* end recv_process */
 
 

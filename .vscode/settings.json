@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "decode_aprs.h": "c",
+        "gen_tone.h": "c",
+        "random": "c",
+        "log.h": "c",
+        "symbols.h": "c",
+        "dtime_now.h": "c",
+        "latlong.h": "c",
+        "textcolor.h": "c",
+        "audio.h": "c",
+        "any": "c",
+        "complex": "c",
+        "kissserial.h": "c",
+        "kiss_frame.h": "c"
+    }
+}

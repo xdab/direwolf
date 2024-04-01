@@ -88,12 +88,9 @@ static THREAD_F tnc_listen_net (void *arg);
 static THREAD_F tnc_listen_serial (void *arg);
 
 static void send_to_kiss_tnc (int chan, int cmd, char *data, int dlen);
-static void hex_dump (unsigned char *p, int len);
 
 static void usage(void);
 static void usage2(void);
-
-
 
 
 /* Obtained from the command line. */
@@ -573,12 +570,6 @@ static void send_to_kiss_tnc (int chan, int cmd, char *data, int dlen)
 
 	klen = kiss_encapsulate(temp, dlen+1, kissed);
 
-	if (verbose) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("Sending to KISS TNC:\n");
-	  hex_dump (kissed, klen);
-	}
-
 	if (using_tcp) {
 	  int rc = SOCK_SEND(server_sock, (char*)kissed, klen);
 	  if (rc != klen) {
@@ -875,34 +866,6 @@ void kiss_process_msg (unsigned char *kiss_msg, int kiss_len, int debug, struct 
 	}
 
 } /* end kiss_process_msg */
-
-
-// TODO:  We have multiple copies of this.  Move to some misc file.
-
-void hex_dump (unsigned char *p, int len) 
-{
-	int n, i, offset;
-
-	offset = 0;
-	while (len > 0) {
-	  n = len < 16 ? len : 16; 
-	  printf ("  %03x: ", offset);
-	  for (i=0; i<n; i++) {
-	    printf (" %02x", p[i]);
-	  }
-	  for (i=n; i<16; i++) {
-	    printf ("   ");
-	  }
-	  printf ("  ");
-	  for (i=0; i<n; i++) {
-	    printf ("%c", isprint(p[i]) ? p[i] : '.');
-	  }
-	  printf ("\n");
-	  p += 16;
-	  offset += 16;
-	  len -= 16;
-	}
-}
 
 static void usage(void)
 {

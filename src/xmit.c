@@ -72,11 +72,8 @@
 #include "hdlc_rec.h"
 #include "ptt.h"
 #include "dtime_now.h"
-#include "morse.h"
-#include "dtmf.h"
 #include "xid.h"
 #include "dlq.h"
-#include "server.h"
 
 
 /*
@@ -171,13 +168,9 @@ static void * xmit_thread (void *arg);
 static dw_mutex_t audio_out_dev_mutex[MAX_ADEVS];
 
 
-
 static int wait_for_clear_channel (int channel, int slotttime, int persist, int fulldup);
 static void xmit_ax25_frames (int c, int p, packet_t pp, int max_bundle);
 static int send_one_frame (int c, int p, packet_t pp);
-static void xmit_speech (int c, packet_t pp);
-static void xmit_morse (int c, packet_t pp, int wpm);
-static void xmit_dtmf (int c, packet_t pp, int speed);
 
 
 /*-------------------------------------------------------------------
@@ -411,16 +404,13 @@ void xmit_set_fulldup (int channel, int value)
  *
  * Returns:	Flavor, one of:
  *
- *		FLAVOR_SPEECH		- Destination address is SPEECH.
- *		FLAVOR_MORSE		- Destination address is MORSE.
- *		FLAVOR_DTMF		- Destination address is DTMF.
  *		FLAVOR_APRS_NEW		- APRS original, i.e. not digipeating.
  *		FLAVOR_APRS_DIGI	- APRS digipeating.
  *		FLAVOR_OTHER		- Anything left over, i.e. connected mode.
  *
  *--------------------------------------------------------------------*/
 
-typedef enum flavor_e { FLAVOR_APRS_NEW, FLAVOR_APRS_DIGI, FLAVOR_SPEECH, FLAVOR_MORSE, FLAVOR_DTMF, FLAVOR_OTHER } flavor_t;
+typedef enum flavor_e { FLAVOR_APRS_NEW, FLAVOR_APRS_DIGI, FLAVOR_OTHER } flavor_t;
 
 static flavor_t frame_flavor (packet_t pp)
 {
@@ -431,18 +421,6 @@ static flavor_t frame_flavor (packet_t pp)
 	  char dest[AX25_MAX_ADDR_LEN];
 
 	  ax25_get_addr_no_ssid(pp, AX25_DESTINATION, dest);
-
-	  if (strcmp(dest, "SPEECH") == 0) {
-	   return (FLAVOR_SPEECH);
-	  }
-
-	  if (strcmp(dest, "MORSE") == 0) {
-	   return (FLAVOR_MORSE);
-	  }
-
-	  if (strcmp(dest, "DTMF") == 0) {
-	   return (FLAVOR_DTMF);
-	  }
 
 	  /* Is there at least one digipeater AND has first one been used? */
 	  /* I could be the first in the list or later.  Doesn't matter. */
@@ -556,45 +534,9 @@ static void * xmit_thread (void *arg)
 	      if (ok) {
 /*
  * Channel is clear and we have lock on output device. 
- *
- * If destination is "SPEECH" send info part to speech synthesizer.
- * If destination is "MORSE" send as morse code.
- * If destination is "DTMF" send as Touch Tones.
  */
 
-	        int ssid, wpm, speed;
-
 	        switch (frame_flavor(pp)) {
-
-	          case FLAVOR_SPEECH:
-	            xmit_speech (chan, pp);
-	            break;
-
-	          case FLAVOR_MORSE:
-		    ssid = ax25_get_ssid(pp, AX25_DESTINATION);
-		    wpm = (ssid > 0) ? (ssid * 2) : MORSE_DEFAULT_WPM;
-
-		    // This is a bit of a hack so we don't respond too quickly for APRStt.
-		    // It will be sent in high priority queue while a beacon wouldn't.  
-		    // Add a little delay so user has time release PTT after sending #.
-		    // This and default txdelay would give us a second.
-
-		    if (prio == TQ_PRIO_0_HI) {
-	              //text_color_set(DW_COLOR_DEBUG);
-		      //dw_printf ("APRStt morse xmit delay hack...\n");
-		      SLEEP_MS (700);
-		    }
-	            xmit_morse (chan, pp, wpm);
-	            break;
-
-	          case FLAVOR_DTMF:
-		    speed = ax25_get_ssid(pp, AX25_DESTINATION);
-		    if (speed == 0) speed = 5;	// default half of maximum
-	            if (speed > 10) speed = 10;
-
-	            xmit_dtmf (chan, pp, speed);
-	            break;
-
 	          case FLAVOR_APRS_DIGI:
 	            xmit_ax25_frames (chan, prio, pp, 1);	/* 1 means don't bundle */
 					// I don't know if this in some official specification
@@ -751,19 +693,11 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
  */
 	time_ptt = dtime_now ();
 
-// TODO: This was written assuming bits/sec = baud.
-// Does it is need to be scaled differently for PSK?
-
 #if DEBUG
 	text_color_set(DW_COLOR_DEBUG);
 	dw_printf ("xmit_thread: t=%.3f, Turn on PTT now for channel %d. speed = %d\n", dtime_now()-time_ptt, chan, xmit_bits_per_sec[chan]);
 #endif
 	ptt_set (OCTYPE_PTT, chan, 1);
-
-// Inform data link state machine that we are now transmitting.
-
-	dlq_seize_confirm (chan);	// C4.2.  "This primitive indicates, to the Data-link State
-					// machine, that the transmission opportunity has arrived."
 
 	pre_flags = MS_TO_BITS(xmit_txdelay[chan] * 10, chan) / 8;
 	num_bits =  layer2_preamble_postamble (chan, pre_flags, 0, save_audio_config_p);
@@ -772,11 +706,6 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
 	dw_printf ("xmit_thread: t=%.3f, txdelay=%d [*10], pre_flags=%d, num_bits=%d\n", dtime_now()-time_ptt, xmit_txdelay[chan], pre_flags, num_bits);
 	double presleep = dtime_now();
 #endif
-
-	SLEEP_MS (10);			// Give data link state machine a chance to
-					// to stuff more frames into the transmit queue,
-					// in response to dlq_seize_confirm, so
-					// we don't run off the end too soon.
 
 #if DEBUG
 	text_color_set(DW_COLOR_DEBUG);
@@ -827,9 +756,6 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
 
 	    switch (frame_flavor(pp)) {
 
-	      case FLAVOR_SPEECH:
-	      case FLAVOR_MORSE:
-	      case FLAVOR_DTMF:
 	      case FLAVOR_APRS_DIGI:
 	      default:
 		done = 1;		// not eligible for bundling.
@@ -979,14 +905,6 @@ static int send_one_frame (int c, int p, packet_t pp)
 	  // It shouldn't hurt if we send it redundantly.
 	  // Added for 1.5 beta test 4.
 
-	  dlq_seize_confirm (c);	// C4.2.  "This primitive indicates, to the Data-link State
-					// machine, that the transmission opportunity has arrived."
-
-	  SLEEP_MS (10);		// Give data link state machine a chance to
-					// to stuff more frames into the transmit queue,
-					// in response to dlq_seize_confirm, so
-					// we don't run off the end too soon.
-
 	  return(0);
 	}
 
@@ -1075,92 +993,10 @@ static int send_one_frame (int c, int p, packet_t pp)
 	}
 
 	nb = layer2_send_frame (c, pp, send_invalid_fcs2, save_audio_config_p);
-
-// Optionally send confirmation to AGW client app if monitoring enabled.
-
-	server_send_monitored (c, pp, 1);
-
 	return (nb);
 
 } /* end send_one_frame */
 
-
-
-
-/*-------------------------------------------------------------------
- *
- * Name:        xmit_speech
- *
- * Purpose:     After we have a clear channel, and possibly waited a random time,
- *		we transmit information part of frame as speech.
- *
- * Inputs:	c	- Channel number.
- *	
- *		pp	- Packet object pointer.
- *			  It will be deleted so caller should not try
- *			  to reference it after this.	
- *
- * Description:	Turn on transmitter.
- *		Invoke the text-to-speech script.
- *		Turn off transmitter.
- *
- *--------------------------------------------------------------------*/
-
-
-static void xmit_speech (int c, packet_t pp)
-{
-	int info_len;
-	unsigned char *pinfo;
-
-/*
- * Print spoken packet.  Prefix by channel.
- */
-
-	char ts[100];		// optional time stamp.
-
-	if (strlen(save_audio_config_p->timestamp_format) > 0) {
-	  char tstmp[100];
-	  timestamp_user_format (tstmp, sizeof(tstmp), save_audio_config_p->timestamp_format);
-	  strlcpy (ts, " ", sizeof(ts));	// space after channel.
-	  strlcat (ts, tstmp, sizeof(ts));
-	}
-	else {
-	  strlcpy (ts, "", sizeof(ts));
-	}
-
-	info_len = ax25_get_info (pp, &pinfo);
-	(void)info_len;
-
-	text_color_set(DW_COLOR_XMIT);
-	dw_printf ("[%d.speech%s] \"%s\"\n", c, ts, pinfo);
-
-
-	if (strlen(save_audio_config_p->tts_script) == 0) {
-          text_color_set(DW_COLOR_ERROR);
-          dw_printf ("Text-to-speech script has not been configured.\n");
-	  ax25_delete (pp);
-	  return;
-	}
-
-/* 
- * Turn on transmitter.
- */
-	ptt_set (OCTYPE_PTT, c, 1);
-
-/*
- * Invoke the speech-to-text script.
- */	
-
-	xmit_speak_it (save_audio_config_p->tts_script, c, (char*)pinfo);
-
-/*
- * Turn off transmitter.
- */
-		
-	ptt_set (OCTYPE_PTT, c, 0);
-	ax25_delete (pp);
-
-} /* end xmit_speech */
 
 
 /* Broken out into separate function so configuration can validate it. */
@@ -1210,155 +1046,6 @@ int xmit_speak_it (char *script, int c, char *orig_msg)
 	}
 	return (err);
 }
-
-
-
-/*-------------------------------------------------------------------
- *
- * Name:        xmit_morse
- *
- * Purpose:     After we have a clear channel, and possibly waited a random time,
- *		we transmit information part of frame as Morse code.
- *
- * Inputs:	c	- Channel number.
- *	
- *		pp	- Packet object pointer.
- *			  It will be deleted so caller should not try
- *			  to reference it after this.	
- *
- *		wpm	- Speed in words per minute.
- *
- * Description:	Turn on transmitter.
- *		Send text as Morse code.
- *		A small amount of quiet padding will appear at start and end.
- *		Turn off transmitter.
- *
- *--------------------------------------------------------------------*/
-
-
-static void xmit_morse (int c, packet_t pp, int wpm)
-{
-	int info_len;
-	unsigned char *pinfo;
-	int length_ms, wait_ms;
-	double start_ptt, wait_until, now;
-
-	char ts[100];		// optional time stamp.
-
-	if (strlen(save_audio_config_p->timestamp_format) > 0) {
-	  char tstmp[100];
-	  timestamp_user_format (tstmp, sizeof(tstmp), save_audio_config_p->timestamp_format);
-	  strlcpy (ts, " ", sizeof(ts));	// space after channel.
-	  strlcat (ts, tstmp, sizeof(ts));
-	}
-	else {
-	  strlcpy (ts, "", sizeof(ts));
-	}
-
-	info_len = ax25_get_info (pp, &pinfo);
-	(void)info_len;
-	text_color_set(DW_COLOR_XMIT);
-	dw_printf ("[%d.morse%s] \"%s\"\n", c, ts, pinfo);
-
-	ptt_set (OCTYPE_PTT, c, 1);
-	start_ptt = dtime_now();
-
-	// make txdelay at least 300 and txtail at least 250 ms.
-
-	length_ms = morse_send (c, (char*)pinfo, wpm, MAXX(xmit_txdelay[c] * 10, 300), MAXX(xmit_txtail[c] * 10, 250));
-
-	// there is probably still sound queued up in the output buffers.
-
-	wait_until = start_ptt + length_ms * 0.001;
-
-	now = dtime_now();
-
-	wait_ms = (int) ( ( wait_until - now ) * 1000 );
-	if (wait_ms > 0) {
-	  SLEEP_MS(wait_ms);
-	}
-
-	ptt_set (OCTYPE_PTT, c, 0);
-	ax25_delete (pp);
-
-} /* end xmit_morse */
-
-
-
-/*-------------------------------------------------------------------
- *
- * Name:        xmit_dtmf
- *
- * Purpose:     After we have a clear channel, and possibly waited a random time,
- *		we transmit information part of frame as DTMF tones.
- *
- * Inputs:	c	- Channel number.
- *
- *		pp	- Packet object pointer.
- *			  It will be deleted so caller should not try
- *			  to reference it after this.
- *
- *		speed	- Button presses per second.
- *
- * Description:	Turn on transmitter.
- *		Send text as touch tones.
- *		A small amount of quiet padding will appear at start and end.
- *		Turn off transmitter.
- *
- *--------------------------------------------------------------------*/
-
-
-static void xmit_dtmf (int c, packet_t pp, int speed)
-{
-	int info_len;
-	unsigned char *pinfo;
-	int length_ms, wait_ms;
-	double start_ptt, wait_until, now;
-
-	char ts[100];		// optional time stamp.
-
-	if (strlen(save_audio_config_p->timestamp_format) > 0) {
-	  char tstmp[100];
-	  timestamp_user_format (tstmp, sizeof(tstmp), save_audio_config_p->timestamp_format);
-	  strlcpy (ts, " ", sizeof(ts));	// space after channel.
-	  strlcat (ts, tstmp, sizeof(ts));
-	}
-	else {
-	  strlcpy (ts, "", sizeof(ts));
-	}
-
-	info_len = ax25_get_info (pp, &pinfo);
-	(void)info_len;
-	text_color_set(DW_COLOR_XMIT);
-	dw_printf ("[%d.dtmf%s] \"%s\"\n", c, ts, pinfo);
-
-	ptt_set (OCTYPE_PTT, c, 1);
-	start_ptt = dtime_now();
-
-	// make txdelay at least 300 and txtail at least 250 ms.
-
-	length_ms = dtmf_send (c, (char*)pinfo, speed, MAXX(xmit_txdelay[c] * 10, 300), MAXX(xmit_txtail[c] * 10, 250));
-
-	// there is probably still sound queued up in the output buffers.
-
-	wait_until = start_ptt + length_ms * 0.001;
-
-	now = dtime_now();
-
-	wait_ms = (int) ( ( wait_until - now ) * 1000 );
-	if (wait_ms > 0) {
-	  SLEEP_MS(wait_ms);
-	}
-	else {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Oops.  CPU too slow to keep up with DTMF generation.\n");
-	}
-
-	ptt_set (OCTYPE_PTT, c, 0);
-	ax25_delete (pp);
-
-} /* end xmit_dtmf */
-
 
 
 /*-------------------------------------------------------------------

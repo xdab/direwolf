@@ -33,12 +33,7 @@ typedef struct cdata_s {
 
 
 
-
-/* Types of things that can be in queue. */
-
-typedef enum dlq_type_e {DLQ_REC_FRAME, DLQ_CONNECT_REQUEST, DLQ_DISCONNECT_REQUEST, DLQ_XMIT_DATA_REQUEST, DLQ_REGISTER_CALLSIGN, DLQ_UNREGISTER_CALLSIGN, DLQ_OUTSTANDING_FRAMES_REQUEST, DLQ_CHANNEL_BUSY, DLQ_SEIZE_CONFIRM, DLQ_CLIENT_CLEANUP} dlq_type_t;
-
-typedef enum fec_type_e {fec_type_none=0, fec_type_fx25=1, fec_type_il2p=2} fec_type_t;
+typedef enum fec_type_e {fec_type_none=0, fec_type_fx25=1} fec_type_t;
 
 
 /* A queue item. */
@@ -49,9 +44,6 @@ typedef enum fec_type_e {fec_type_none=0, fec_type_fx25=1, fec_type_il2p=2} fec_
 typedef struct dlq_item_s {
 
 	struct dlq_item_s *nextp;	/* Next item in queue. */
-
-	dlq_type_t type;		/* Type of item. */
-					/* See enum definition above. */
 
 	int chan;			/* Radio channel of origin. */
 
@@ -107,36 +99,13 @@ typedef struct dlq_item_s {
 
 void dlq_init (void);
 
-
-
 void dlq_rec_frame (int chan, int subchan, int slice, packet_t pp, alevel_t alevel, fec_type_t fec_type, retry_t retries, char *spectrum);
-
-void dlq_connect_request (char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN], int num_addr, int chan, int client, int pid);
-
-void dlq_disconnect_request (char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN], int num_addr, int chan, int client);
-
-void dlq_outstanding_frames_request (char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN], int num_addr, int chan, int client);
-
-void dlq_xmit_data_request (char addrs[AX25_MAX_ADDRS][AX25_MAX_ADDR_LEN], int num_addr, int chan, int client, int pid, char *xdata_ptr, int xdata_len);
-
-void dlq_register_callsign (char *addr, int chan, int client);
-
-void dlq_unregister_callsign (char *addr, int chan, int client);
-
-void dlq_channel_busy (int chan, int activity, int status);
-
-void dlq_seize_confirm (int chan);
-
-void dlq_client_cleanup (int client);
-
-
 
 int dlq_wait_while_empty (double timeout_val);
 
 struct dlq_item_s *dlq_remove (void);
 
 void dlq_delete (struct dlq_item_s *pitem);
-
 
 
 cdata_t *cdata_new (int pid, char *data, int len);

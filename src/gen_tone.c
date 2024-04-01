@@ -90,20 +90,6 @@ static int bit_len_acc[MAX_CHANS];	// To accumulate fractional samples per bit.
 
 static int lfsr[MAX_CHANS];		// Shift register for scrambler.
 
-static int bit_count[MAX_CHANS];	// Counter incremented for each bit transmitted
-					// on the channel.   This is only used for QPSK.
-					// The LSB determines if we save the bit until
-					// next time, or send this one with the previously saved.
-					// The LSB+1 position determines if we add an
-					// extra 180 degrees to the phase to compensate
-					// for having 1.5 carrier cycles per symbol time.
-
-					// For 8PSK, it has a different meaning.  It is the
-					// number of bits in 'save_bit' so we can accumulate
-					// three for each symbol.
-static int save_bit[MAX_CHANS];
-
-
 static int prev_dat[MAX_CHANS];		// Previous data bit.  Used for G3RUH style.
 
 
@@ -181,71 +167,11 @@ int gen_tone_init (struct audio_s *audio_config_p, int amp, int gen_packets)
 	    tone_phase[chan] = 0;
 	    bit_len_acc[chan] = 0;
 	    lfsr[chan] = 0;
-
 	    ticks_per_sample[chan] = (int) ((TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
-
-	    // The terminology is all wrong here.  Didn't matter with 1200 and 9600.
-	    // The config speed should be bits per second rather than baud.
-	    // ticks_per_bit should be ticks_per_symbol.
-
-	    switch (save_audio_config_p->achan[chan].modem_type) {
-
-	      case MODEM_QPSK:
-
-	        audio_config_p->achan[chan].mark_freq = 1800;
-	        audio_config_p->achan[chan].space_freq = audio_config_p->achan[chan].mark_freq;	// Not Used.
-
-	        // symbol time is 1 / (half of bps)
-	        ticks_per_bit[chan] = (int) ((TICKS_PER_CYCLE / ((double)audio_config_p->achan[chan].baud * 0.5)) + 0.5);
-	        f1_change_per_sample[chan] = (int) (((double)audio_config_p->achan[chan].mark_freq * TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
-	        f2_change_per_sample[chan] = f1_change_per_sample[chan];	// Not used.
-	        samples_per_symbol[chan] = 2. * (float)audio_config_p->adev[a].samples_per_sec / (float)audio_config_p->achan[chan].baud;
-
-	        tone_phase[chan] = PHASE_SHIFT_45;	// Just to mimic first attempt.
-							// ??? Why?  We are only concerned with the difference
-							// from one symbol to the next.
-	        break;
-
-	      case MODEM_8PSK:
-
-	        audio_config_p->achan[chan].mark_freq = 1800;
-	        audio_config_p->achan[chan].space_freq = audio_config_p->achan[chan].mark_freq;	// Not Used.
-
-	        // symbol time is 1 / (third of bps)
-	        ticks_per_bit[chan] = (int) ((TICKS_PER_CYCLE / ((double)audio_config_p->achan[chan].baud / 3.)) + 0.5);
-	        f1_change_per_sample[chan] = (int) (((double)audio_config_p->achan[chan].mark_freq * TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
-	        f2_change_per_sample[chan] = f1_change_per_sample[chan];	// Not used.
-	        samples_per_symbol[chan] = 3. * (float)audio_config_p->adev[a].samples_per_sec / (float)audio_config_p->achan[chan].baud;
-	        break;
-
-	      case MODEM_BASEBAND:
-	      case MODEM_SCRAMBLE:
-	      case MODEM_AIS:
-
-		// Tone is half baud.
-	        ticks_per_bit[chan] = (int) ((TICKS_PER_CYCLE / (double)audio_config_p->achan[chan].baud ) + 0.5);
-	        f1_change_per_sample[chan] = (int) (((double)audio_config_p->achan[chan].baud * 0.5 * TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
-	        samples_per_symbol[chan] = (float)audio_config_p->adev[a].samples_per_sec / (float)audio_config_p->achan[chan].baud;
-	        break;
-
-	      case MODEM_EAS:		//  EAS.
-
-		// TODO: Proper fix would be to use float for baud, mark, space.
-
-	        ticks_per_bit[chan] = (int) ((TICKS_PER_CYCLE / 520.833333333333 ) + 0.5);
-	        samples_per_symbol[chan] = (int)((audio_config_p->adev[a].samples_per_sec / 520.83333) + 0.5);
-	        f1_change_per_sample[chan] = (int) ((2083.33333333333 * TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
-	        f2_change_per_sample[chan] = (int) ((1562.5000000 * TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
-	        break;
-
-	      default:		// AFSK
-
-	        ticks_per_bit[chan] = (int) ((TICKS_PER_CYCLE / (double)audio_config_p->achan[chan].baud ) + 0.5);
-	        samples_per_symbol[chan] = (float)audio_config_p->adev[a].samples_per_sec / (float)audio_config_p->achan[chan].baud;
-	        f1_change_per_sample[chan] = (int) (((double)audio_config_p->achan[chan].mark_freq * TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
-	        f2_change_per_sample[chan] = (int) (((double)audio_config_p->achan[chan].space_freq * TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
-	        break;
-	    }
+		ticks_per_bit[chan] = (int) ((TICKS_PER_CYCLE / (double)audio_config_p->achan[chan].baud ) + 0.5);
+		samples_per_symbol[chan] = (float)audio_config_p->adev[a].samples_per_sec / (float)audio_config_p->achan[chan].baud;
+		f1_change_per_sample[chan] = (int) (((double)audio_config_p->achan[chan].mark_freq * TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
+		f2_change_per_sample[chan] = (int) (((double)audio_config_p->achan[chan].space_freq * TICKS_PER_CYCLE / (double)audio_config_p->adev[a].samples_per_sec ) + 0.5);
 	  }
 	}
 
@@ -347,9 +273,6 @@ static inline float interpol8 (float oldv, float newv, float bc)
 	//return (rrc * newv + (1.0f - bc) * oldv);	// 55 on 11/7
 }
 
-static const int gray2phase_v26[4] = {0, 1, 3, 2};
-static const int gray2phase_v27[8] = {1, 0, 2, 3, 6, 7, 5, 4};
-
 // #define PSKIQ 1  // not ready for prime time yet.
 #if PSKIQ
 static int xmit_octant[MAX_CHANS];	// absolute phase in 45 degree units.
@@ -379,83 +302,6 @@ void tone_gen_put_bit (int chan, int dat)
 	  dat = 0; 
 	} 
 
-// TODO: change to switch instead of if if if
-
-	if (save_audio_config_p->achan[chan].modem_type == MODEM_QPSK) {
-
-	  int dibit;
-	  int symbol;
-
-	  dat &= 1;	// Keep only LSB to be extra safe.
-
-	  if ( ! (bit_count[chan] & 1)) {
-	    save_bit[chan] = dat;
-	    bit_count[chan]++;
-	    return;
-	  }
-
-	  // All zero bits should give us steady 1800 Hz.
-	  // All one bits should flip phase by 180 degrees each time.
-	  // For V.26B, add another 45 degrees.
-	  // This seems to work a little better.
-
-	  dibit = (save_bit[chan] << 1) | dat;
-
-	  symbol = gray2phase_v26[dibit];	// 0 .. 3 for QPSK.
-#if PSKIQ
-	  // One phase shift unit is 45 degrees.
-	  // Remember what it was last time and calculate new.
-	  // values 0 .. 7.
-	  xmit_prev_octant[chan] = xmit_octant[chan];
-	  xmit_octant[chan] += symbol * 2;
-	  if (save_audio_config_p->achan[chan].v26_alternative == V26_B) {
-	    xmit_octant[chan] += 1;
-	  }
-	  xmit_octant[chan] &= 0x7;
-#else
-	  tone_phase[chan] += symbol * PHASE_SHIFT_90;
-	  if (save_audio_config_p->achan[chan].v26_alternative == V26_B) {
-	    tone_phase[chan] += PHASE_SHIFT_45;
-	  }
-#endif
-	  bit_count[chan]++;
-	}
-
-	if (save_audio_config_p->achan[chan].modem_type == MODEM_8PSK) {
-
-	  int tribit;
-	  int symbol;
-
-	  dat &= 1;	// Keep only LSB to be extra safe.
-
-	  if (bit_count[chan] < 2) {
-	    save_bit[chan] = (save_bit[chan] << 1) | dat;
-	    bit_count[chan]++;
-	    return;
-	  }
-
-	  // The bit pattern 001 should give us steady 1800 Hz.
-	  // All one bits should flip phase by 180 degrees each time.
-
-	  tribit = (save_bit[chan] << 1) | dat;
-
-	  symbol = gray2phase_v27[tribit];
-	  tone_phase[chan] += symbol * PHASE_SHIFT_45;
-
-	  save_bit[chan] = 0;
-	  bit_count[chan] = 0;
-	}
-
-	// Would be logical to have MODEM_BASEBAND for IL2P rather than checking here.  But...
-	// That would mean putting in at least 3 places and testing all rather than just one.
-	if (save_audio_config_p->achan[chan].modem_type == MODEM_SCRAMBLE &&
-	    save_audio_config_p->achan[chan].layer2_xmit != LAYER2_IL2P) {
-	  int x;
-
-	  x = (dat ^ (lfsr[chan] >> 16) ^ (lfsr[chan] >> 11)) & 1;
-	  lfsr[chan] = (lfsr[chan] << 1) | (x & 1);
-	  dat = x;
-	}
 #if PSKIQ
 	int blend = 1;
 #endif
@@ -483,84 +329,6 @@ void tone_gen_put_bit (int chan, int dat)
 	      gen_tone_put_sample (chan, a, sam);
 	      break;
 
-	    case MODEM_EAS:
-
-	      tone_phase[chan] += dat ? f1_change_per_sample[chan] : f2_change_per_sample[chan];
-              sam = sine_table[(tone_phase[chan] >> 24) & 0xff];
-	      gen_tone_put_sample (chan, a, sam);
-	      break;
-
-	    case MODEM_QPSK:
-
-#if DEBUG2
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("tone_gen_put_bit %d PSK\n", __LINE__);
-#endif
-	      tone_phase[chan] += f1_change_per_sample[chan];
-#if PSKIQ
-#if 1  // blend JWL
-	      // remove loop invariant
-	      float old_i = ci[xmit_prev_octant[chan]];
-	      float old_q = sq[xmit_prev_octant[chan]];
-
-	      float new_i = ci[xmit_octant[chan]];
-	      float new_q = sq[xmit_octant[chan]];
-
-	      float b = blend / samples_per_symbol[chan];	// roughly 0 to 1
-	      blend++;
-	     // b = (b - 0.5) * 20 + 0.5;
-	     // if (b < 0) b = 0;
-	     // if (b > 1) b = 1;
-		// b = b > 0.5;
-		//b = 1;		// 78 decoded with this.
-					// only 39 without.
-
-
-	      //float blended_i = new_i * b + old_i * (1.0f - b);
-	      //float blended_q = new_q * b + old_q * (1.0f - b);
-
-	      float blended_i = interpol8 (old_i, new_i, b);
-	      float blended_q = interpol8 (old_q, new_q, b);
-
-	      sam = blended_i * sine_table[((tone_phase[chan] - PHASE_SHIFT_90) >> 24) & 0xff] +
-	            blended_q * sine_table[(tone_phase[chan] >> 24) & 0xff];
-#else  // jump
-	      sam = ci[xmit_octant[chan]] * sine_table[((tone_phase[chan] - PHASE_SHIFT_90) >> 24) & 0xff] +
-	            sq[xmit_octant[chan]] * sine_table[(tone_phase[chan] >> 24) & 0xff];
-#endif
-#else
-              sam = sine_table[(tone_phase[chan] >> 24) & 0xff];
-#endif
-	      gen_tone_put_sample (chan, a, sam);
-	      break;
-
-	    case MODEM_8PSK:
-#if DEBUG2
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("tone_gen_put_bit %d PSK\n", __LINE__);
-#endif
-	      tone_phase[chan] += f1_change_per_sample[chan];
-              sam = sine_table[(tone_phase[chan] >> 24) & 0xff];
-	      gen_tone_put_sample (chan, a, sam);
-	      break;
-
-	    case MODEM_BASEBAND:
-	    case MODEM_SCRAMBLE:
-	    case MODEM_AIS:
-
-	      if (dat != prev_dat[chan]) {
-	        tone_phase[chan] += f1_change_per_sample[chan];
-	      }
-	      else {
-	        if (tone_phase[chan] & 0x80000000)
-	          tone_phase[chan] = 0xc0000000;	// 270 degrees.
-	        else
-	          tone_phase[chan] = 0x40000000;	// 90 degrees.
-	      }
-              sam = sine_table[(tone_phase[chan] >> 24) & 0xff];
-	      gen_tone_put_sample (chan, a, sam);
-	      break;
-
 	    default:
 	      text_color_set(DW_COLOR_ERROR);
 	      dw_printf ("INTERNAL ERROR: %s %d achan[%d].modem_type = %d\n",
@@ -583,7 +351,7 @@ void tone_gen_put_bit (int chan, int dat)
 
 void gen_tone_put_sample (int chan, int a, int sam) {
 
-        /* Ship out an audio sample. */
+	/* Ship out an audio sample. */
 	/* 16 bit is signed, little endian, range -32768 .. +32767 */
 	/* 8 bit is unsigned, range 0 .. 255 */
 

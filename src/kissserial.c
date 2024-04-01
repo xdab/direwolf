@@ -146,12 +146,6 @@ void kissserial_set_debug (int n)
 }
 
 
-/* In server.c.  Should probably move to some misc. function file. */
-
-void hex_dump (unsigned char *p, int len);
-
-
-
 
 /*-------------------------------------------------------------------
  *
@@ -312,9 +306,6 @@ void kissserial_send_rec_packet (int chan, int kiss_cmd, unsigned char *fbuf,  i
 	  if (kissserial_debug >= 2) {
 	    /* AX.25 frame with the CRC removed. */
 	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("\n");
-	    dw_printf ("Packet content before adding KISS framing and any escapes:\n");
-	    hex_dump (fbuf, flen);
 	  }
 
 	  kiss_len = kiss_encapsulate (stemp, flen+1, kiss_buff);

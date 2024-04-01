@@ -2274,44 +2274,6 @@ ax25_frame_type_t ax25_frame_type (packet_t this_p, cmdres_t *cr, char *desc, in
 } /* end ax25_frame_type */
 
 
-
-/*------------------------------------------------------------------
- *
- * Function:	ax25_hex_dump
- *
- * Purpose:	Print out packet in hexadecimal for debugging.
- *
- * Inputs:	fptr		- Pointer to frame data.
- *
- *		flen		- Frame length, bytes.  Does not include CRC.
- *		
- *------------------------------------------------------------------*/
-
-static void hex_dump (unsigned char *p, int len) 
-{
-	int n, i, offset;
-
-	offset = 0;
-	while (len > 0) {
-	  n = len < 16 ? len : 16; 
-	  dw_printf ("  %03x: ", offset);
-	  for (i=0; i<n; i++) {
-	    dw_printf (" %02x", p[i]);
-	  }
-	  for (i=n; i<16; i++) {
-	    dw_printf ("   ");
-	  }
-	  dw_printf ("  ");
-	  for (i=0; i<n; i++) {
-	    dw_printf ("%c", isprint(p[i]) ? p[i] : '.');
-	  }
-	  dw_printf ("\n");
-	  p += 16;
-	  offset += 16;
-	  len -= 16;
-	}
-}
-
 /* Text description of control octet. */
 // FIXME:  this is wrong.  It doesn't handle modulo 128.
 
@@ -2445,11 +2407,7 @@ void ax25_hex_dump (packet_t this_p)
 				fptr[n*7+6]&SSID_LAST_MASK);
 
 	}
-
-	hex_dump (fptr, flen);
-
 } /* end ax25_hex_dump */
-
 
 
 /*------------------------------------------------------------------

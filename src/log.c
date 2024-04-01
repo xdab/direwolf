@@ -57,7 +57,6 @@
 
 #include "ax25_pad.h"
 #include "textcolor.h"
-#include "decode_aprs.h"
 #include "log.h"
 
 
@@ -204,8 +203,6 @@ void log_init (int daily_names, char *path)
  *
  * Inputs:	chan	- Radio channel where heard.
  *
- *		A	- Explode information from APRS packet.
- *
  *		pp	- Received packet object.
  *
  * 		alevel	- audio level.
@@ -214,7 +211,7 @@ void log_init (int daily_names, char *path)
  *
  *------------------------------------------------------------------*/
 
-void log_write (int chan, decode_aprs_t *A, packet_t pp, alevel_t alevel, retry_t retries)
+void log_write (int chan, packet_t pp, alevel_t alevel, retry_t retries)
 {
 	time_t now;
 	struct tm tm;
@@ -336,15 +333,7 @@ void log_write (int chan, decode_aprs_t *A, packet_t pp, alevel_t alevel, retry_
 	  char heard[AX25_MAX_ADDR_LEN+1];
 	  int h;
 	  char stemp[256];
-	  char slat[16], slon[16], sspd[12], scse[12], salt[12];
-	  char sfreq[20], soffs[10], stone[10];
 	  char sdti[10];
-	  char sname[24];
-	  char ssymbol[8];
-	  char smfr[60];
-	  char sstatus[40];
-	  char stelemetry[200];
-	  char scomment[256];
 	  char alevel_text[40];
 
 
@@ -380,7 +369,6 @@ void log_write (int chan, decode_aprs_t *A, packet_t pp, alevel_t alevel, retry_
 
 	  ax25_alevel_to_text (alevel, alevel_text);
 
-
 	  // Might need to quote anything that could contain comma or quote.
 
 	  strlcpy(sdti, "", sizeof(sdti));
@@ -389,39 +377,6 @@ void log_write (int chan, decode_aprs_t *A, packet_t pp, alevel_t alevel, retry_
 	    stemp[1] = '\0';
 	    quote_for_csv (sdti, sizeof(sdti), stemp);
 	  }
-
-	  quote_for_csv (sname, sizeof(sname), (strlen(A->g_name) > 0) ? A->g_name : A->g_src);
-
-	  stemp[0] = A->g_symbol_table;
-	  stemp[1] = A->g_symbol_code;
-	  stemp[2] = '\0';
-	  quote_for_csv (ssymbol, sizeof(ssymbol), stemp);
-
-	  quote_for_csv (smfr, sizeof(smfr), A->g_mfr);
-	  quote_for_csv (sstatus, sizeof(sstatus), A->g_mic_e_status);
-	  quote_for_csv (stelemetry, sizeof(stelemetry), A->g_telemetry);
-	  quote_for_csv (scomment, sizeof(scomment), A->g_comment);
-
-	  strlcpy (slat, "", sizeof(slat));  if (A->g_lat != G_UNKNOWN)         snprintf (slat, sizeof(slat), "%.6f", A->g_lat);
-	  strlcpy (slon, "", sizeof(slon));  if (A->g_lon != G_UNKNOWN)         snprintf (slon, sizeof(slon), "%.6f", A->g_lon);
-	  strlcpy (sspd, "", sizeof(sspd));  if (A->g_speed_mph != G_UNKNOWN)   snprintf (sspd, sizeof(sspd), "%.1f", DW_MPH_TO_KNOTS(A->g_speed_mph));
-	  strlcpy (scse, "", sizeof(scse));  if (A->g_course != G_UNKNOWN)      snprintf (scse, sizeof(scse), "%.1f", A->g_course);
-	  strlcpy (salt, "", sizeof(salt));  if (A->g_altitude_ft != G_UNKNOWN) snprintf (salt, sizeof(salt), "%.1f", DW_FEET_TO_METERS(A->g_altitude_ft));
-
-	  strlcpy (sfreq, "", sizeof(sfreq));  if (A->g_freq   != G_UNKNOWN) snprintf (sfreq, sizeof(sfreq), "%.3f", A->g_freq);
-	  strlcpy (soffs, "", sizeof(soffs));  if (A->g_offset != G_UNKNOWN) snprintf (soffs, sizeof(soffs), "%+d", A->g_offset);
-	  strlcpy (stone, "", sizeof(stone));  if (A->g_tone   != G_UNKNOWN) snprintf (stone, sizeof(stone), "%.1f", A->g_tone);
-	                       if (A->g_dcs    != G_UNKNOWN) snprintf (stone, sizeof(stone), "D%03o", A->g_dcs);
-
-	  fprintf (g_log_fp, "%d,%d,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", 
-			chan, (int)now, itime, 
-			A->g_src, heard, alevel_text, (int)retries, sdti,
-			sname, ssymbol,
-			slat, slon, sspd, scse, salt, 
-			sfreq, soffs, stone, 
-			smfr, sstatus, stelemetry, scomment);
-
-	  fflush (g_log_fp);
 	}
 
 } /* end log_write */
@@ -441,25 +396,17 @@ void log_write (int chan, decode_aprs_t *A, packet_t pp, alevel_t alevel, retry_
  *
  *------------------------------------------------------------------*/
 
-void log_rr_bits (decode_aprs_t *A, packet_t pp)
+void log_rr_bits (packet_t pp)
 {
 
 	if (1) {
 
 	  char heard[AX25_MAX_ADDR_LEN+1];
 	  char smfr[60];
-	  char *p;
 	  int src_c, dst_c;
 	  int src_rr, dst_rr;
 
-	  // Sanitize system type (manufacturer) changing any comma to period.
-
-	  strlcpy (smfr, A->g_mfr, sizeof(smfr));
-	  for (p=smfr; *p!='\0'; p++) {
-	    if (*p == ',') *p = '.';
-	  }
-
-          /* Who are we hearing?   Original station or digipeater? */
+		/* Who are we hearing?   Original station or digipeater? */
 	  /* Similar code in direwolf.c.  Combine into one function? */
 
 	  strlcpy(heard, "", sizeof(heard));
@@ -494,15 +441,14 @@ void log_rr_bits (decode_aprs_t *A, packet_t pp)
 	    // C RR	for source
 	    // C RR	for destination
 	    // system type
-	    // source
 	    // station heard
 
 	    text_color_set(DW_COLOR_INFO);
 
-	    dw_printf ("%d %d%d  %d %d%d,%s,%s,%s\n",
+	    dw_printf ("%d %d%d  %d %d%d,%s,%s\n",
 			src_c, (src_rr >> 1) & 1, src_rr & 1,
 			dst_c, (dst_rr >> 1) & 1, dst_rr & 1,
-			smfr, A->g_src, heard);
+			smfr, heard);
 	  }
 	}
 

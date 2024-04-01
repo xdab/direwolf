@@ -36,7 +36,6 @@
 
 #include "textcolor.h"
 #include "symbols.h"
-#include "tt_text.h"
 
 
 /*
@@ -482,8 +481,6 @@ void symbols_list (void)
 	  int symbol = new_sym_ptr[n].symbol;
 	  char tones[12];
 
-	  symbols_to_tones (overlay, symbol, tones, sizeof(tones));
-
 	  if (overlay == '/') {
 
 	    dw_printf (" %c%c     %s%c     C%02d  %-7s  %s\n", overlay, symbol, 
@@ -928,166 +925,5 @@ int symbols_code_from_description (char overlay, char *description, char *symtab
 	return (0);
 
 } /* end symbols_code_from_description */
-
-
-
-/*------------------------------------------------------------------
- *
- * Function:	symbols_to_tones
- *
- * Purpose:	Convert symbol to APRStt tone sequence.
- *
- * Inputs:	symtab/overlay
- *		symbol
- *		tonessiz	- Amount of space available for result.
- *
- * Output:	tones	- string of AB...		
- *		
- * Description: 
- *
- *		Primary: 	AB1nn		nn = same number as GPSCnn
- *		Alternate:	AB2nn 		nn = same number as GPSEnn
- *		with overlay:	AB0nntt   	nn = same as with alternate
- *						tt = one or two tones from two key method.
- *
- *------------------------------------------------------------------*/
-
-void symbols_to_tones (char symtab, char symbol, char *tones, size_t tonessiz)
-{
-
-	if (symtab == '/') {
-
-	  snprintf (tones, tonessiz, "AB1%02d", symbol - ' ');
-	}
-	else if (isupper(symtab) || isdigit(symtab)) {
-
-	  char text[2];
-	  char tt[8];
-
-	  text[0] = symtab;
-	  text[1] = '\0';
-
-	  tt_text_to_two_key (text, 0, tt);
-
-	  snprintf (tones, tonessiz, "AB0%02d%s", symbol - ' ', tt);
-	}
-	else {
-	 
-	  snprintf (tones, tonessiz, "AB2%02d", symbol - ' ');
-	}
-
-}  /* end symbols_to_tones */
-
-
-
-
-#if 0
-
-/* Quick, incomplete, unit test. */
-/* gcc -g symbols.c textcolor.c misc.a */
-
-int main (int argc, char *argv[])
-{
-	char symtab;
-	char symbol;
-	char dest[8];
-	char description[50];
-
-	symbols_init ();
-
-
-
-	symbols_from_dest_or_src ('T', "W1ABC", "GPSC43", &symtab, &symbol);
-	if (symtab != '/' || symbol != 'K') dw_printf ("ERROR 1-1\n");
-
-	symbols_from_dest_or_src ('T', "W1ABC", "GPSE87", &symtab, &symbol);
-	if (symtab != '\\' || symbol != 'w') dw_printf ("ERROR 1-2\n");
-
-	symbols_from_dest_or_src ('T', "W1ABC", "SPCBL", &symtab, &symbol);
-	if (symtab != '/' || symbol != '+') dw_printf ("ERROR 1-3\n");
-
-	symbols_from_dest_or_src ('T', "W1ABC", "SYMST", &symtab, &symbol);
-	if (symtab != '\\' || symbol != 't') dw_printf ("ERROR 1-4\n");
-
-	symbols_from_dest_or_src ('T', "W1ABC", "GPSOD9", &symtab, &symbol);
-	if (symtab != '9' || symbol != '#') dw_printf ("ERROR 1-5\n");
-
-	symbols_from_dest_or_src ('T', "W1ABC-14", "XXXXXX", &symtab, &symbol);
-	if (symtab != '/' || symbol != 'k') dw_printf ("ERROR 1-6\n");
-
-	symbols_from_dest_or_src ('T', "W1ABC", "GPS???", &symtab, &symbol);
-	/* Outputs are left alone if symbol can't be determined. */
-	if (symtab != '/' || symbol != 'k') dw_printf ("ERROR 1-7\n");
-
-
-	symbols_into_dest ('/', 'K', dest);
-	if (strcmp(dest, "GPSC43") != 0) dw_printf ("ERROR 2-1\n");
-
-	symbols_into_dest ('\\', 'w', dest);
-	if (strcmp(dest, "GPSE87") != 0) dw_printf ("ERROR 2-2\n");
-
-	symbols_into_dest ('3', 'A', dest);
-	if (strcmp(dest, "GPSAA3") != 0) dw_printf ("ERROR 2-3\n");
-
-// Expect to see this:
-//   Could not convert symbol " A" to GPSxyz destination format.
-//   Could not convert symbol "/ " to GPSxyz destination format.
-
-	symbols_into_dest (' ', 'A', dest);
-	if (strcmp(dest, "GPS???") != 0) dw_printf ("ERROR 2-4\n");
-
-	symbols_into_dest ('/', ' ', dest);
-	if (strcmp(dest, "GPS???") != 0) dw_printf ("ERROR 2-5\n");
-
-
-
-	symbols_get_description ('J', 's', description);
-	if (strcmp(description, "Jet Ski") != 0) dw_printf ("ERROR 3-1\n");
-
-	symbols_get_description ('/', 'O', description);
-	if (strcmp(description, "BALLOON") != 0) dw_printf ("ERROR 3-2\n");
-
-	symbols_get_description ('\\', 'T', description);
-	if (strcmp(description, "Thunderstorm") != 0) dw_printf ("ERROR 3-3\n");
-
-	symbols_get_description ('5', 'T', description);
-	if (strcmp(description, "Thunderstorm w/overlay 5") != 0) dw_printf ("ERROR 3-4\n");
-
-// Expect to see this:
-//   Symbol table identifier is not '/' (primary), '\' (alternate), or valid overlay character.
-
-	symbols_get_description (' ', 'T', description);
-	if (strcmp(description, "--no-symbol--") != 0) dw_printf ("ERROR 3-5\n");
-
-	symbols_get_description ('/', ' ', description);
-	if (strcmp(description, "--no-symbol--") != 0) dw_printf ("ERROR 3-6\n");
-
-
-
-	symbols_code_from_description ('5', "girl scouts", &symtab, &symbol);
-	if (symtab != '5' || symbol != ',') dw_printf ("ERROR 4-1\n");
-
-	symbols_code_from_description (' ', "scouts", &symtab, &symbol);
-	if (symtab != '/' || symbol != ',') dw_printf ("ERROR 4-2\n");
-
-	symbols_code_from_description (' ', "girl scouts", &symtab, &symbol);
-	if (symtab != '\\' || symbol != ',') dw_printf ("ERROR 4-3\n");
-
-	symbols_code_from_description (' ', "jet ski", &symtab, &symbol);
-	if (symtab != 'J' || symbol != 's') dw_printf ("ERROR 4-4\n");
-
-	symbols_code_from_description (' ', "girl scouts", &symtab, &symbol);
-	if (symtab != '\\' || symbol != ',') dw_printf ("ERROR 4-5\n");
-
-	symbols_code_from_description (' ', "yen", &symtab, &symbol);
-	if (symtab != 'Y' || symbol != '$') dw_printf ("ERROR 4-6\n");
-
-	symbols_code_from_description (' ', "taco bell", &symtab, &symbol);
-	if (symtab != 'T' || symbol != 'R') dw_printf ("ERROR 4-7\n");
-
-
-} /* end main */
-
-#endif
 
 /* end symbols.c */

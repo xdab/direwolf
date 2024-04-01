@@ -96,38 +96,6 @@
 #include "version.h"
 #include "kissnet.h"
 
-
-/* In server.c.  Should probably move to some misc. function file. */
-void hex_dump (unsigned char *p, int len);
-
-#ifdef KISSUTIL
-void hex_dump (unsigned char *p, int len)
-{
-	int n, i, offset;
-
-	offset = 0;
-	while (len > 0) {
-	  n = len < 16 ? len : 16;
-	  // FIXME:  Is there some reason not to use dw_printf here?
-	  printf ("  %03x: ", offset);
-	  for (i=0; i<n; i++) {
-	    printf (" %02x", p[i]);
-	  }
-	  for (i=n; i<16; i++) {
-	    printf ("   ");
-	  }
-	  printf ("  ");
-	  for (i=0; i<n; i++) {
-	    printf ("%c", isprint(p[i]) ? p[i] : '.');
-	  }
-	  printf ("\n");
-	  p += 16;
-	  offset += 16;
-	  len -= 16;
-	}
-}
-#endif
-
 #if KISSTEST
 
 #define dw_printf printf
@@ -465,16 +433,6 @@ void kiss_rec_byte (kiss_frame_t *kf, unsigned char ch, int debug,
 	      }
 
 	      ulen = kiss_unwrap (kf->kiss_msg, kf->kiss_len, unwrapped);
-
-	      if (debug >= 2) {
-	        /* Append CRC to this and it goes out over the radio. */
-	        text_color_set(DW_COLOR_DEBUG);
-	        dw_printf ("\n");
-	        dw_printf ("Packet content after removing KISS framing and any escapes:\n");
-	        /* Don't include the "type" indicator. */
-		/* It contains the radio channel and type should always be 0 here. */
-	        hex_dump (unwrapped+1, ulen-1);
-	      }
 
 	      kiss_process_msg (unwrapped, ulen, debug, kps, client, sendfun);
 
@@ -965,8 +923,6 @@ void kiss_debug_print (fromto_t fromto, char *special, unsigned char *pmsg, int 
 			msg_len);
 	}
 #endif
-	hex_dump (pmsg, msg_len);
-
 } /* end kiss_debug_print */
 
 

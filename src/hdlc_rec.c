@@ -43,10 +43,8 @@
 #include "ax25_pad.h"
 #include "rrbb.h"
 #include "multi_modem.h"
-#include "demod_9600.h"		/* for descramble() */
 #include "ptt.h"
 #include "fx25.h"
-#include "il2p.h"
 
 
 //#define TEST 1				/* Define for unit testing. */
@@ -169,7 +167,7 @@ void hdlc_rec_init (struct audio_s *pa)
 		// TODO: FIX13 wasteful if not needed.
 		// Should loop on number of slicers, not max.
 
-	        H->rrbb = rrbb_new(ch, sub, slice, pa->achan[ch].modem_type == MODEM_SCRAMBLE, H->lfsr, H->prev_descram);
+	        H->rrbb = rrbb_new(ch, sub, slice, 0, H->lfsr, H->prev_descram);
 	      }
 	    }
 	  }
@@ -219,102 +217,6 @@ static int my_rand (void) {
 #define PREAMBLE      0xababababababababULL
 #define PREAMBLE_ZCZC 0x435a435aababababULL
 #define PREAMBLE_NNNN 0x4e4e4e4eababababULL
-#define EAS_MAX_LEN 268  	// Not including preamble.  Up to 31 geographic areas.
-
-
-static void eas_rec_bit (int chan, int subchan, int slice, int raw, int future_use)
-{
-	struct hdlc_state_s *H;
-
-/*
- * Different state information for each channel / subchannel / slice.
- */
-	H = &hdlc_state[chan][subchan][slice];
-
-	  //dw_printf ("slice %d = %d\n", slice, raw);
-
-// Accumulate most recent 64 bits.
-
-	H->eas_acc >>= 1;
-	if (raw) {
-	  H->eas_acc |= 0x8000000000000000ULL;
-	}
-
-	int done = 0;
-
-	if (H->eas_acc == PREAMBLE_ZCZC) {
-	  //dw_printf ("ZCZC\n");
-	  H->olen = 0;
-	  H->eas_gathering = 1;
-	  H->eas_plus_found = 0;
-	  H->eas_fields_after_plus = 0;
-	  strlcpy ((char*)(H->frame_buf), "ZCZC", sizeof(H->frame_buf));
-	  H->frame_len = 4;
-	}
-	else if (H->eas_acc == PREAMBLE_NNNN) {
-	  //dw_printf ("NNNN\n");
-	  H->olen = 0;
-	  H->eas_gathering = 1;
-	  strlcpy ((char*)(H->frame_buf), "NNNN", sizeof(H->frame_buf));
-	  H->frame_len = 4;
-	  done = 1;
-	}
-	else if (H->eas_gathering) {
-	  H->olen++;
-	  if (H->olen == 8) {
-	    H->olen = 0;
-	    char ch = H->eas_acc >> 56;
-	    H->frame_buf[H->frame_len++] = ch;
-	    H->frame_buf[H->frame_len] = '\0';
-	    //dw_printf ("frame_buf = %s\n", H->frame_buf);
-
-	    // What characters are acceptable?
-	    // Only ASCII is allowed.  i.e. the MSB must be 0.
-	    // The examples show only digits but the geographical area can
-	    // contain anything in range of '!' to DEL or CR or LF.
-	    // There are no restrictions listed for the originator and
-	    // examples contain a slash.
-	    // It's not clear if a space can occur in other places.
-
-	    if ( ! (( ch >= ' ' && ch <= 0x7f) || ch == '\r' || ch == '\n')) {
-//#define DEBUG_E 1
-#ifdef DEBUG_E
-	      dw_printf ("reject %d invalid character = %s\n", slice, H->frame_buf);
-#endif
-	      H->eas_gathering = 0;
-	      return;
-	    }
-	    if (H->frame_len > EAS_MAX_LEN) {		// FIXME: look for other places with max length
-#ifdef DEBUG_E
-	      dw_printf ("reject %d too long = %s\n", slice, H->frame_buf);
-#endif
-	      H->eas_gathering = 0;
-	      return;
-	    }
-	    if (ch == '+') {
-	      H->eas_plus_found = 1;
-	      H->eas_fields_after_plus = 0;
-	    }
-	    if (H->eas_plus_found && ch == '-') {
-	      H->eas_fields_after_plus++;
-	      if (H->eas_fields_after_plus == 3) {
-	        done = 1;	// normal case
-	      }
-	    }
-	  }
-	}
-
-	if (done) {
-#ifdef DEBUG_E
-	  dw_printf ("frame_buf %d = %s\n", slice, H->frame_buf);
-#endif
-	  alevel_t alevel = demod_get_audio_level (chan, subchan);
-	  multi_modem_process_rec_frame (chan, subchan, slice, H->frame_buf, H->frame_len, alevel, 0, 0);
-	  H->eas_gathering = 0;
-	}
-
-} // end eas_rec_bit
-
 
 /*
 
@@ -457,13 +359,6 @@ void hdlc_rec_bit (int chan, int subchan, int slice, int raw, int is_scrambled, 
 	  }
 	}
 
-// EAS does not use HDLC.
-
-	if (g_audio_p->achan[chan].modem_type == MODEM_EAS) {
-	  eas_rec_bit (chan, subchan, slice, raw, not_used_remove);
-	  return;
-	}
-
 /*
  * Different state information for each channel / subchannel / slice.
  */
@@ -476,29 +371,11 @@ void hdlc_rec_bit (int chan, int subchan, int slice, int raw, int is_scrambled, 
  *   A '1' bit is represented by no change.
  */
 
-	if (is_scrambled) {
-	  int descram;
+	dbit = (raw == H->prev_raw);
+	H->prev_raw = raw;
 
-	  descram = descramble(raw, &(H->lfsr));
-
-	  dbit = (descram == H->prev_descram);
-	  H->prev_descram = descram;			
-	  H->prev_raw = raw;
-	}
-	else {
-
-	  dbit = (raw == H->prev_raw);
-
-	  H->prev_raw = raw;
-	}
-
-// After BER insertion, NRZI, and any descrambling, feed into FX.25 decoder as well.
-// Don't waste time on this if AIS.  EAS does not get this far.
-
-	if (g_audio_p->achan[chan].modem_type != MODEM_AIS) {
-	  fx25_rec_bit (chan, subchan, slice, dbit);
-	  il2p_rec_bit (chan, subchan, slice, raw);	// Note: skip NRZI.
-	}
+	// After BER insertion, NRZI, and any descrambling, feed into FX.25 decoder as well.
+	fx25_rec_bit (chan, subchan, slice, dbit);
 
 /*
  * Octets are sent LSB first.

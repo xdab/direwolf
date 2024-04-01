@@ -94,38 +94,20 @@
 #include "hdlc_rec2.h"
 #include "ax25_pad.h"
 #include "xid.h"
-#include "decode_aprs.h"
-#include "encode_aprs.h"
 #include "textcolor.h"
-#include "server.h"
 #include "kiss.h"
 #include "kissnet.h"
 #include "kissserial.h"
 #include "kiss_frame.h"
-#include "waypoint.h"
 #include "gen_tone.h"
-#include "digipeater.h"
-#include "cdigipeater.h"
 #include "tq.h"
 #include "xmit.h"
 #include "ptt.h"
-#include "beacon.h"
-#include "dtmf.h"
-#include "aprs_tt.h"
-#include "tt_user.h"
-#include "igate.h"
-#include "pfilter.h"
 #include "symbols.h"
-#include "dwgps.h"
-#include "waypoint.h"
 #include "log.h"
 #include "recv.h"
-#include "morse.h"
-#include "mheard.h"
-#include "ax25_link.h"
 #include "dtime_now.h"
 #include "fx25.h"
-#include "il2p.h"
 #include "dwsock.h"
 #include "dns_sd_dw.h"
 #include "dlq.h"		// for fec_type_t definition.
@@ -174,7 +156,6 @@ static void __cpuid(int cpuinfo[4], int infotype){
  *--------------------------------------------------------------------*/
 
 static struct audio_s audio_config;
-static struct tt_config_s tt_config;
 static struct misc_config_s misc_config;
 
 
@@ -198,9 +179,6 @@ int main (int argc, char *argv[])
 	int j;
 	char config_file[100];
 	int enable_pseudo_terminal = 0;
-	struct digi_config_s digi_config;
-	struct cdigi_config_s cdigi_config;
-	struct igate_config_s igate_config;
 	int r_opt = 0, n_opt = 0, b_opt = 0, B_opt = 0, D_opt = 0, U_opt = 0;	/* Command line options. */
 	char P_opt[16];
 	char l_opt_logdir[80];
@@ -210,34 +188,20 @@ int main (int argc, char *argv[])
 	
 	int t_opt = 1;		/* Text color option. */				
 	int a_opt = 0;		/* "-a n" interval, in seconds, for audio statistics report.  0 for none. */
-	int g_opt = 0;		/* G3RUH mode, ignoring default for speed. */				
-	int j_opt = 0;		/* 2400 bps PSK compatible with direwolf <= 1.5 */
-	int J_opt = 0;		/* 2400 bps PSK compatible MFJ-2400 and maybe others. */
 
 	int d_k_opt = 0;	/* "-d k" option for serial port KISS.  Can be repeated for more detail. */					
 	int d_n_opt = 0;	/* "-d n" option for Network KISS.  Can be repeated for more detail. */	
-	int d_t_opt = 0;	/* "-d t" option for Tracker.  Can be repeated for more detail. */	
-	int d_g_opt = 0;	/* "-d g" option for GPS. Can be repeated for more detail. */
 	int d_o_opt = 0;	/* "-d o" option for output control such as PTT and DCD. */	
-	int d_i_opt = 0;	/* "-d i" option for IGate.  Repeat for more detail */
-	int d_m_opt = 0;	/* "-d m" option for mheard list. */
-	int d_f_opt = 0;	/* "-d f" option for filtering.  Repeat for more detail. */
 #if USE_HAMLIB
 	int d_h_opt = 0;	/* "-d h" option for hamlib debugging.  Repeat for more detail */
 #endif
 	int d_x_opt = 1;	/* "-d x" option for FX.25.  Default minimal. Repeat for more detail.  -qx to silence. */
-	int d_2_opt = 0;	/* "-d 2" option for IL2P.  Default minimal. Repeat for more detail. */
-
-	int aprstt_debug = 0;	/* "-d d" option for APRStt (think Dtmf) debug. */
 
 	int E_tx_opt = 0;		/* "-E n" Error rate % for clobbering transmit frames. */
 	int E_rx_opt = 0;		/* "-E Rn" Error rate % for clobbering receive frames. */
 
 	float e_recv_ber = 0.0;		/* Receive Bit Error Rate (BER). */
 	int X_fx25_xmit_enable = 0;	/* FX.25 transmit enable. */
-
-	int I_opt = -1;		/* IL2P transmit, normal polarity, arg is max_fec. */
-	int i_opt = -1;		/* IL2P transmit, inverted polarity, arg is max_fec. */
 
 	char x_opt_mode = ' ';		/* "-x N" option for transmitting calibration tones. */
 	int x_opt_chan = 0;		/* Split into 2 parts.  Mode e.g.  m, a, and optional channel. */
@@ -482,21 +446,6 @@ int main (int argc, char *argv[])
             }
             break;
 
-          case 'g':				/* -g G3RUH modem, overriding default mode for speed. */
-	 
-	    g_opt = 1;
-            break;
-
-          case 'j':				/* -j V.26 compatible with earlier direwolf. */
-
-	    j_opt = 1;
-            break;
-
-          case 'J':				/* -J V.26 compatible with MFJ-2400. */
-
-	    J_opt = 1;
-            break;
-
 	  case 'P':				/* -P for modem profile. */
 
 	    //debug: dw_printf ("Demodulator profile set to \"%s\"\n", optarg);
@@ -608,25 +557,13 @@ int main (int argc, char *argv[])
 
 	    for (p=optarg; *p!='\0'; p++) {
 	     switch (*p) {
-	
-	      case 'a':  server_set_debug(1); break;
-
 	      case 'k':  d_k_opt++; kissserial_set_debug (d_k_opt); kisspt_set_debug (d_k_opt); break;
 	      case 'n':  d_n_opt++; kiss_net_set_debug (d_n_opt); break;
 
 	      case 'u':  d_u_opt = 1; break;
 
-		// separate out gps & waypoints.
-
-	      case 'g':  d_g_opt++; break;
-	      case 'w':	 waypoint_set_debug (1); break;		// not documented yet.
-	      case 't':  d_t_opt++; beacon_tracker_set_debug (d_t_opt); break;
-
 	      case 'p':  d_p_opt = 1; break;			// TODO: packet dump for xmit side.
 	      case 'o':  d_o_opt++; ptt_set_debug(d_o_opt); break;	
-	      case 'i':  d_i_opt++; break;
-	      case 'm':  d_m_opt++; break;
-	      case 'f':  d_f_opt++; break;
 #if AX25MEMDEBUG
 	      case 'l':  ax25memdebug_set(); break;		// Track down memory Leak.  Not documented.
 #endif								// Previously 'm' but that is now used for mheard.
@@ -634,8 +571,6 @@ int main (int argc, char *argv[])
 	      case 'h':  d_h_opt++; break;			// Hamlib verbose level.
 #endif
 	      case 'x':  d_x_opt++; break;			// FX.25
-	      case '2':  d_2_opt++; break;			// IL2P
-	      case 'd':	 aprstt_debug++; break;			// APRStt (mnemonic Dtmf)
 	      default: break;
 	     }
 	    }
@@ -723,16 +658,6 @@ int main (int argc, char *argv[])
 	    X_fx25_xmit_enable = atoi(optarg);
             break;
 
-          case 'I':			// IL2P, normal polarity
-
-	    I_opt = atoi(optarg);
-            break;
-
-          case 'i':			// IL2P, inverted polarity
-
-	    i_opt = atoi(optarg);
-            break;
-
 	  case 'A':			// -A 	convert AIS to APRS object
 
 	    A_opt_ais_to_obj = 1;
@@ -774,7 +699,7 @@ int main (int argc, char *argv[])
 
 	(void)dwsock_init();
 
-	config_init (config_file, &audio_config, &digi_config, &cdigi_config, &tt_config, &igate_config, &misc_config);
+	config_init (config_file, &audio_config, &misc_config);
 
 	if (r_opt != 0) {
 	  audio_config.adev[0].samples_per_sec = r_opt;
@@ -808,78 +733,7 @@ int main (int argc, char *argv[])
             audio_config.achan[0].mark_freq = DEFAULT_MARK_FREQ;
             audio_config.achan[0].space_freq = DEFAULT_SPACE_FREQ;
 	  }
-	  else if (audio_config.achan[0].baud < 3600) {
-            audio_config.achan[0].modem_type = MODEM_QPSK;
-            audio_config.achan[0].mark_freq = 0;
-            audio_config.achan[0].space_freq = 0;
-	    if (audio_config.achan[0].baud != 2400) {
-              text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Bit rate should be standard 2400 rather than specified %d.\n", audio_config.achan[0].baud);
-	    }
-	  }
-	  else if (audio_config.achan[0].baud < 7200) {
-            audio_config.achan[0].modem_type = MODEM_8PSK;
-            audio_config.achan[0].mark_freq = 0;
-            audio_config.achan[0].space_freq = 0;
-	    if (audio_config.achan[0].baud != 4800) {
-              text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Bit rate should be standard 4800 rather than specified %d.\n", audio_config.achan[0].baud);
-	    }
-	  }
-	  else if (audio_config.achan[0].baud == 12345) {
-	    audio_config.achan[0].modem_type = MODEM_AIS;
-	    audio_config.achan[0].baud = 9600;
-	    audio_config.achan[0].mark_freq = 0;
-	    audio_config.achan[0].space_freq = 0;
-	  }
-	  else if (audio_config.achan[0].baud == 23456) {
-	    audio_config.achan[0].modem_type = MODEM_EAS;
-	    audio_config.achan[0].baud = 521;	// Actually 520.83 but we have an integer field here.
-						// Will make more precise in afsk demod init.
-	    audio_config.achan[0].mark_freq = 2083;	// Actually 2083.3 - logic 1.
-	    audio_config.achan[0].space_freq = 1563;	// Actually 1562.5 - logic 0.
-	    strlcpy (audio_config.achan[0].profiles, "A", sizeof(audio_config.achan[0].profiles));
-	  }
-	  else {
-            audio_config.achan[0].modem_type = MODEM_SCRAMBLE;
-            audio_config.achan[0].mark_freq = 0;
-            audio_config.achan[0].space_freq = 0;
-	  }
 	}
-
-	if (g_opt) {
-
-	  // Force G3RUH mode, overriding default for speed.
-	  //   Example:   -B 2400 -g  
-
-	  audio_config.achan[0].modem_type = MODEM_SCRAMBLE;
-          audio_config.achan[0].mark_freq = 0;
-          audio_config.achan[0].space_freq = 0;
-	}
-
-	if (j_opt) {
-
-	  // V.26 compatible with earlier versions of direwolf.
-	  //   Example:   -B 2400 -j    or simply   -j
-
-	  audio_config.achan[0].v26_alternative = V26_A;
-          audio_config.achan[0].modem_type = MODEM_QPSK;
-          audio_config.achan[0].mark_freq = 0;
-          audio_config.achan[0].space_freq = 0;
-	  audio_config.achan[0].baud = 2400;
-	}
-	if (J_opt) {
-
-	  // V.26 compatible with MFJ and maybe others.
-	  //   Example:   -B 2400 -J     or simply   -J
-
-	  audio_config.achan[0].v26_alternative = V26_B;
-          audio_config.achan[0].modem_type = MODEM_QPSK;
-          audio_config.achan[0].mark_freq = 0;
-          audio_config.achan[0].space_freq = 0;
-	  audio_config.achan[0].baud = 2400;
-	}
-
 
 	audio_config.statistics_interval = a_opt;
 
@@ -934,45 +788,9 @@ int main (int argc, char *argv[])
 	audio_config.recv_ber = e_recv_ber;
 
 	if (X_fx25_xmit_enable > 0) {
-	    if (I_opt != -1 || i_opt != -1) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Can't mix -X with -I or -i.\n");
-	        exit (EXIT_FAILURE);
-	    }
 	    audio_config.achan[0].fx25_strength = X_fx25_xmit_enable;
 	    audio_config.achan[0].layer2_xmit = LAYER2_FX25;
 	}
-
-	if (I_opt != -1 && i_opt != -1) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Can't use both -I and -i at the same time.\n");
-	  exit (EXIT_FAILURE);
-	}
-
-	if (I_opt >= 0) {
-	    audio_config.achan[0].layer2_xmit = LAYER2_IL2P;
-	    audio_config.achan[0].il2p_max_fec = (I_opt > 0);
-	    if (audio_config.achan[0].il2p_max_fec == 0) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("It is highly recommended that 1, rather than 0, is used with -I for best results.\n");
-	    }
-	    audio_config.achan[0].il2p_invert_polarity = 0;	// normal
-	}
-
-	if (i_opt >= 0) {
-	    audio_config.achan[0].layer2_xmit = LAYER2_IL2P;
-	    audio_config.achan[0].il2p_max_fec = (i_opt > 0);
-	    if (audio_config.achan[0].il2p_max_fec == 0) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("It is highly recommended that 1, rather than 0, is used with -i for best results.\n");
-	    }
-	    audio_config.achan[0].il2p_invert_polarity = 1;	// invert for transmit
-	    if (audio_config.achan[0].baud == 1200) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Using -i with 1200 bps is a bad idea.  Use -I instead.\n");
-	    }
-	}
-
 
 /*
  * Open the audio source 
@@ -987,7 +805,6 @@ int main (int argc, char *argv[])
 	if (err < 0) {
 	  text_color_set(DW_COLOR_ERROR);
 	  dw_printf ("Pointless to continue without audio device.\n");
-	  SLEEP_SEC(5);
 	  usage ();
 	  exit (1);
 	}
@@ -997,14 +814,6 @@ int main (int argc, char *argv[])
  */
 	multi_modem_init (&audio_config);
 	fx25_init (d_x_opt);
-	il2p_init (d_2_opt);
-
-/*
- * Initialize the touch tone decoder & APRStt gateway.
- */
-	dtmf_init (&audio_config, audio_amplitude);
-	aprs_tt_init (&tt_config, aprstt_debug);
-	tt_user_init (&audio_config, &tt_config);
 
 /*
  * Should there be an option for audio output level?
@@ -1012,7 +821,6 @@ int main (int argc, char *argv[])
  * It is the range of the digital sound representation.
 */
 	gen_tone_init (&audio_config, audio_amplitude, 0);
-	morse_init (&audio_config, audio_amplitude);
 
 	assert (audio_config.adev[0].bits_per_sample == 8 || audio_config.adev[0].bits_per_sample == 16);
 	assert (audio_config.adev[0].num_channels == 1 || audio_config.adev[0].num_channels == 2);
@@ -1095,20 +903,9 @@ int main (int argc, char *argv[])
 	    }
 	}
 
-
 /*
- * Initialize the digipeater and IGate functions.
+ * Provide KISS socket interface for use by a client application.
  */
-	digipeater_init (&audio_config, &digi_config);
-	igate_init (&audio_config, &igate_config, &digi_config, d_i_opt);
-	cdigipeater_init (&audio_config, &cdigi_config);
-	pfilter_init (&igate_config, d_f_opt);
-	ax25_link_init (&misc_config);
-
-/*
- * Provide the AGW & KISS socket interfaces for use by a client application.
- */
-	server_init (&audio_config, &misc_config);
 	kissnet_init (&misc_config);
 
 #if (USE_AVAHI_CLIENT|USE_MACOS_DNSSD)
@@ -1124,28 +921,9 @@ int main (int argc, char *argv[])
 	kiss_frame_init (&audio_config);
 
 /*
- * Open port for communication with GPS.
- */
-	dwgps_init (&misc_config, d_g_opt);
-
-	waypoint_init (&misc_config);  
-
-/*
- * Enable beaconing.
- * Open log file first because "-dttt" (along with -l...) will
- * log the tracker beacon transmissions with fake channel 999.
- */
-
-	log_init(misc_config.log_daily_names, misc_config.log_path);
-	mheard_init (d_m_opt);
-	beacon_init (&audio_config, &misc_config, &igate_config);
-
-
-/*
  * Get sound samples and decode them.
  * Use hot attribute for all functions called for every audio sample.
  */
-
 	recv_init (&audio_config);
 	recv_process ();
 
@@ -1202,9 +980,6 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 	switch (fec_type) {
 	  case fec_type_fx25:
 	    strlcpy (display_retries, " FX.25 ", sizeof(display_retries));
-	    break;
-	  case fec_type_il2p:
-	    strlcpy (display_retries, " IL2P ", sizeof(display_retries));
 	    break;
 	  case fec_type_none:
 	  default:
@@ -1427,91 +1202,6 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 	}
 
 
-/*
- * Decode the contents of UI frames and display in human-readable form.
- * Could be APRS or anything random for old fashioned packet beacons.
- *
- * Suppress printed decoding if "-q d" option used.
- */
-	char ais_obj_packet[300];
-	strcpy (ais_obj_packet, "");
-
-	if (ax25_is_aprs(pp)) {
-
-	  decode_aprs_t A;
-
-	  // we still want to decode it for logging and other processing.
-	  // Just be quiet about errors if "-qd" is set.
-
-	  decode_aprs (&A, pp, q_d_opt, NULL);
-
-	  if ( ! q_d_opt ) {
-
-	    // Print it all out in human readable format unless "-q d" option used.
-
-	    decode_aprs_print (&A);
-	  }
-
-	  /*
-	   * Perform validity check on each address.
-	   * This should print an error message if any issues.
-	   */
-	  (void)ax25_check_addresses(pp);
-
-	  // Send to log file.
-
-	  log_write (chan, &A, pp, alevel, retries);
-
-	  // temp experiment.
-	  //log_rr_bits (&A, pp);
-
-	  // Add to list of stations heard over the radio.
-
-	  mheard_save_rf (chan, &A, pp, alevel, retries);
-
-// For AIS, we have an option to convert the NMEA format, in User Defined data,
-// into an APRS "Object Report" and send that to the clients as well.
-
-// FIXME: partial implementation.
-
-	  static const char user_def_da[4] = { '{', USER_DEF_USER_ID, USER_DEF_TYPE_AIS, '\0' };
-
-	  if (strncmp((char*)pinfo, user_def_da, 3) == 0) {
-
-	    waypoint_send_ais((char*)pinfo + 3);
-
-	    if (A_opt_ais_to_obj && A.g_lat != G_UNKNOWN && A.g_lon != G_UNKNOWN) {
-
-	      char ais_obj_info[256];
-	      (void)encode_object (A.g_name, 0, time(NULL),
-	        A.g_lat, A.g_lon, 0,	// no ambiguity
-		A.g_symbol_table, A.g_symbol_code,
-		0, 0, 0, "",	// power, height, gain, direction.
-	        // Unknown not handled properly.
-		// Should encode_object take floating point here?
-		(int)(A.g_course+0.5), (int)(DW_MPH_TO_KNOTS(A.g_speed_mph)+0.5),
-		0, 0, 0, A.g_comment,	// freq, tone, offset
-		ais_obj_info, sizeof(ais_obj_info));
-
-	      snprintf (ais_obj_packet, sizeof(ais_obj_packet), "%s>%s%1d%1d:%s", A.g_src, APP_TOCALL, MAJOR_VERSION, MINOR_VERSION, ais_obj_info);
-
-	      dw_printf ("[%d.AIS] %s\n", chan, ais_obj_packet);
-
-	      // This will be sent to client apps after the User Defined Data representation.
-	    }
-	  }
-
-	  // Convert to NMEA waypoint sentence if we have a location.
-
- 	  if (A.g_lat != G_UNKNOWN && A.g_lon != G_UNKNOWN) {
-	    waypoint_send_sentence (strlen(A.g_name) > 0 ? A.g_name : A.g_src, 
-		A.g_lat, A.g_lon, A.g_symbol_table, A.g_symbol_code, 
-		DW_FEET_TO_METERS(A.g_altitude_ft), A.g_course, DW_MPH_TO_KNOTS(A.g_speed_mph), 
-		A.g_comment);
-	  }
-	}
-
-
 /* Send to another application if connected. */
 // TODO:  Put a wrapper around this so we only call one function to send by all methods.
 // We see the same sequence in tt_user.c.
@@ -1521,99 +1211,9 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 
 	flen = ax25_pack(pp, fbuf);
 
-	server_send_rec_packet (chan, pp, fbuf, flen);					// AGW net protocol
 	kissnet_send_rec_packet (chan, KISS_CMD_DATA_FRAME, fbuf, flen, NULL, -1);	// KISS TCP
 	kissserial_send_rec_packet (chan, KISS_CMD_DATA_FRAME, fbuf, flen, NULL, -1);	// KISS serial port
 	kisspt_send_rec_packet (chan, KISS_CMD_DATA_FRAME, fbuf, flen, NULL, -1);	// KISS pseudo terminal
-
-	if (A_opt_ais_to_obj && strlen(ais_obj_packet) != 0) {
-	  packet_t ao_pp = ax25_from_text (ais_obj_packet, 1);
-	  if (ao_pp != NULL) {
-	    unsigned char ao_fbuf[AX25_MAX_PACKET_LEN];
-	    int ao_flen = ax25_pack(ao_pp, ao_fbuf);
-
-	    server_send_rec_packet (chan, ao_pp, ao_fbuf, ao_flen);
-	    kissnet_send_rec_packet (chan, KISS_CMD_DATA_FRAME, ao_fbuf, ao_flen, NULL, -1);
-	    kissserial_send_rec_packet (chan, KISS_CMD_DATA_FRAME, ao_fbuf, ao_flen, NULL, -1);
-	    kisspt_send_rec_packet (chan, KISS_CMD_DATA_FRAME, ao_fbuf, ao_flen, NULL, -1);
-	    ax25_delete (ao_pp);
-	  }
-	}
-
-/*
- * If it is from the ICHANNEL, we are done.
- * Don't digipeat.  Don't IGate.
- * Don't do anything with it after printing and sending to client apps.
- */
-
-	if (chan == audio_config.igate_vchannel) {
-	    return;
-	}
-
-/* 
- * If it came from DTMF decoder (subchan == -1), send it to APRStt gateway.
- * Otherwise, it is a candidate for IGate and digipeater.
- *
- * It is also useful to have some way to simulate touch tone
- * sequences with BEACON sendto=R0 for testing.
- */
-
-	if (subchan == -1) {		// from DTMF decoder
-	  if (tt_config.gateway_enabled && info_len >= 2) {
-	    aprs_tt_sequence (chan, (char*)(pinfo+1));
-	  }
-	}
-	else if (*pinfo == 't' && info_len >= 2 && tt_config.gateway_enabled) {
-				// For testing.
-				// Would be nice to verify it was generated locally,
-				// not received over the air.
-	  aprs_tt_sequence (chan, (char*)(pinfo+1));
-	}
-	else { 
-	
-/*
- * Send to the IGate processing.
- * Use only those with correct CRC; We don't want to spread corrupted data!
- * Our earlier "fix bits" hack could allow corrupted information to get thru.
- * However, if it used FEC mode (FX.25. IL2P), we have much higher level of
- * confidence that it is correct.
- */
-	  if (ax25_is_aprs(pp) && ( retries == RETRY_NONE || fec_type == fec_type_fx25 || fec_type == fec_type_il2p) ) {
-
-	    igate_send_rec_packet (chan, pp);
-	  }
-
-
-/* Send out a regenerated copy. Applies to all types, not just APRS. */
-/* This was an experimental feature never documented in the User Guide. */
-/* Initial feedback was positive but it fell by the wayside. */
-/* Should follow up with testers and either document this or clean out the clutter. */
-
-	  digi_regen (chan, pp);
-
-
-/*
- * Send to APRS digipeater.
- * Use only those with correct CRC; We don't want to spread corrupted data!
- * Our earlier "fix bits" hack could allow corrupted information to get thru.
- * However, if it used FEC mode (FX.25. IL2P), we have much higher level of
- * confidence that it is correct.
- */
-	  if (ax25_is_aprs(pp) && ( retries == RETRY_NONE || fec_type == fec_type_fx25 || fec_type == fec_type_il2p) ) {
-
-	    digipeater (chan, pp);
-	  }
-
-/*
- * Connected mode digipeater.
- * Use only those with correct CRC (or using FEC.)
- */
-
-	  if (retries == RETRY_NONE || fec_type == fec_type_fx25 || fec_type == fec_type_il2p) {
-
-	    cdigipeater (chan, pp);
-	  }
-	}
 
 } /* end app_process_rec_packet */
 
@@ -1632,7 +1232,6 @@ static BOOL cleanup_win (int ctrltype)
 	  ptt_term ();
 	  waypoint_term ();
 	  dwgps_term ();
-	  SLEEP_SEC(1);
 	  ExitProcess (0);
 	}
 	return (TRUE);
@@ -1647,8 +1246,6 @@ static void cleanup_linux (int x)
 	dw_printf ("\nQRT\n");
 	log_term ();
 	ptt_term ();
-	dwgps_term ();
-	SLEEP_SEC(1);
 	exit(0);
 }
 

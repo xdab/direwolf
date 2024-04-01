@@ -101,10 +101,8 @@
 #include "rrbb.h"
 #include "multi_modem.h"
 #include "dtime_now.h"
-#include "demod_9600.h"		/* for descramble() */
 #include "audio.h"		/* for struct audio_s */
 //#include "ax25_pad.h"		/* for AX25_MAX_ADDR_LEN */
-#include "ais.h"
 
 //#define DEBUG 1
 //#define DEBUGx 1
@@ -662,20 +660,8 @@ static int try_decode (rrbb_t block, int chan, int subchan, int slice, alevel_t 
 
 	    int dbit ;
 
-	    if (H2.is_scrambled) {
-	      int descram;
-
-	      descram = descramble(raw, &(H2.lfsr));
-
-	      dbit = (descram == H2.prev_descram);
-	      H2.prev_descram = descram;
+	    dbit = (raw == H2.prev_raw);
 	      H2.prev_raw = raw;
-	    }
-	    else {
-
-	      dbit = (raw == H2.prev_raw);
-	      H2.prev_raw = raw;
-	    }
 
 	    if (dbit) {
 
@@ -769,18 +755,7 @@ static int try_decode (rrbb_t block, int chan, int subchan, int slice, alevel_t 
 
 	  expected_fcs = fcs_calc (H2.frame_buf, H2.frame_len - 2);
 
-	  if (actual_fcs == expected_fcs && save_audio_config_p->achan[chan].modem_type == MODEM_AIS) {
-
-	      // Sanity check for AIS.
-	      if (ais_check_length((H2.frame_buf[0] >> 2) & 0x3f, H2.frame_len - 2) == 0) {
-	          multi_modem_process_rec_frame (chan, subchan, slice, H2.frame_buf, H2.frame_len - 2, alevel, retry_conf.retry, 0);   /* len-2 to remove FCS. */
-	          return 1;		/* success */
-	      }
-	      else {
-	          return 0;		/* did not pass sanity check */
-	      }
-	  }
-	  else if (actual_fcs == expected_fcs &&
+	  if (actual_fcs == expected_fcs &&
 			sanity_check (H2.frame_buf, H2.frame_len - 2, retry_conf.retry, save_audio_config_p->achan[chan].sanity_test)) {
 
 	      // TODO: Shouldn't be necessary to pass chan, subchan, alevel into

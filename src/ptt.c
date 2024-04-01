@@ -1193,15 +1193,6 @@ void ptt_set (int ot, int chan, int ptt_signal)
 	}
 #endif
 
-/*
- * The data link state machine has an interest in activity on the radio channel.
- * This is a very convenient place to get that information.
- */
-
-#ifndef TEST
-	dlq_channel_busy (chan, ot, ptt_signal);
-#endif
-
 /* 
  * Inverted output? 
  */

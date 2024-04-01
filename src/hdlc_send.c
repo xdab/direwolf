@@ -29,19 +29,12 @@
 #include "fcs_calc.h"
 #include "ax25_pad.h"
 #include "fx25.h"
-#include "il2p.h"
-
-static void send_byte_msb_first (int chan, int x, int polarity);
 
 static void send_control_nrzi (int, int);
 static void send_data_nrzi (int, int);
 static void send_bit_nrzi (int, int);
 
-
-
 static int number_of_bits_sent[MAX_CHANS];	// Count number of bits sent by "hdlc_send_frame" or "hdlc_send_flags"
-
-
 
 /*-------------------------------------------------------------
  *
@@ -49,7 +42,7 @@ static int number_of_bits_sent[MAX_CHANS];	// Count number of bits sent by "hdlc
  *
  * Purpose:	Convert frames to a stream of bits.
  *		Originally this was for AX.25 only, hence the file name.
- *		Over time, FX.25 and IL2P were shoehorned in.
+ *		Over time, FX.25 were shoehorned in.
  *
  * Inputs:	chan	- Audio channel number, 0 = first.
  *
@@ -84,18 +77,7 @@ static int ax25_only_hdlc_send_frame (int chan, unsigned char *fbuf, int flen, i
 
 int layer2_send_frame (int chan, packet_t pp, int bad_fcs, struct audio_s *audio_config_p)
 {
-	if (audio_config_p->achan[chan].layer2_xmit == LAYER2_IL2P) {
-
-	  int n = il2p_send_frame (chan, pp, audio_config_p->achan[chan].il2p_max_fec,
-						audio_config_p->achan[chan].il2p_invert_polarity);
-	  if (n > 0) {
-	    return (n);
-	  }
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Unable to send IL2p frame.  Falling back to regular AX.25.\n");
-	  // Not sure if we should fall back to AX.25 or not here.
-	}
-	else if (audio_config_p->achan[chan].layer2_xmit == LAYER2_FX25) {
+	if (audio_config_p->achan[chan].layer2_xmit == LAYER2_FX25) {
 	  unsigned char fbuf[AX25_MAX_PACKET_LEN+2];
 	  int flen = ax25_pack (pp, fbuf);
 	  int n = fx25_send_frame (chan, fbuf, flen, audio_config_p->achan[chan].fx25_strength);
@@ -157,7 +139,7 @@ static int ax25_only_hdlc_send_frame (int chan, unsigned char *fbuf, int flen, i
  * Name:	layer2_preamble_postamble
  *
  * Purpose:	Send filler pattern before and after the frame.
- *		For HDLC it is 01111110, for IL2P 01010101.
+ *		For HDLC it is 01111110.
  *
  * Inputs:	chan	- Audio channel number, 0 = first.
  *
@@ -197,15 +179,9 @@ int layer2_preamble_postamble (int chan, int nbytes, int finish, struct audio_s 
 	// When the transmitter is on but not sending data, it should be sending
 	// a stream of a filler pattern.
 	// For AX.25, it is the 01111110 "flag" pattern with NRZI and no bit stuffing.
-	// For IL2P, it is 01010101 without NRZI.
 
 	for (j=0; j<nbytes; j++) {
-	  if (audio_config_p->achan[chan].layer2_xmit == LAYER2_IL2P) {
-	    send_byte_msb_first (chan, IL2P_PREAMBLE, audio_config_p->achan[chan].il2p_invert_polarity);
-	  }
-	  else {
-	    send_control_nrzi (chan, 0x7e);
-	  }
+	  send_control_nrzi (chan, 0x7e);
 	}
 
 /* Push out the final partial buffer! */
@@ -218,27 +194,9 @@ int layer2_preamble_postamble (int chan, int nbytes, int finish, struct audio_s 
 }
 
 
-
-// The next one is only for IL2P.  No NRZI.
-// MSB first, opposite of AX.25.
-
-static void send_byte_msb_first (int chan, int x, int polarity)
-{
-	int i;
-
-	for (i=0; i<8; i++) {
-	  int dbit = (x & 0x80) != 0;
-	  tone_gen_put_bit (chan, (dbit ^ polarity) & 1);
-	  x <<= 1;
-	  number_of_bits_sent[chan]++;
-	}
-}
-
-
 // The following are only for HDLC.
 // All bits are sent NRZI.
 // Data (non flags) use bit stuffing.
-
 
 static int stuff[MAX_CHANS];		// Count number of "1" bits to keep track of when we
 					// need to break up a long run by "bit stuffing."
@@ -294,83 +252,6 @@ static void send_bit_nrzi (int chan, int b)
 
 	number_of_bits_sent[chan]++;
 }
-
-
-//  The rest of this is for EAS SAME.
-//  This is sort of a logical place because it serializes a frame, but not in HDLC.
-//  We have a parallel where SAME deserialization is in hdlc_rec.
-//  Maybe both should be pulled out and moved to a same.c.
-
-
-/*-------------------------------------------------------------------
- *
- * Name:        eas_send
- *
- * Purpose:    	Serialize EAS SAME for transmission.
- *
- * Inputs:	chan	- Radio channel number.
- *		str	- Character string to send.
- *		repeat	- Number of times to repeat with 1 sec quiet between.
- *		txdelay	- Delay (ms) from PTT to first preamble bit.
- *		txtail	- Delay (ms) from last data bit to PTT off.	
- *		
- *
- * Returns:	Total number of milliseconds to activate PTT.
- *		This includes delays before the first character
- *		and after the last to avoid chopping off part of it.
- *
- * Description:	xmit_thread calls this instead of the usual hdlc_send
- *		when we have a special packet that means send EAS SAME
- *		code.
- *
- *--------------------------------------------------------------------*/
-
-static inline void eas_put_byte (int chan, unsigned char b)
-{
-	for (int n=0; n<8; n++) {
-	  tone_gen_put_bit (chan, (b & 1));
-	  b >>= 1;
-	}
-}
-
-int eas_send (int chan, unsigned char *str, int repeat, int txdelay, int txtail)
-{
-	int bytes_sent = 0;
-	const int gap = 1000;
-	int gaps_sent = 0;
-
-	gen_tone_put_quiet_ms (chan, txdelay);
-
-	for (int r=0; r<repeat; r++ ) {
-	  for (int j=0; j<16; j++) {
-	    eas_put_byte (chan, 0xAB);
-	    bytes_sent++;
-	  }
-
-	  for (unsigned char *p = str; *p != '\0'; p++) {
-	    eas_put_byte (chan, *p);
-	    bytes_sent++;
-	  }
-
-	  if (r < repeat-1) {
-	    gen_tone_put_quiet_ms (chan, gap);
-	    gaps_sent++;
-	  }
-	}
-
-	gen_tone_put_quiet_ms (chan, txtail);
-
-	audio_flush(ACHAN2ADEV(chan));
-
-	int elapsed = txdelay + (int) (bytes_sent * 8 * 1.92) + (gaps_sent * gap) + txtail;
-
-// dw_printf ("DEBUG:  EAS total time = %d ms\n", elapsed);
-
-	return (elapsed);
-
-}  /* end eas_send */
-
-
 
 
 /* end hdlc_send.c */
