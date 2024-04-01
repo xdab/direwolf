@@ -237,37 +237,9 @@ void xmit_init(struct audio_s *p_modem, int debug_xmit_packet)
 			}
 #else
 			int e;
-#if 0
-
-//TODO: not this simple.  probably need FIFO policy.
-	    pthread_attr_init (&attr);
-  	    e = pthread_attr_getschedparam (&attr, &sp);
-	    if (e != 0) {
-	      
-	      perror("pthread_attr_getschedparam");
-	    }
-
-	    
-	    printf ("Default scheduling priority = %d, min=%d, max=%d\n", 
-		sp.sched_priority, 
-		sched_get_priority_min(SCHED_OTHER),
-		sched_get_priority_max(SCHED_OTHER));
-	    sp.sched_priority--;
-
-  	    e = pthread_attr_setschedparam (&attr, &sp);
-	    if (e != 0) {
-	      
-	      perror("pthread_attr_setschedparam");
-	    }
-	
-	    e = pthread_create (&(xmit_tid[j]), &attr, xmit_thread, (void *)(ptrdiff_t)j);
-	    pthread_attr_destroy (&attr);
-#else
 			e = pthread_create(&(xmit_tid[j]), NULL, xmit_thread, (void *)(ptrdiff_t)j);
-#endif
 			if (e != 0)
 			{
-
 				perror("Could not create xmit thread for audio device");
 				return;
 			}
@@ -849,14 +821,7 @@ static int send_one_frame(int c, int p, packet_t pp)
 	ax25_format_addrs(pp, stemp);
 	info_len = ax25_get_info(pp, &pinfo);
 
-#if 0 // FIXME - enable this?
-	printf ("[%d%c%s%s] ", c,
-			p==TQ_PRIO_0_HI ? 'H' : 'L',
-			save_audio_config_p->achan[c].fx25_strength ? "F" : "",
-			ts);
-#else
 	printf("[%d%c] ", c, p == TQ_PRIO_0_HI ? 'H' : 'L');
-#endif
 	printf("%s", stemp); /* stations followed by : */
 	ax25_safe_print((char *)pinfo, info_len, !ax25_is_aprs(pp));
 	printf("\n");

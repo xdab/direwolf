@@ -310,7 +310,7 @@ void tone_gen_put_bit(int chan, int dat)
 
 		case MODEM_AFSK:
 
-#if DEBUG2
+#if DEBUG
 
 			printf("tone_gen_put_bit %d AFSK\n", __LINE__);
 #endif

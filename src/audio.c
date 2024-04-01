@@ -986,10 +986,6 @@ static int set_oss_params(int a, int fd, struct audio_s *pa)
 	printf("audio_open(): using block size of %d\n", ossbuf_size_in_bytes);
 #endif
 
-#if 0
-	/* Original - dies without good explanation. */
-	assert (ossbuf_size_in_bytes >= 256 && ossbuf_size_in_bytes <= 32768);
-#else
 	/* Version 1.3 - after a report of this situation for Mac OSX version. */
 	if (ossbuf_size_in_bytes < 256 || ossbuf_size_in_bytes > 32768)
 	{
@@ -1000,7 +996,7 @@ static int set_oss_params(int a, int fd, struct audio_s *pa)
 		ossbuf_size_in_bytes = 2048;
 		printf("Using %d to attempt recovery.\n", ossbuf_size_in_bytes);
 	}
-#endif
+	
 	return (ossbuf_size_in_bytes);
 
 } /* end set_oss_params */
@@ -1044,7 +1040,7 @@ __attribute__((hot)) int audio_get(int a)
 	static int error_count[MAX_ADEVS];
 #endif
 
-#if DEBUGx
+#if DEBUG
 
 	printf("audio_get():\n");
 
@@ -1066,13 +1062,13 @@ __attribute__((hot)) int audio_get(int a)
 		{
 
 			assert(adev[a].audio_in_handle != NULL);
-#if DEBUGx
+#if DEBUG
 
 			printf("audio_get(): readi asking for %d frames\n", adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);
 #endif
 			n = snd_pcm_readi(adev[a].audio_in_handle, adev[a].inbuf_ptr, adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);
 
-#if DEBUGx
+#if DEBUG
 
 			printf("audio_get(): readi asked for %d and got %d frames\n",
 				   adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame, n);
@@ -1294,7 +1290,7 @@ __attribute__((hot)) int audio_get(int a)
 	else
 		n = 0;
 
-#if DEBUGx
+#if DEBUG
 
 	printf("audio_get(): returns %d\n", n);
 
@@ -1404,7 +1400,7 @@ int audio_flush(int a)
 	{
 
 		k = snd_pcm_writei(adev[a].audio_out_handle, psound, adev[a].outbuf_len / adev[a].bytes_per_frame);
-#if DEBUGx
+#if DEBUG
 
 		printf("audio_flush(): snd_pcm_writei %d frames returns %d\n",
 			   adev[a].outbuf_len / adev[a].bytes_per_frame, k);
@@ -1492,7 +1488,7 @@ int audio_flush(int a)
 		}
 
 		k = sio_write(adev[a].sndio_out_handle, ptr, len);
-#if DEBUGx
+#if DEBUG
 
 		printf("audio_flush(): write %d returns %d\n", len, k);
 		fflush(stdout);
@@ -1517,7 +1513,7 @@ int audio_flush(int a)
 	{
 		assert(adev[a].oss_audio_device_fd > 0);
 		k = write(adev[a].oss_audio_device_fd, ptr, len);
-#if DEBUGx
+#if DEBUG
 
 		printf("audio_flush(): write %d returns %d\n", len, k);
 		fflush(stdout);

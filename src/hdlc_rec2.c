@@ -226,7 +226,7 @@ void hdlc_rec2_block(rrbb_t block)
 	int passall = save_audio_config_p->achan[chan].passall;
 	int ok;
 
-#if DEBUGx
+#if DEBUG
 
 	printf("\n--- try to decode ---\n");
 #endif
@@ -582,7 +582,7 @@ static int try_decode(rrbb_t block, int chan, int subchan, int slice, alevel_t a
 	int blen; /* Block length in bits. */
 	int i;
 	int raw; /* From demodulator.  Should be 0 or 1. */
-#if DEBUGx
+#if DEBUG
 	int crc_failed = 1;
 #endif
 	int retry_conf_mode = retry_conf.mode;
@@ -614,7 +614,7 @@ static int try_decode(rrbb_t block, int chan, int subchan, int slice, alevel_t a
 
 	blen = rrbb_get_len(block);
 
-#if DEBUGx
+#if DEBUG
 
 	if (retry_conf.type == RETRY_TYPE_NONE)
 		printf("try_decode: blen=%d\n", blen);
@@ -668,7 +668,7 @@ static int try_decode(rrbb_t block, int chan, int subchan, int slice, alevel_t a
 			/* Valid data will never have 7 one bits in a row: exit. */
 			if (H2.pat_det == 0xfe)
 			{
-#if DEBUGx
+#if DEBUG
 
 				printf("try_decode: found abort, i=%d\n", i);
 #endif
@@ -683,7 +683,7 @@ static int try_decode(rrbb_t block, int chan, int subchan, int slice, alevel_t a
 			/* The special pattern 01111110 indicates beginning and ending of a frame: exit. */
 			if (H2.pat_det == 0x7e)
 			{
-#if DEBUGx
+#if DEBUG
 
 				printf("try_decode: found flag, i=%d\n", i);
 #endif
@@ -726,7 +726,7 @@ static int try_decode(rrbb_t block, int chan, int subchan, int slice, alevel_t a
 	 * Do we have a minimum number of complete bytes?
 	 */
 
-#if DEBUGx
+#if DEBUG
 
 	printf("try_decode: olen=%d, frame_len=%d\n", H2.olen, H2.frame_len);
 #endif
@@ -736,7 +736,7 @@ static int try_decode(rrbb_t block, int chan, int subchan, int slice, alevel_t a
 
 		unsigned short actual_fcs, expected_fcs;
 
-#if DEBUGx
+#if DEBUG
 		if (retry_conf.type == RETRY_TYPE_NONE)
 		{
 			int j;
@@ -801,13 +801,13 @@ static int try_decode(rrbb_t block, int chan, int subchan, int slice, alevel_t a
 	}
 	else
 	{
-#if DEBUGx
+#if DEBUG
 		crc_failed = 0;
 #endif
 		goto failure;
 	}
 failure:
-#if DEBUGx
+#if DEBUG
 	if (retry_conf.type == RETRY_TYPE_NONE)
 	{
 		int j;
@@ -915,7 +915,7 @@ static int sanity_check(unsigned char *buf, int blen, retry_t bits_flipped, enum
 
 	if (alen % 7 != 0)
 	{
-#if DEBUGx
+#if DEBUG
 
 		printf("sanity_check: FAILED.  Address part length %d not multiple of 7.\n", alen);
 #endif
@@ -928,7 +928,7 @@ static int sanity_check(unsigned char *buf, int blen, retry_t bits_flipped, enum
 
 	if (alen / 7 < 2 || alen / 7 > 10)
 	{
-#if DEBUGx
+#if DEBUG
 
 		printf("sanity_check: FAILED.  Too few or many addresses.\n");
 #endif
@@ -959,7 +959,7 @@ static int sanity_check(unsigned char *buf, int blen, retry_t bits_flipped, enum
 			(!isupper(addr[4]) && !isdigit(addr[4]) && addr[4] != ' ') ||
 			(!isupper(addr[5]) && !isdigit(addr[5]) && addr[5] != ' '))
 		{
-#if DEBUGx
+#if DEBUG
 
 			printf("sanity_check: FAILED.  Invalid characters in addresses \"%s\"\n", addr);
 #endif
@@ -1018,7 +1018,7 @@ static int sanity_check(unsigned char *buf, int blen, retry_t bits_flipped, enum
 
 		if (!((ch >= 0x1c && ch <= 0x7f) || ch == 0x0a || ch == 0x0d || ch == 0x80 || ch == 0x9f || ch == 0xc2 || ch == 0xb0 || ch == 0xf8))
 		{
-#if DEBUGx
+#if DEBUG
 
 			printf("sanity_check: FAILED.  Probably bogus info char 0x%02x\n", ch);
 #endif

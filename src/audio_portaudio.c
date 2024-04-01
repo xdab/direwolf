@@ -1015,7 +1015,7 @@ __attribute__((hot)) int audio_get(int a)
 	int n;
 	int retries = 0;
 
-#if DEBUGx
+#if DEBUG
 
 	printf("audio_get():\n");
 
@@ -1035,7 +1035,7 @@ __attribute__((hot)) int audio_get(int a)
 		{
 
 			assert(adev[a].inStream != NULL);
-#if DEBUGx
+#if DEBUG
 
 			printf("audio_get(): readi asking for %d frames\n", adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);
 #endif
@@ -1050,7 +1050,7 @@ __attribute__((hot)) int audio_get(int a)
 			pthread_mutex_unlock(&adev[a].input_mutex);
 
 			n = adev[a].inbuf_len / adev[a].inbuf_bytes_per_frame;
-#if DEBUGx
+#if DEBUG
 
 			printf("audio_get(): readi asked for %d and got %d frames\n",
 				   adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame, n);
@@ -1197,7 +1197,7 @@ __attribute__((hot)) int audio_get(int a)
 	else
 		n = 0;
 
-#if DEBUGx
+#if DEBUG
 
 	printf("audio_get(): returns %d\n", n);
 

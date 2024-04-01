@@ -945,7 +945,7 @@ static int tq_is_empty(int chan)
 int tq_count(int chan, int prio, char *source, char *dest, int bytes)
 {
 
-#if DEBUG2
+#if DEBUG
 
 	printf("tq_count(chan=%d, prio=%d, source=\"%s\", dest=\"%s\", bytes=%d)\n", chan, prio, source, dest, bytes);
 #endif
@@ -966,7 +966,7 @@ int tq_count(int chan, int prio, char *source, char *dest, int bytes)
 
 	if (queue_head[chan][prio] == 0)
 	{
-#if DEBUG2
+#if DEBUG
 
 		printf("tq_count: queue chan %d, prio %d is empty, returning 0.\n", chan, prio);
 #endif
@@ -993,7 +993,7 @@ int tq_count(int chan, int prio, char *source, char *dest, int bytes)
 			{
 				char frame_source[AX25_MAX_ADDR_LEN];
 				ax25_get_addr_with_ssid(pp, AX25_SOURCE, frame_source);
-#if DEBUG2
+#if DEBUG
 				// I'm cringing at the thought of printing while in a critical region.  But it's only for temp debug.  :-(
 
 				printf("tq_count: compare to frame source %s\n", frame_source);
@@ -1005,7 +1005,7 @@ int tq_count(int chan, int prio, char *source, char *dest, int bytes)
 			{
 				char frame_dest[AX25_MAX_ADDR_LEN];
 				ax25_get_addr_with_ssid(pp, AX25_DESTINATION, frame_dest);
-#if DEBUG2
+#if DEBUG
 				// I'm cringing at the thought of printing while in a critical region.  But it's only for debug debug.  :-(
 
 				printf("tq_count: compare to frame destination %s\n", frame_dest);
@@ -1031,7 +1031,7 @@ int tq_count(int chan, int prio, char *source, char *dest, int bytes)
 
 	dw_mutex_unlock(&tq_mutex);
 
-#if DEBUG2
+#if DEBUG
 
 	printf("tq_count(%d, %d, \"%s\", \"%s\", %d) returns %d\n", chan, prio, source, dest, bytes, n);
 #endif

@@ -148,12 +148,6 @@ static re_dfastate_t *merge_state_with_log (reg_errcode_t *err,
 static reg_errcode_t check_subexp_matching_top (re_match_context_t *mctx,
 						re_node_set *cur_nodes,
 						int str_idx) internal_function;
-#if 0
-static re_dfastate_t *transit_state_sb (reg_errcode_t *err,
-					re_match_context_t *mctx,
-					re_dfastate_t *pstate)
-     internal_function;
-#endif
 #ifdef RE_ENABLE_I18N
 static reg_errcode_t transit_state_mb (re_match_context_t *mctx,
 				       re_dfastate_t *pstate)
@@ -2273,11 +2267,6 @@ transit_state (reg_errcode_t *err, re_match_context_t *mctx,
 #endif /* RE_ENABLE_I18N */
 
   /* Then decide the next state with the single byte.  */
-#if 0
-  if (0)
-    /* don't use transition table  */
-    return transit_state_sb (err, mctx, state);
-#endif
 
   /* Use transition table  */
   ch = re_string_fetch_byte (&mctx->input);
@@ -2451,48 +2440,6 @@ check_subexp_matching_top (re_match_context_t *mctx, re_node_set *cur_nodes,
     }
   return REG_NOERROR;
 }
-
-#if 0
-/* Return the next state to which the current state STATE will transit by
-   accepting the current input byte.  */
-
-static re_dfastate_t *
-transit_state_sb (reg_errcode_t *err, re_match_context_t *mctx,
-		  re_dfastate_t *state)
-{
-  const re_dfa_t *const dfa = mctx->dfa;
-  re_node_set next_nodes;
-  re_dfastate_t *next_state;
-  int node_cnt, cur_str_idx = re_string_cur_idx (&mctx->input);
-  unsigned int context;
-
-  *err = re_node_set_alloc (&next_nodes, state->nodes.nelem + 1);
-  if (BE (*err != REG_NOERROR, 0))
-    return NULL;
-  for (node_cnt = 0; node_cnt < state->nodes.nelem; ++node_cnt)
-    {
-      int cur_node = state->nodes.elems[node_cnt];
-      if (check_node_accept (mctx, dfa->nodes + cur_node, cur_str_idx))
-	{
-	  *err = re_node_set_merge (&next_nodes,
-				    dfa->eclosures + dfa->nexts[cur_node]);
-	  if (BE (*err != REG_NOERROR, 0))
-	    {
-	      re_node_set_free (&next_nodes);
-	      return NULL;
-	    }
-	}
-    }
-  context = re_string_context_at (&mctx->input, cur_str_idx, mctx->eflags);
-  next_state = re_acquire_state_context (err, dfa, &next_nodes, context);
-  /* We don't need to check errors here, since the return value of
-     this function is next_state and ERR is already set.  */
-
-  re_node_set_free (&next_nodes);
-  re_string_skip_bytes (&mctx->input, 1);
-  return next_state;
-}
-#endif
 
 #ifdef RE_ENABLE_I18N
 static reg_errcode_t

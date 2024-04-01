@@ -498,12 +498,6 @@ static int kisspt_get(void)
 		FD_SET(pt_master_fd, &fd_ex);
 
 		rc = select(pt_master_fd + 1, &fd_in, NULL, &fd_ex, NULL);
-
-#if 0
-	  
-	  printf ("select returns %d, errno=%d, fd=%d, fd_in=%08x, fd_ex=%08x\n", rc, errno, pt_master_fd, *((int*)(&fd_in)), *((int*)(&fd_in)));
-#endif
-
 		if (rc == 0)
 		{
 			continue; // When could we get a 0?
@@ -523,7 +517,7 @@ static int kisspt_get(void)
 		}
 	}
 
-#if DEBUGx
+#if DEBUG
 
 	printf("kisspt_get(%d) returns 0x%02x\n", fd, ch);
 #endif

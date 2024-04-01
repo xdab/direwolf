@@ -852,14 +852,6 @@ int HID_API_EXPORT HID_API_CALL hid_send_feature_report(hid_device *dev, const u
 int HID_API_EXPORT HID_API_CALL hid_get_feature_report(hid_device *dev, unsigned char *data, size_t length)
 {
 	BOOL res;
-#if 0
-	res = HidD_GetFeature(dev->device_handle, data, length);
-	if (!res) {
-		register_error(dev, "HidD_GetFeature");
-		return -1;
-	}
-	return 0; /* HidD_GetFeature() doesn't give us an actual length, unfortunately */
-#else
 	DWORD bytes_returned;
 
 	OVERLAPPED ol;
@@ -901,14 +893,6 @@ int HID_API_EXPORT HID_API_CALL hid_get_feature_report(hid_device *dev, unsigned
 int HID_API_EXPORT HID_API_CALL hid_get_input_report(hid_device *dev, unsigned char *data, size_t length)
 {
 	BOOL res;
-#if 0
-	res = HidD_GetInputReport(dev->device_handle, data, length);
-	if (!res) {
-		register_error(dev, "HidD_GetInputReport");
-		return -1;
-	}
-	return length;
-#else
 	DWORD bytes_returned;
 
 	OVERLAPPED ol;
@@ -1037,53 +1021,6 @@ HID_API_EXPORT const wchar_t * HID_API_CALL  hid_error(hid_device *dev)
 #ifdef PICPGM
   unsigned short VendorID = 0x04d8;
   unsigned short ProductID = 0x0033;
-#endif
-
-
-#if 0
-int __cdecl main(int argc, char* argv[])
-{
-	int res;
-	unsigned char buf[65];
-
-	UNREFERENCED_PARAMETER(argc);
-	UNREFERENCED_PARAMETER(argv);
-
-	/* Set up the command buffer. */
-	memset(buf,0x00,sizeof(buf));
-	buf[0] = 0;
-	buf[1] = 0x81;
-	
-
-	/* Open the device. */
-	int handle = open(VendorID, ProductID, L"12345");
-	if (handle < 0)
-		printf("unable to open device\n");
-
-
-	/* Toggle LED (cmd 0x80) */
-	buf[1] = 0x80;
-	res = write(handle, buf, 65);
-	if (res < 0)
-		printf("Unable to write()\n");
-
-	/* Request state (cmd 0x81) */
-	buf[1] = 0x81;
-	write(handle, buf, 65);
-	if (res < 0)
-		printf("Unable to write() (2)\n");
-
-	/* Read requested state */
-	read(handle, buf, 65);
-	if (res < 0)
-		printf("Unable to read()\n");
-
-	/* Print out the returned buffer. */
-	for (int i = 0; i < 4; i++)
-		printf("buf[%d]: %d\n", i, buf[i]);
-
-	return 0;
-}
 #endif
 
 #ifdef __cplusplus

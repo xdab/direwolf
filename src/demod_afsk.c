@@ -50,7 +50,6 @@
 #include <ctype.h>
 
 #include "audio.h"
-#include "tune.h"
 #include "fsk_demod_state.h"
 #include "fsk_gen_filter.h"
 #include "hdlc_rec.h"
@@ -84,19 +83,7 @@ static void nudge_pll(int chan, int subchan, int slice, float demod_out, struct 
 
 __attribute__((hot)) __attribute__((always_inline)) static inline float fast_hypot(float x, float y)
 {
-#if 0
-        x = fabsf(x);
-        y = fabsf(y);
-
-        if (x > y) {
-          return (x * .941246f + y * .41f);
-        }
-        else {
-          return (y * .941246f + x * .41f);
-        }
-#else
 	return (hypotf(x, y));
-#endif
 }
 
 /* Add sample to buffer and shift the rest down. */
@@ -452,10 +439,7 @@ void demod_afsk_init(int samples_per_sec, int baud, int mark_freq,
 
 		float f1 = MIN(mark_freq, space_freq) - D->prefilter_baud * baud;
 		float f2 = MAX(mark_freq, space_freq) + D->prefilter_baud * baud;
-#if 0
-	  
-	  printf ("Generating prefilter %.0f to %.0f Hz.\n", f1, f2);
-#endif
+
 		f1 = f1 / (float)samples_per_sec;
 		f2 = f2 / (float)samples_per_sec;
 
@@ -605,7 +589,7 @@ void demod_afsk_init(int samples_per_sec, int baud, int mark_freq,
 
 __attribute__((hot)) void demod_afsk_process_sample(int chan, int subchan, int sam, struct demodulator_state_s *D)
 {
-#if DEBUG4
+#if DEBUG
 	static FILE *demod_log_fp = NULL;
 	static int seq = 0; /* for log file name */
 #endif
@@ -815,7 +799,7 @@ __attribute__((hot)) void demod_afsk_process_sample(int chan, int subchan, int s
 	break;
 	}
 
-#if DEBUG4
+#if DEBUG
 
 	if (chan == 0)
 	{
@@ -905,7 +889,7 @@ __attribute__((hot)) static void nudge_pll(int chan, int subchan, int slice, flo
 		if (quality > 100)
 			quality = 100;
 
-#if DEBUG5
+#if DEBUG
 		// Write bit stream to a file.
 
 		static FILE *bsfp = NULL;

@@ -404,65 +404,6 @@ void hdlc_rec_bit(int chan, int subchan, int slice, int raw, int is_scrambled, i
 		 * "flag" pattern before it is detected here.
 		 */
 
-#if OLD_WAY
-
-#if TEST
-
-		printf("\nfound flag, olen = %d, frame_len = %d\n", olen, frame_len);
-#endif
-		if (H->olen == 7 && H->frame_len >= MIN_FRAME_LEN)
-		{
-
-			unsigned short actual_fcs, expected_fcs;
-
-#if TEST
-			int j;
-			printf("TRADITIONAL: frame len = %d\n", H->frame_len);
-			for (j = 0; j < H->frame_len; j++)
-			{
-				printf("  %02x", H->frame_buf[j]);
-			}
-			printf("\n");
-
-#endif
-			/* Check FCS, low byte first, and process... */
-
-			/* Alternatively, it is possible to include the two FCS bytes */
-			/* in the CRC calculation and look for a magic constant.  */
-			/* That would be easier in the case where the CRC is being */
-			/* accumulated along the way as the octets are received. */
-			/* I think making a second pass over it and comparing is */
-			/* easier to understand. */
-
-			actual_fcs = H->frame_buf[H->frame_len - 2] | (H->frame_buf[H->frame_len - 1] << 8);
-
-			expected_fcs = fcs_calc(H->frame_buf, H->frame_len - 2);
-
-			if (actual_fcs == expected_fcs)
-			{
-				alevel_t alevel = demod_get_audio_level(chan, subchan);
-
-				multi_modem_process_rec_frame(chan, subchan, slice, H->frame_buf, H->frame_len - 2, alevel, RETRY_NONE, 0); /* len-2 to remove FCS. */
-			}
-			else
-			{
-
-#if TEST
-				printf("*** actual fcs = %04x, expected fcs = %04x ***\n", actual_fcs, expected_fcs);
-#endif
-			}
-		}
-
-#else
-
-		/*
-		 * New way - Decode the raw bits in later step.
-		 */
-
-#if TEST
-
-		printf("\nfound flag, channel %d.%d, %d bits in frame\n", chan, subchan, rrbb_get_len(H->rrbb) - 1);
-#endif
 		if (rrbb_get_len(H->rrbb) >= MIN_FRAME_LEN * 8)
 		{
 
@@ -486,7 +427,6 @@ void hdlc_rec_bit(int chan, int subchan, int slice, int raw, int is_scrambled, i
 											   /* Now that we are saving other initial state information, */
 											   /* it would be sensible to do the same for this instead */
 											   /* of lumping it in with the frame data bits. */
-#endif
 	}
 
 	// #define EXPERIMENT12B 1
@@ -617,7 +557,7 @@ void dcd_change(int chan, int subchan, int slice, int state)
 	assert(slice >= 0 && slice < MAX_SLICERS);
 	assert(state == 0 || state == 1);
 
-#if DEBUG3
+#if DEBUG
 
 	printf("DCD %d.%d.%d = %d \n", chan, subchan, slice, state);
 #endif

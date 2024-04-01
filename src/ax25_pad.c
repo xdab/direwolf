@@ -544,7 +544,7 @@ packet_t ax25_from_text(char *monitor, int strict)
 
 	// #define DEBUG14H 1
 
-#if DEBUG14H
+#if DEBUG
 
 	printf("BEFORE: %s\nSAFE:   ", pinfo);
 	ax25_safe_print(pinfo, -1, 0);
@@ -579,7 +579,7 @@ packet_t ax25_from_text(char *monitor, int strict)
 	}
 	info_part[info_len] = '\0';
 
-#if DEBUG14H
+#if DEBUG
 
 	printf("AFTER:  %s\nSAFE:   ", info_part);
 	ax25_safe_print(info_part, info_len, 0);
@@ -2585,10 +2585,6 @@ int ax25_is_aprs(packet_t this_p)
 
 	is_aprs = this_p->num_addr >= 2 && ctrl == AX25_UI_FRAME && pid == AX25_PID_NO_LAYER_3;
 
-#if 0 
-        
-        printf ("ax25_is_aprs(): ctrl=%02x, pid=%02x, is_aprs=%d\n", ctrl, pid, is_aprs);
-#endif
 	return (is_aprs);
 }
 
@@ -2617,10 +2613,6 @@ int ax25_is_null_frame(packet_t this_p)
 
 	is_null = this_p->frame_len == 0;
 
-#if 0
-        
-        printf ("ax25_is_null_frame(): is_null=%d\n", is_null);
-#endif
 	return (is_null);
 }
 

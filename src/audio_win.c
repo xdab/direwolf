@@ -857,7 +857,7 @@ __attribute__((hot)) int audio_get(int a)
 			if (p->dwUser < p->dwBytesRecorded)
 			{
 				n = ((unsigned char *)(p->lpData))[p->dwUser++];
-#if DEBUGx
+#if DEBUG
 
 				printf("audio_get(): returns %d\n", n);
 

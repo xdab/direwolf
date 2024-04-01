@@ -35,7 +35,6 @@ list(APPEND direwolf_SOURCES
   fx25_init.c
   fx25_rec.c
   fx25_send.c
-  fx25_auto.c
   gen_tone.c
   hdlc_rec.c
   hdlc_rec2.c

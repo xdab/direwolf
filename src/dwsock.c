@@ -273,7 +273,7 @@ int dwsock_connect(char *hostname, char *port, char *description, int allow_ipv6
 #if __WIN32__
 		if (err == SOCKET_ERROR)
 		{
-#if DEBUGx
+#if DEBUG
 			printf("Connect to %s on %s (%s), port %s failed.\n",
 				   description, hostname, ipaddr_str, port);
 #endif
@@ -284,7 +284,7 @@ int dwsock_connect(char *hostname, char *port, char *description, int allow_ipv6
 #else
 		if (err != 0)
 		{
-#if DEBUGx
+#if DEBUG
 			printf("Connect to %s on %s (%s), port %s failed.\n",
 				   description, hostname, ipaddr_str, port);
 #endif

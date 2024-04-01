@@ -508,23 +508,6 @@ struct rs *INIT_RS(unsigned int symsize, unsigned int gfpoly, unsigned fcr, unsi
 		rs->genpoly[i] = rs->index_of[rs->genpoly[i]];
 	}
 
-// diagnostic prints
-#if 0
-  printf("Alpha To:\n\r");
-  for (i=0; i < sizeof(DTYPE)*(rs->nn+1); i++) 
-    printf("0x%2x,", rs->alpha_to[i]);
-  printf("\n\r");
-
-  printf("Index Of:\n\r");
-  for (i=0; i < sizeof(DTYPE)*(rs->nn+1); i++) 
-    printf("0x%2x,", rs->index_of[i]);
-  printf("\n\r");
-  
-  printf("GenPoly:\n\r");
-  for (i = 0; i <= nroots; i++) 
-    printf("0x%2x,", rs->genpoly[i]);
-  printf("\n\r");
-#endif
 	return rs;
 }
 

@@ -555,16 +555,6 @@ int cm108_inventory(struct thing_s *things, int max_things)
 	cur_dev = devs;
 	while (cur_dev)
 	{
-#if 0
-	  printf("Device Found\n  type: %04hx %04hx\n  path: %s\n  serial_number: %ls", cur_dev->vendor_id, cur_dev->product_id, cur_dev->path, cur_dev->serial_number);
-	  printf("\n");
-	  printf("  Manufacturer: %ls\n", cur_dev->manufacturer_string);
-	  printf("  Product:      %ls\n", cur_dev->product_string);
-	  printf("  Release:      %hx\n", cur_dev->release_number);
-	  printf("  Interface:    %d\n",  cur_dev->interface_number);
-	  printf("  Usage (page): 0x%hx (0x%hx)\n", cur_dev->usage, cur_dev->usage_page);
-	  printf("\n");
-#endif
 		if (num_things < max_things && cur_dev->vendor_id != 0x051d)
 		{ // FIXME - remove exception
 			things[num_things].vid = cur_dev->vendor_id;

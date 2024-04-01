@@ -181,7 +181,7 @@ static inline int ax25_get_num_control(packet_t this_p)
 
 	if ((c & 0x01) == 0)
 	{ /* I   xxxx xxx0 */
-#if DEBUGX
+#if DEBUG
 		printf("ax25_get_num_control, %02x is I frame, returns %d\n", c, (this_p->modulo == 128) ? 2 : 1);
 #endif
 		return ((this_p->modulo == 128) ? 2 : 1);
@@ -189,13 +189,13 @@ static inline int ax25_get_num_control(packet_t this_p)
 
 	if ((c & 0x03) == 1)
 	{ /* S   xxxx xx01 */
-#if DEBUGX
+#if DEBUG
 		printf("ax25_get_num_control, %02x is S frame, returns %d\n", c, (this_p->modulo == 128) ? 2 : 1);
 #endif
 		return ((this_p->modulo == 128) ? 2 : 1);
 	}
 
-#if DEBUGX
+#if DEBUG
 	printf("ax25_get_num_control, %02x is U frame, always returns 1.\n", c);
 #endif
 
@@ -224,7 +224,7 @@ static int ax25_get_num_pid(packet_t this_p)
 	{ /* UI  000x 0011 */
 
 		pid = this_p->frame_data[ax25_get_pid_offset(this_p)];
-#if DEBUGX
+#if DEBUG
 		printf("ax25_get_num_pid, %02x is I or UI frame, pid = %02x, returns %d\n", c, pid, (pid == AX25_PID_ESCAPE_CHARACTER) ? 2 : 1);
 #endif
 		if (pid == AX25_PID_ESCAPE_CHARACTER)
@@ -233,7 +233,7 @@ static int ax25_get_num_pid(packet_t this_p)
 		}
 		return (1);
 	}
-#if DEBUGX
+#if DEBUG
 	printf("ax25_get_num_pid, %02x is neither I nor UI frame, returns 0\n", c);
 #endif
 	return (0);
@@ -254,7 +254,7 @@ static int ax25_get_num_pid(packet_t this_p)
 static inline int ax25_get_info_offset(packet_t this_p)
 {
 	int offset = ax25_get_control_offset(this_p) + ax25_get_num_control(this_p) + ax25_get_num_pid(this_p);
-#if DEBUGX
+#if DEBUG
 	printf("ax25_get_info_offset, returns %d\n", offset);
 #endif
 	return (offset);
