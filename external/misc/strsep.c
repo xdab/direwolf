@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  */
 
-//#include "tnftp.h"
+
 #include <string.h>
 
 /*
