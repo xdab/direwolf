@@ -10,6 +10,6 @@
 
 int layer2_send_frame(int chan, packet_t pp, int bad_fcs, struct audio_s *audio_config_p);
 
-int layer2_preamble_postamble(int chan, int flags, int finish, struct audio_s *audio_config_p);
+int layer2_preamble_postamble(int chan, int flags, int finish);
 
 /* end hdlc_send.h */

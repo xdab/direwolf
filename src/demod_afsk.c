@@ -910,14 +910,8 @@ __attribute__((hot)) static void nudge_pll(int chan, int subchan, int slice, flo
 
 #endif
 
-#if 1
-		hdlc_rec_bit(chan, subchan, slice, demod_out > 0, 0, quality);
-#else // TODO: new feature to measure data speed error.
-		// Maybe hdlc_rec_bit could provide indication when frame starts.
-		hdlc_rec_bit_new(chan, subchan, slice, demod_out > 0, 0, quality,
-						 &(D->slicer[slice].pll_nudge_total), &(D->slicer[slice].pll_symbol_count));
-		D->slicer[slice].pll_symbol_count++;
-#endif
+		hdlc_rec_bit(chan, subchan, slice, demod_out > 0, 0);
+
 		pll_dcd_each_symbol2(D, chan, subchan, slice);
 	}
 

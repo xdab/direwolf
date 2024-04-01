@@ -616,9 +616,9 @@ packet_t ax25_from_text(char *monitor, int strict)
  *------------------------------------------------------------------------------*/
 
 #if AX25MEMDEBUG
-packet_t ax25_from_frame_debug(unsigned char *fbuf, int flen, alevel_t alevel, char *src_file, int src_line)
+packet_t ax25_from_frame_debug(unsigned char *fbuf, int flen, char *src_file, int src_line)
 #else
-packet_t ax25_from_frame(unsigned char *fbuf, int flen, alevel_t alevel)
+packet_t ax25_from_frame(unsigned char *fbuf, int flen)
 #endif
 {
 	packet_t this_p;

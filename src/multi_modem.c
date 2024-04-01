@@ -312,7 +312,7 @@ void multi_modem_process_rec_frame(int chan, int subchan, int slice, unsigned ch
 	assert(subchan >= 0 && subchan < MAX_SUBCHANS);
 	assert(slice >= 0 && slice < MAX_SUBCHANS);
 
-	pp = ax25_from_frame(fbuf, flen, alevel);
+	pp = ax25_from_frame(fbuf, flen);
 
 	multi_modem_process_rec_packet(chan, subchan, slice, pp, alevel, retries, fec_type);
 }

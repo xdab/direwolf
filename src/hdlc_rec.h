@@ -4,7 +4,7 @@
 
 void hdlc_rec_init(struct audio_s *pa);
 
-void hdlc_rec_bit(int chan, int subchan, int slice, int raw, int is_scrambled, int descram_state);
+void hdlc_rec_bit(int chan, int subchan, int slice, int raw, int is_scrambled);
 
 /* Provided elsewhere to process a complete frame. */
 

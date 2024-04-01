@@ -66,7 +66,7 @@ static struct fx_context_s *fx_context[MAX_CHANS][MAX_SUBCHANS][MAX_SLICERS];
 
 static void process_rs_block(int chan, int subchan, int slice, struct fx_context_s *F);
 
-static int my_unstuff(int chan, int subchan, int slice, unsigned char *restrict pin, int ilen, unsigned char *restrict frame_buf);
+static int my_unstuff(int chan, int slice, unsigned char *restrict pin, int ilen, unsigned char *restrict frame_buf);
 
 /***********************************************************************************
  *
@@ -297,7 +297,7 @@ static void process_rs_block(int chan, int subchan, int slice, struct fx_context
 		}
 
 		unsigned char frame_buf[FX25_MAX_DATA + 1]; // Out must be shorter than input.
-		int frame_len = my_unstuff(chan, subchan, slice, F->block, F->dlen, frame_buf);
+		int frame_len = my_unstuff(chan, slice, F->block, F->dlen, frame_buf);
 
 		if (frame_len >= 14 + 1 + 2)
 		{ // Minimum length: Two addresses & control & FCS.
@@ -355,7 +355,7 @@ static void process_rs_block(int chan, int subchan, int slice, struct fx_context
  *
  * Purpose:	Remove HDLC it stuffing and surrounding flag delimiters.
  *
- * Inputs:      chan, subchan, slice	- For error messages.
+ * Inputs:      chan, slice	- For error messages.
  *
  *		pin	- "data" part of RS codeblock.
  *			  First byte must be HDLC "flag".
@@ -379,7 +379,7 @@ static void process_rs_block(int chan, int subchan, int slice, struct fx_context
  *
  ***********************************************************************************/
 
-static int my_unstuff(int chan, int subchan, int slice, unsigned char *restrict pin, int ilen, unsigned char *restrict frame_buf)
+static int my_unstuff(int chan, int slice, unsigned char *restrict pin, int ilen, unsigned char *restrict frame_buf)
 {
 	unsigned char pat_det = 0; // Pattern detector.
 	unsigned char oacc = 0;	   // Accumulator for a byte out.

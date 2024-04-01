@@ -112,7 +112,7 @@ typedef enum fromto_e
 	TO_CLIENT = 1
 } fromto_t;
 
-void kiss_process_msg(unsigned char *kiss_msg, int kiss_len, int debug, struct kissport_status_s *kps, int client,
+void kiss_process_msg(unsigned char *kiss_msg, int kiss_len, struct kissport_status_s *kps, int client,
 					  void (*sendfun)(int chan, int kiss_cmd, unsigned char *fbuf, int flen, struct kissport_status_s *onlykps, int onlyclient));
 
 void kiss_debug_print(fromto_t fromto, char *special, unsigned char *pmsg, int msg_len);

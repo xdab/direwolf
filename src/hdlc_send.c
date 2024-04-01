@@ -163,7 +163,7 @@ static int ax25_only_hdlc_send_frame(int chan, unsigned char *fbuf, int flen, in
  *
  *--------------------------------------------------------------*/
 
-int layer2_preamble_postamble(int chan, int nbytes, int finish, struct audio_s *audio_config_p)
+int layer2_preamble_postamble(int chan, int nbytes, int finish)
 {
 	int j;
 

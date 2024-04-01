@@ -313,9 +313,6 @@ a good modem here and providing a result when it is received.
  *
  *		is_scrambled - Is the data scrambled?
  *
- *		descram_state - Current descrambler state.  (not used - remove)
- *				Not so fast - plans to add new parameter.  PSK already provides it.
- *
  *
  * Description:	This is called once for each received bit.
  *		For each valid frame, process_rec_frame()
@@ -323,7 +320,7 @@ a good modem here and providing a result when it is received.
  *
  ***********************************************************************************/
 
-void hdlc_rec_bit(int chan, int subchan, int slice, int raw, int is_scrambled, int not_used_remove)
+void hdlc_rec_bit(int chan, int subchan, int slice, int raw, int is_scrambled)
 {
 
 	int dbit; /* Data bit after undoing NRZI. */

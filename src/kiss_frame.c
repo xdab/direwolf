@@ -106,7 +106,7 @@ void
 
 #ifndef DECAMAIN
 #ifndef KISSUTIL
-static void kiss_set_hardware(int chan, char *command, int debug, struct kissport_status_s *kps, int client,
+static void kiss_set_hardware(int chan, char *command, struct kissport_status_s *kps, int client,
 							  void (*sendfun)(int chan, int kiss_cmd, unsigned char *fbuf, int flen, struct kissport_status_s *onlykps, int onlyclient));
 #endif
 #endif
@@ -451,7 +451,7 @@ void kiss_rec_byte(kiss_frame_t *kf, unsigned char ch, int debug,
 
 			ulen = kiss_unwrap(kf->kiss_msg, kf->kiss_len, unwrapped);
 
-			kiss_process_msg(unwrapped, ulen, debug, kps, client, sendfun);
+			kiss_process_msg(unwrapped, ulen, kps, client, sendfun);
 
 			kf->state = KS_SEARCHING;
 			return;
@@ -505,7 +505,7 @@ void kiss_rec_byte(kiss_frame_t *kf, unsigned char ch, int debug,
 
 // This is used only by the TNC side.
 
-void kiss_process_msg(unsigned char *kiss_msg, int kiss_len, int debug, struct kissport_status_s *kps, int client,
+void kiss_process_msg(unsigned char *kiss_msg, int kiss_len, struct kissport_status_s *kps, int client,
 					  void (*sendfun)(int chan, int kiss_cmd, unsigned char *fbuf, int flen, struct kissport_status_s *kps, int client))
 {
 	int chan;
@@ -605,7 +605,7 @@ void kiss_process_msg(unsigned char *kiss_msg, int kiss_len, int debug, struct k
 		}
 
 		memset(&alevel, 0xff, sizeof(alevel));
-		packet_t pp = ax25_from_frame(kiss_msg + 1, kiss_len - 1, alevel);
+		packet_t pp = ax25_from_frame(kiss_msg + 1, kiss_len - 1);
 		if (pp == NULL)
 		{
 
@@ -732,7 +732,7 @@ void kiss_process_msg(unsigned char *kiss_msg, int kiss_len, int debug, struct k
 		kiss_msg[kiss_len] = '\0';
 
 		printf("KISS protocol set hardware \"%s\", chan %d\n", (char *)(kiss_msg + 1), chan);
-		kiss_set_hardware(chan, (char *)(kiss_msg + 1), debug, kps, client, sendfun);
+		kiss_set_hardware(chan, (char *)(kiss_msg + 1), kps, client, sendfun);
 		break;
 
 	case KISS_CMD_END_KISS: /* 15 = End KISS mode, channel should be 15. */
@@ -854,7 +854,7 @@ void kiss_process_msg(unsigned char *kiss_msg, int kiss_len, int debug, struct k
 
 #ifndef KISSUTIL
 
-static void kiss_set_hardware(int chan, char *command, int debug, struct kissport_status_s *kps, int client,
+static void kiss_set_hardware(int chan, char *command, struct kissport_status_s *kps, int client,
 							  void (*sendfun)(int chan, int kiss_cmd, unsigned char *fbuf, int flen, struct kissport_status_s *onlykps, int onlyclient))
 {
 	char *param;

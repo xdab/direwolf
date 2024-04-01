@@ -809,12 +809,7 @@ int main(int argc, char *argv[])
 	multi_modem_init(&audio_config);
 	fx25_init(d_x_opt);
 
-	/*
-	 * Should there be an option for audio output level?
-	 * Note:  This is not the same as a volume control you would see on the screen.
-	 * It is the range of the digital sound representation.
-	 */
-	gen_tone_init(&audio_config, audio_amplitude, 0);
+	gen_tone_init(&audio_config, audio_amplitude);
 
 	assert(audio_config.adev[0].bits_per_sample == 8 || audio_config.adev[0].bits_per_sample == 16);
 	assert(audio_config.adev[0].num_channels == 1 || audio_config.adev[0].num_channels == 2);
@@ -1162,7 +1157,7 @@ static BOOL cleanup_win(int ctrltype)
 
 #else
 
-static void cleanup_linux(int x)
+static void cleanup_linux()
 {
 	printf("\nQRT\n");
 	ptt_term();
@@ -1171,7 +1166,7 @@ static void cleanup_linux(int x)
 
 #endif
 
-static void usage(char **argv)
+static void usage()
 {
 
 	printf("\n");

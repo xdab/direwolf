@@ -626,7 +626,7 @@ static void xmit_ax25_frames(int chan, int prio, packet_t pp, int max_bundle)
 	ptt_set(OCTYPE_PTT, chan, 1);
 
 	pre_flags = MS_TO_BITS(xmit_txdelay[chan] * 10, chan) / 8;
-	num_bits = layer2_preamble_postamble(chan, pre_flags, 0, save_audio_config_p);
+	num_bits = layer2_preamble_postamble(chan, pre_flags, 0);
 #if DEBUG
 
 	printf("xmit_thread: t=%.3f, txdelay=%d [*10], pre_flags=%d, num_bits=%d\n", dtime_now() - time_ptt, xmit_txdelay[chan], pre_flags, num_bits);
@@ -728,7 +728,7 @@ static void xmit_ax25_frames(int chan, int prio, packet_t pp, int max_bundle)
 	 */
 
 	post_flags = MS_TO_BITS(xmit_txtail[chan] * 10, chan) / 8;
-	nb = layer2_preamble_postamble(chan, post_flags, 1, save_audio_config_p);
+	nb = layer2_preamble_postamble(chan, post_flags, 1);
 	num_bits += nb;
 #if DEBUG
 

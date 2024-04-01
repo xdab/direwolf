@@ -117,15 +117,15 @@ static int prev_dat[MAX_CHANS]; // Previous data bit.  Used for G3RUH style.
 
 static int amp16bit; /* for 9600 baud */
 
-int gen_tone_init(struct audio_s *audio_config_p, int amp, int gen_packets)
+int gen_tone_init(struct audio_s *audio_config_p, int amp)
 {
 	int j;
 	int chan = 0;
 
 #if DEBUG
 
-	printf("gen_tone_init ( audio_config_p=%p, amp=%d, gen_packets=%d )\n",
-		   audio_config_p, amp, gen_packets);
+	printf("gen_tone_init ( audio_config_p=%p, amp=%d )\n",
+		   audio_config_p, amp);
 #endif
 
 	/*
