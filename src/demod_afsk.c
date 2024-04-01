@@ -56,7 +56,6 @@
 #include "fsk_demod_state.h"
 #include "fsk_gen_filter.h"
 #include "hdlc_rec.h"
-#include "textcolor.h"
 #include "demod_afsk.h"
 #include "dsp.h"
 
@@ -67,8 +66,7 @@
 	char *e = getenv(envvar);				\
 	if (e != NULL) {					\
 	  param = atof(e);					\
-	  text_color_set (DW_COLOR_ERROR);			\
-	  dw_printf ("TUNE: " name " = " fmt "\n", param);	\
+	  printf ("TUNE: " name " = " fmt "\n", param);	\
 	} }
 
 
@@ -249,7 +247,7 @@ void demod_afsk_init (int samples_per_sec, int baud, int mark_freq,
 	D->num_slicers = 1;
 
 #if DEBUG1
-	dw_printf ("demod_afsk_init (rate=%d, baud=%d, mark=%d, space=%d, profile=%c\n",
+	printf ("demod_afsk_init (rate=%d, baud=%d, mark=%d, space=%d, profile=%c\n",
 		samples_per_sec, baud, mark_freq, space_freq, profile);
 #endif
 	D->profile = profile;
@@ -383,8 +381,8 @@ void demod_afsk_init (int samples_per_sec, int baud, int mark_freq,
 
 	  default:
 
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Invalid AFSK demodulator profile = %c\n", profile);
+	    
+	    printf ("Invalid AFSK demodulator profile = %c\n", profile);
 	    exit (1);
 	}
 
@@ -437,21 +435,20 @@ void demod_afsk_init (int samples_per_sec, int baud, int mark_freq,
 // The message is upsetting.  Can we handle this better?
 
 	  if (D->pre_filter_taps > MAX_FILTER_SIZE) {
-	    text_color_set (DW_COLOR_ERROR);
-	    dw_printf ("Warning: Calculated pre filter size of %d is too large.\n", D->pre_filter_taps);
-	    dw_printf ("Decrease the audio sample rate or increase the decimation factor.\n");
-	    dw_printf ("You can use -D2 or -D3, on the command line, to down-sample the audio rate\n");
-	    dw_printf ("before demodulating.  This greatly decreases the CPU requirements with little\n");
-	    dw_printf ("impact on the decoding performance.  This is useful for a slow ARM processor,\n");
-	    dw_printf ("such as with a Raspberry Pi model 1.\n");
+	    printf ("Warning: Calculated pre filter size of %d is too large.\n", D->pre_filter_taps);
+	    printf ("Decrease the audio sample rate or increase the decimation factor.\n");
+	    printf ("You can use -D2 or -D3, on the command line, to down-sample the audio rate\n");
+	    printf ("before demodulating.  This greatly decreases the CPU requirements with little\n");
+	    printf ("impact on the decoding performance.  This is useful for a slow ARM processor,\n");
+	    printf ("such as with a Raspberry Pi model 1.\n");
 	    D->pre_filter_taps = (MAX_FILTER_SIZE - 1) | 1;
 	  }
 
 	  float f1 = MIN(mark_freq,space_freq) - D->prefilter_baud * baud;
 	  float f2 = MAX(mark_freq,space_freq) + D->prefilter_baud * baud;
 #if 0
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("Generating prefilter %.0f to %.0f Hz.\n", f1, f2);
+	  
+	  printf ("Generating prefilter %.0f to %.0f Hz.\n", f1, f2);
 #endif
 	  f1 = f1 / (float)samples_per_sec;
 	  f2 = f2 / (float)samples_per_sec;
@@ -476,10 +473,10 @@ void demod_afsk_init (int samples_per_sec, int baud, int mark_freq,
 	  TUNE("TUNE_LP_FILTER_TAPS", D->lp_filter_taps, "lp_filter_taps (RRC)", "%d")
 
 	  if (D->lp_filter_taps > MAX_FILTER_SIZE) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Calculated RRC low pass filter size of %d is too large.\n", D->lp_filter_taps);
-	    dw_printf ("Decrease the audio sample rate or increase the decimation factor or\n");
-	    dw_printf ("recompile the application with MAX_FILTER_SIZE larger than %d.\n", MAX_FILTER_SIZE);
+	    
+	    printf ("Calculated RRC low pass filter size of %d is too large.\n", D->lp_filter_taps);
+	    printf ("Decrease the audio sample rate or increase the decimation factor or\n");
+	    printf ("recompile the application with MAX_FILTER_SIZE larger than %d.\n", MAX_FILTER_SIZE);
 	    D->lp_filter_taps = (MAX_FILTER_SIZE - 1) | 1;
 	  }
 
@@ -492,10 +489,9 @@ void demod_afsk_init (int samples_per_sec, int baud, int mark_freq,
 	  TUNE("TUNE_LP_FILTER_TAPS", D->lp_filter_taps, "lp_filter_taps (FIR)", "%d")
 
 	  if (D->lp_filter_taps > MAX_FILTER_SIZE) {
-	    text_color_set (DW_COLOR_ERROR);
-	    dw_printf ("Calculated FIR low pass filter size of %d is too large.\n", D->lp_filter_taps);
-	    dw_printf ("Decrease the audio sample rate or increase the decimation factor or\n");
-	    dw_printf ("recompile the application with MAX_FILTER_SIZE larger than %d.\n", MAX_FILTER_SIZE);
+	    printf ("Calculated FIR low pass filter size of %d is too large.\n", D->lp_filter_taps);
+	    printf ("Decrease the audio sample rate or increase the decimation factor or\n");
+	    printf ("recompile the application with MAX_FILTER_SIZE larger than %d.\n", MAX_FILTER_SIZE);
 	    D->lp_filter_taps = (MAX_FILTER_SIZE - 1) | 1;
 	  }
 
@@ -811,8 +807,8 @@ void demod_afsk_process_sample (int chan, int subchan, int sam, struct demodulat
 	    if (seq == 1) mkdir ("demod", 0777);
 
 	    demod_log_fp = fopen (fname, "w");
-	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("Starting demodulator log file %s\n", fname);
+	    
+	    printf ("Starting demodulator log file %s\n", fname);
 	    fprintf (demod_log_fp, "Audio, Mark, Space, Demod, Data, Clock\n");
 	  }
 	  fprintf (demod_log_fp, "%.3f, %.3f, %.3f, %.3f, %.2f, %.2f\n", fsam + 3.5, m_norm + 2, s_norm + 2, 
@@ -874,8 +870,8 @@ static void nudge_pll (int chan, int subchan, int slice, float demod_out, struct
 	// Perform the add as unsigned to avoid signed overflow error.
 	D->slicer[slice].data_clock_pll = (signed)((unsigned)(D->slicer[slice].data_clock_pll) + (unsigned)(D->pll_step_per_sample));
 
-	  //text_color_set(DW_COLOR_DEBUG);
-	  // dw_printf ("prev = %lx, new data clock pll = %lx\n" D->prev_d_c_pll, D->data_clock_pll);
+	  //
+	  // printf ("prev = %lx, new data clock pll = %lx\n" D->prev_d_c_pll, D->data_clock_pll);
 
 	if (D->slicer[slice].data_clock_pll < 0 && D->slicer[slice].prev_d_c_pll > 0) {
 

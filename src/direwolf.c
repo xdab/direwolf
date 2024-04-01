@@ -53,6 +53,7 @@
 #include <assert.h>
 #include <string.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <ctype.h>
 
 #if __ARM__
@@ -93,22 +94,17 @@
 #include "hdlc_rec.h"
 #include "hdlc_rec2.h"
 #include "ax25_pad.h"
-#include "textcolor.h"
 #include "kiss.h"
 #include "kissnet.h"
-#include "kissserial.h"
 #include "kiss_frame.h"
 #include "gen_tone.h"
 #include "tq.h"
 #include "xmit.h"
 #include "ptt.h"
-#include "symbols.h"
 #include "log.h"
 #include "recv.h"
-#include "dtime_now.h"
 #include "fx25.h"
 #include "dwsock.h"
-#include "dns_sd_dw.h"
 #include "dlq.h"		// for fec_type_t definition.
 
 
@@ -174,8 +170,6 @@ static int A_opt_ais_to_obj = 0;	/* "-A" Convert received AIS to APRS "Object Re
 int main (int argc, char *argv[])
 {
 	int err;
-	//int eof;
-	int j;
 	char config_file[100];
 	int enable_pseudo_terminal = 0;
 	int r_opt = 0, n_opt = 0, b_opt = 0, B_opt = 0, D_opt = 0, U_opt = 0;	/* Command line options. */
@@ -183,12 +177,9 @@ int main (int argc, char *argv[])
 	char l_opt_logdir[80];
 	char L_opt_logfile[80];
 	char input_file[80];
-	char T_opt_timestamp[40];
 	
-	int t_opt = 1;		/* Text color option. */				
 	int a_opt = 0;		/* "-a n" interval, in seconds, for audio statistics report.  0 for none. */
 
-	int d_k_opt = 0;	/* "-d k" option for serial port KISS.  Can be repeated for more detail. */					
 	int d_n_opt = 0;	/* "-d n" option for Network KISS.  Can be repeated for more detail. */	
 	int d_o_opt = 0;	/* "-d o" option for output control such as PTT and DCD. */	
 #if USE_HAMLIB
@@ -208,7 +199,6 @@ int main (int argc, char *argv[])
 	strlcpy(l_opt_logdir, "", sizeof(l_opt_logdir));
 	strlcpy(L_opt_logfile, "", sizeof(L_opt_logfile));
 	strlcpy(P_opt, "", sizeof(P_opt));
-	strlcpy(T_opt_timestamp, "", sizeof(T_opt_timestamp));
 
 #if __WIN32__
 
@@ -232,58 +222,26 @@ int main (int argc, char *argv[])
 
 #endif
 
-/*
- * Pre-scan the command line options for the text color option.
- * We need to set this before any text output.
- * Default will be no colors if stdout is not a terminal (i.e. piped into
- * something else such as "tee") but command line can override this.
- */
-
-#if __WIN32__
-	t_opt = _isatty(_fileno(stdout)) > 0;
-#else
-	t_opt = isatty(fileno(stdout));
-#endif
-				/* 1 = normal, 0 = no text colors. */
-				/* 2, 3, ... alternate escape sequences for different terminals. */
-
-// FIXME: consider case of no space between t and number.
-
-	for (j=1; j<argc-1; j++) {
-	  if (strcmp(argv[j], "-t") == 0) {
-	    t_opt = atoi (argv[j+1]);
-	    //dw_printf ("DEBUG: text color option = %d.\n", t_opt);
-	  }
-	}
-
 	// TODO: control development/beta/release by version.h instead of changing here.
 	// Print platform.  This will provide more information when people send a copy the information displayed.
 
 	// Might want to print OS version here.   For Windows, see:
 	// https://msdn.microsoft.com/en-us/library/ms724451(v=VS.85).aspx
 
-	text_color_init(t_opt);
-	text_color_set(DW_COLOR_INFO);
-	//dw_printf ("Dire Wolf version %d.%d (%s) BETA TEST 7\n", MAJOR_VERSION, MINOR_VERSION, __DATE__);
-	//dw_printf ("Dire Wolf DEVELOPMENT version %d.%d %s (%s)\n", MAJOR_VERSION, MINOR_VERSION, "G", __DATE__);
-	dw_printf ("Dire Wolf version %d.%d\n", MAJOR_VERSION, MINOR_VERSION);
+	//printf ("Dire Wolf version %d.%d (%s) BETA TEST 7\n", MAJOR_VERSION, MINOR_VERSION, __DATE__);
+	//printf ("Dire Wolf DEVELOPMENT version %d.%d %s (%s)\n", MAJOR_VERSION, MINOR_VERSION, "G", __DATE__);
+	printf ("Dire Wolf version %d.%d\n", MAJOR_VERSION, MINOR_VERSION);
 
 
-#if defined(ENABLE_GPSD) || defined(USE_HAMLIB) || defined(USE_CM108) || USE_AVAHI_CLIENT || USE_MACOS_DNSSD
-	dw_printf ("Includes optional support for: ");
-#if defined(ENABLE_GPSD)
-	dw_printf (" gpsd");
-#endif
+#if defined(USE_HAMLIB) || defined(USE_CM108) 
+	printf ("Includes optional support for: ");
 #if defined(USE_HAMLIB)
-	dw_printf (" hamlib");
+	printf (" hamlib");
 #endif
 #if defined(USE_CM108)
-	dw_printf (" cm108-ptt");
+	printf (" cm108-ptt");
 #endif
-#if (USE_AVAHI_CLIENT|USE_MACOS_DNSSD)
-	dw_printf (" dns-sd");
-#endif
-	dw_printf ("\n");
+	printf ("\n");
 #endif
 
 
@@ -323,19 +281,19 @@ int main (int argc, char *argv[])
 	__cpuid (cpuinfo, 0);
 	if (cpuinfo[0] >= 1) {
 	  __cpuid (cpuinfo, 1);
-	  //dw_printf ("debug: cpuinfo = %x, %x, %x, %x\n", cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
+	  //printf ("debug: cpuinfo = %x, %x, %x, %x\n", cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
 	  // https://en.wikipedia.org/wiki/CPUID
 	  if ( ! ( cpuinfo[3] & (1 << 25))) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("------------------------------------------------------------------\n");
-	    dw_printf ("This version requires a minimum of a Pentium 3 or equivalent.\n");
-	    dw_printf ("If you are seeing this message, you are probably using a computer\n");
-	    dw_printf ("from the previous Century.  See instructions in User Guide for\n");
-	    dw_printf ("information on how you can compile it for use with your antique.\n");
-	    dw_printf ("------------------------------------------------------------------\n");
+	    
+	    printf ("------------------------------------------------------------------\n");
+	    printf ("This version requires a minimum of a Pentium 3 or equivalent.\n");
+	    printf ("If you are seeing this message, you are probably using a computer\n");
+	    printf ("from the previous Century.  See instructions in User Guide for\n");
+	    printf ("information on how you can compile it for use with your antique.\n");
+	    printf ("------------------------------------------------------------------\n");
 	  }
 	}
-	text_color_set(DW_COLOR_INFO);
+	
 #endif
 
 // I've seen many references to people running this as root.
@@ -346,11 +304,12 @@ int main (int argc, char *argv[])
 
 #ifndef __WIN32__
 	if (getuid() == 0 || geteuid() == 0) {
-	    text_color_set(DW_COLOR_ERROR);
+	    
 	    for (int n=0; n<15; n++) {
-	      dw_printf ("\n");
-	      dw_printf ("Dire Wolf requires only privileges available to ordinary users.\n");
-	      dw_printf ("Running this as root is an unnecessary security risk.\n");
+	      printf ("\n");
+	      printf ("Dire Wolf requires only privileges available to ordinary users.\n");
+	      printf ("Running this as root is an unnecessary security risk.\n");
+	      //SLEEP_SEC(1);
 	    }
 	}
 #endif
@@ -391,12 +350,12 @@ int main (int argc, char *argv[])
           switch (c) {
 
           case 0:				/* possible future use */
-	    text_color_set(DW_COLOR_DEBUG);
-            dw_printf("option %s", long_options[option_index].name);
+	    
+            printf("option %s", long_options[option_index].name);
             if (optarg) {
-                dw_printf(" with arg %s", optarg);
+                printf(" with arg %s", optarg);
             }
-            dw_printf("\n");
+            printf("\n");
             break;
 
           case 'a':				/* -a for audio statistics interval */
@@ -404,8 +363,8 @@ int main (int argc, char *argv[])
 	    a_opt = atoi(optarg);
 	    if (a_opt < 0) a_opt = 0;
 	    if (a_opt < 10) {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf("Setting such a small audio statistics interval will produce inaccurate sample rate display.\n");
+	      
+              printf("Setting such a small audio statistics interval will produce inaccurate sample rate display.\n");
    	    }
             break;
 
@@ -438,15 +397,15 @@ int main (int argc, char *argv[])
 	      B_opt = atoi(optarg);
 	    }
             if (B_opt < MIN_BAUD || B_opt > MAX_BAUD) {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Use a more reasonable data baud rate in range of %d - %d.\n", MIN_BAUD, MAX_BAUD);
+	      
+              printf ("Use a more reasonable data baud rate in range of %d - %d.\n", MIN_BAUD, MAX_BAUD);
               exit (EXIT_FAILURE);
             }
             break;
 
 	  case 'P':				/* -P for modem profile. */
 
-	    //debug: dw_printf ("Demodulator profile set to \"%s\"\n", optarg);
+	    //debug: printf ("Demodulator profile set to \"%s\"\n", optarg);
 	    strlcpy (P_opt, optarg, sizeof(P_opt)); 
 	    break;	
 
@@ -454,8 +413,8 @@ int main (int argc, char *argv[])
 	 
 	    D_opt = atoi(optarg);
             if (D_opt < 1 || D_opt > 8) {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Crazy value for -D. \n");
+	      
+              printf ("Crazy value for -D. \n");
               exit (EXIT_FAILURE);
             }
             break;
@@ -464,8 +423,8 @@ int main (int argc, char *argv[])
 	 
 	    U_opt = atoi(optarg);
             if (U_opt < 1 || U_opt > 4) {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Crazy value for -U. \n");
+	      
+              printf ("Crazy value for -U. \n");
               exit (EXIT_FAILURE);
             }
             break;
@@ -494,17 +453,17 @@ int main (int argc, char *argv[])
 	      case 's':  x_opt_mode = *p; break; // Space tone
 	      case 'p':  x_opt_mode = *p; break; // Set PTT only
       	      default:
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Invalid option '%c' for -x. Must be a, m, s, or p.\n", *p);
-	        text_color_set(DW_COLOR_INFO);
+	        
+	        printf ("Invalid option '%c' for -x. Must be a, m, s, or p.\n", *p);
+	        
       	    	exit (EXIT_FAILURE);
       	    	break;
       	     }
 	    }
 	    if (x_opt_chan < 0 || x_opt_chan >= MAX_CHANS) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Invalid channel %d for -x. \n", x_opt_chan);
-	      text_color_set(DW_COLOR_INFO);
+	      
+	      printf ("Invalid channel %d for -x. \n", x_opt_chan);
+	      
 	      exit (EXIT_FAILURE);
 	    }
             break;
@@ -514,8 +473,8 @@ int main (int argc, char *argv[])
 	    r_opt = atoi(optarg);
 	    if (r_opt < MIN_SAMPLES_PER_SEC || r_opt > MAX_SAMPLES_PER_SEC) 
 	    {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf("-r option, audio samples/sec, is out of range.\n");
+	      
+              printf("-r option, audio samples/sec, is out of range.\n");
 	      r_opt = 0;
    	    }
             break;
@@ -525,8 +484,8 @@ int main (int argc, char *argv[])
 	    n_opt = atoi(optarg);
 	    if (n_opt < 1 || n_opt > 2) 
 	    {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf("-n option, number of audio channels, is out of range.\n");
+	      
+              printf("-n option, number of audio channels, is out of range.\n");
 	      n_opt = 0;
    	    }
             break;
@@ -536,8 +495,8 @@ int main (int argc, char *argv[])
 	    b_opt = atoi(optarg);
 	    if (b_opt != 8 && b_opt != 16) 
 	    {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf("-b option, bits per sample, must be 8 or 16.\n");
+	      
+              printf("-b option, bits per sample, must be 8 or 16.\n");
 	      b_opt = 0;
    	    }
             break;
@@ -555,7 +514,6 @@ int main (int argc, char *argv[])
 
 	    for (p=optarg; *p!='\0'; p++) {
 	     switch (*p) {
-	      case 'k':  d_k_opt++; kissserial_set_debug (d_k_opt); kisspt_set_debug (d_k_opt); break;
 	      case 'n':  d_n_opt++; kiss_net_set_debug (d_n_opt); break;
 
 	      case 'u':  d_u_opt = 1; break;
@@ -595,7 +553,7 @@ int main (int argc, char *argv[])
 
 	  case 'u':				/* Print UTF-8 test and exit. */
 
-	    dw_printf ("\n  UTF-8 test string: ma%c%cana %c%c F%c%c%c%ce\n\n", 
+	    printf ("\n  UTF-8 test string: ma%c%cana %c%c F%c%c%c%ce\n\n", 
 			0xc3, 0xb1,
 			0xc2, 0xb0,
 			0xc3, 0xbc, 0xc3, 0x9f);
@@ -613,37 +571,25 @@ int main (int argc, char *argv[])
 	    strlcpy (L_opt_logfile, optarg, sizeof(L_opt_logfile));
             break;
 
-
-	  case 'S':				/* Print symbol tables and exit. */
-
-	    symbols_init ();
-	    symbols_list ();
-	    exit (0);
-	    break;
-
           case 'E':				/* -E Error rate (%) for corrupting frames. */
 						/* Just a number is transmit.  Precede by R for receive. */
 
 	    if (*optarg == 'r' || *optarg == 'R') {
 	      E_rx_opt = atoi(optarg+1);
 	      if (E_rx_opt < 1 || E_rx_opt > 99) {
-	        text_color_set(DW_COLOR_ERROR);
-                  dw_printf("-ER must be in range of 1 to 99.\n");
+	        
+                  printf("-ER must be in range of 1 to 99.\n");
 	      E_rx_opt = 10;
 	      }
 	    }
 	    else {
 	      E_tx_opt = atoi(optarg);
 	      if (E_tx_opt < 1 || E_tx_opt > 99) {
-	        text_color_set(DW_COLOR_ERROR);
-                dw_printf("-E must be in range of 1 to 99.\n");
+	        
+                printf("-E must be in range of 1 to 99.\n");
 	        E_tx_opt = 10;
 	      }
 	    }
-            break;
-
-          case 'T':				/* -T for receive timestamp. */
-	    strlcpy (T_opt_timestamp, optarg, sizeof(T_opt_timestamp));
             break;
 
 	  case 'e':				/* -e Receive Bit Error Rate (BER). */
@@ -664,8 +610,8 @@ int main (int argc, char *argv[])
           default:
 
             /* Should not be here. */
-	    text_color_set(DW_COLOR_DEBUG);
-            dw_printf("?? getopt returned character code 0%o ??\n", c);
+	    
+            printf("?? getopt returned character code 0%o ??\n", c);
             usage ();
           }
 	}  /* end while(1) for options */
@@ -675,8 +621,8 @@ int main (int argc, char *argv[])
 
           if (optind < argc - 1) 
 	  {
-	    text_color_set(DW_COLOR_ERROR);
-            dw_printf ("Warning: File(s) beyond the first are ignored.\n");
+	    
+            printf ("Warning: File(s) beyond the first are ignored.\n");
           }
 
 	  strlcpy (input_file, argv[optind], sizeof(input_file));
@@ -692,8 +638,6 @@ int main (int argc, char *argv[])
 #if USE_HAMLIB
         rig_set_debug(d_h_opt);
 #endif
-
-	symbols_init ();
 
 	(void)dwsock_init();
 
@@ -752,8 +696,6 @@ int main (int argc, char *argv[])
 	    audio_config.achan[0].upsample = U_opt;
 	}
 
-	strlcpy(audio_config.timestamp_format, T_opt_timestamp, sizeof(audio_config.timestamp_format));
-
 	// temp - only xmit errors.
 
 	audio_config.xmit_error_rate = E_tx_opt;
@@ -761,8 +703,8 @@ int main (int argc, char *argv[])
 
 
 	if (strlen(l_opt_logdir) > 0 && strlen(L_opt_logfile) > 0) {
-          text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Logging options -l and -L can't be used together.  Pick one or the other.\n");
+          
+	  printf ("Logging options -l and -L can't be used together.  Pick one or the other.\n");
 	  exit(1);
 	}
 
@@ -801,8 +743,8 @@ int main (int argc, char *argv[])
 
 	err = audio_open (&audio_config);
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Pointless to continue without audio device.\n");
+	  
+	  printf ("Pointless to continue without audio device.\n");
 	  usage ();
 	  exit (1);
 	}
@@ -847,13 +789,13 @@ int main (int argc, char *argv[])
 			int max_duration = 60;
 			int n = audio_config.achan[x_opt_chan].baud * max_duration;
 
-			text_color_set(DW_COLOR_INFO);
+			
 			ptt_set(OCTYPE_PTT, x_opt_chan, 1);
 
 			switch (x_opt_mode) {
 			default:
 			case 'a':  // Alternating tones: -x a
-				dw_printf("\nSending alternating mark/space calibration tones (%d/%dHz) on channel %d.\nPress control-C to terminate.\n",
+				printf("\nSending alternating mark/space calibration tones (%d/%dHz) on channel %d.\nPress control-C to terminate.\n",
 						audio_config.achan[x_opt_chan].mark_freq,
 						audio_config.achan[x_opt_chan].space_freq,
 						x_opt_chan);
@@ -862,7 +804,7 @@ int main (int argc, char *argv[])
 				}
 				break;
 			case 'm':  // "Mark" tone: -x m
-				dw_printf("\nSending mark calibration tone (%dHz) on channel %d.\nPress control-C to terminate.\n",
+				printf("\nSending mark calibration tone (%dHz) on channel %d.\nPress control-C to terminate.\n",
 						audio_config.achan[x_opt_chan].mark_freq,
 						x_opt_chan);
 				while (n-- > 0) {
@@ -870,7 +812,7 @@ int main (int argc, char *argv[])
 				}
 				break;
 			case 's':  // "Space" tone: -x s
-				dw_printf("\nSending space calibration tone (%dHz) on channel %d.\nPress control-C to terminate.\n",
+				printf("\nSending space calibration tone (%dHz) on channel %d.\nPress control-C to terminate.\n",
 						audio_config.achan[x_opt_chan].space_freq,
 						x_opt_chan);
 				while (n-- > 0) {
@@ -878,25 +820,25 @@ int main (int argc, char *argv[])
 				}
 				break;
 			case 'p':  // Silence - set PTT only: -x p
-				dw_printf("\nSending silence (Set PTT only) on channel %d.\nPress control-C to terminate.\n", x_opt_chan);
+				printf("\nSending silence (Set PTT only) on channel %d.\nPress control-C to terminate.\n", x_opt_chan);
 				SLEEP_SEC(max_duration);
 				break;
 			}
 
 			ptt_set(OCTYPE_PTT, x_opt_chan, 0);
-			text_color_set(DW_COLOR_INFO);
+			
 			exit(EXIT_SUCCESS);
 
 		} else {
-			text_color_set(DW_COLOR_ERROR);
-			dw_printf("\nMark/Space frequencies not defined for channel %d. Cannot calibrate using this modem type.\n", x_opt_chan);
-			text_color_set(DW_COLOR_INFO);
+			
+			printf("\nMark/Space frequencies not defined for channel %d. Cannot calibrate using this modem type.\n", x_opt_chan);
+			
 			exit(EXIT_FAILURE);
 		}
 	    } else {
-		text_color_set(DW_COLOR_ERROR);
-		dw_printf("\nChannel %d is not configured as a radio channel.\n", x_opt_chan);
-		text_color_set(DW_COLOR_INFO);
+		
+		printf("\nChannel %d is not configured as a radio channel.\n", x_opt_chan);
+		
 		exit(EXIT_FAILURE);
 	    }
 	}
@@ -906,16 +848,10 @@ int main (int argc, char *argv[])
  */
 	kissnet_init (&misc_config);
 
-#if (USE_AVAHI_CLIENT|USE_MACOS_DNSSD)
-	if (misc_config.kiss_port > 0 && misc_config.dns_sd_enabled)
-	  dns_sd_announce(&misc_config);
-#endif
-
 /*
  * Create a pseudo terminal and KISS TNC emulator.
  */
 	kisspt_init (&misc_config);
-	kissserial_init (&misc_config);
 	kiss_frame_init (&audio_config);
 
 /*
@@ -1008,30 +944,20 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
           ax25_get_addr_with_ssid(pp, h, heard);
 	}
 
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("\n");
+	
+	printf ("\n");
 
 // The HEARD line.
 
 	if (( ! q_h_opt ) && alevel.rec >= 0) {    /* suppress if "-q h" option */
 // FIXME: rather than checking for ichannel, how about checking medium==radio
-	 if (chan != audio_config.igate_vchannel) {	// suppress if from ICHANNEL
 	  if (h != -1 && h != AX25_SOURCE) {
-	    dw_printf ("Digipeater ");
+	    printf ("Digipeater ");
 	  }
 
 	  char alevel_text[AX25_ALEVEL_TO_TEXT_SIZE];
 
 	  ax25_alevel_to_text (alevel, alevel_text);
-
-// Experiment: try displaying the DC bias.
-// Should be 0 for soundcard but could show mistuning with SDR.
-
-#if 0
-	  char bias[16];
-	  snprintf (bias, sizeof(bias), " DC%+d", multi_modem_get_dc_average (chan));
-	  strlcat (alevel_text, bias, sizeof(alevel_text));
-#endif
 
 	  /* As suggested by KJ4ERJ, if we are receiving from */
 	  /* WIDEn-0, it is quite likely (but not guaranteed), that */
@@ -1047,18 +973,17 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 
 	    ax25_get_addr_with_ssid(pp, h-1, probably_really);
 
-	    dw_printf ("%s (probably %s) audio level = %s  %s  %s\n", heard, probably_really, alevel_text, display_retries, spectrum);
+	    printf ("%s (probably %s) audio level = %s  %s  %s\n", heard, probably_really, alevel_text, display_retries, spectrum);
 
 	  }
 	  else if (strcmp(heard, "DTMF") == 0) {
 
-	    dw_printf ("%s audio level = %s  tt\n", heard, alevel_text);
+	    printf ("%s audio level = %s  tt\n", heard, alevel_text);
 	  }
 	  else {
 
-	    dw_printf ("%s audio level = %s  %s  %s\n", heard, alevel_text, display_retries, spectrum);
+	    printf ("%s audio level = %s  %s  %s\n", heard, alevel_text, display_retries, spectrum);
 	  }
-	 }
 	}
 
 	/* Version 1.2:   Cranking the input level way up produces 199. */
@@ -1069,68 +994,38 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 
 	if (alevel.rec > 110) {
 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Audio input level is too high.  Reduce so most stations are around 50.\n");
+	  
+	  printf ("Audio input level is too high.  Reduce so most stations are around 50.\n");
 	}
-// FIXME: rather than checking for ichannel, how about checking medium==radio
-	else if (alevel.rec < 5 && chan != audio_config.igate_vchannel) {
+	else if (alevel.rec < 5) {
 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Audio input level is too low.  Increase so most stations are around 50.\n");
-	}
-
-
-// Display non-APRS packets in a different color.
-
-// Display subchannel only when multiple modems configured for channel.
-
-// -1 for APRStt DTMF decoder.
-
-	char ts[100];		// optional time stamp
-
-	if (strlen(audio_config.timestamp_format) > 0) {
-	  char tstmp[100];
-	  timestamp_user_format (tstmp, sizeof(tstmp), audio_config.timestamp_format);
-	  strlcpy (ts, " ", sizeof(ts));	// space after channel.
-	  strlcat (ts, tstmp, sizeof(ts));
-	}
-	else {
-	  strlcpy (ts, "", sizeof(ts));
+	  
+	  printf ("Audio input level is too low.  Increase so most stations are around 50.\n");
 	}
 
-	if (subchan == -1) {
-	  text_color_set(DW_COLOR_REC);
-	  dw_printf ("[%d.dtmf%s] ", chan, ts);
-	}
-	else if (subchan == -2) {
-	  text_color_set(DW_COLOR_REC);
-	  dw_printf ("[%d.is%s] ", chan, ts);
-	}
-	else {
-	  if (ax25_is_aprs(pp)) {
-	    text_color_set(DW_COLOR_REC);
+	if (ax25_is_aprs(pp)) {
+	    
 	  }
 	  else {
-	    text_color_set(DW_COLOR_DECODED);
+	    
 	  }
 
 	  if (audio_config.achan[chan].num_subchan > 1 && audio_config.achan[chan].num_slicers == 1) {
-	    dw_printf ("[%d.%d%s] ", chan, subchan, ts);
+	    printf ("[%d.%d] ", chan, subchan);
 	  }
 	  else if (audio_config.achan[chan].num_subchan == 1 && audio_config.achan[chan].num_slicers > 1) {
-	    dw_printf ("[%d.%d%s] ", chan, slice, ts);
+	    printf ("[%d.%d] ", chan, slice);
 	  }
 	  else if (audio_config.achan[chan].num_subchan > 1 && audio_config.achan[chan].num_slicers > 1) {
-	    dw_printf ("[%d.%d.%d%s] ", chan, subchan, slice, ts);
+	    printf ("[%d.%d.%d] ", chan, subchan, slice);
 	  }
 	  else {
-	    dw_printf ("[%d%s] ", chan, ts);
+	    printf ("[%d] ", chan);
 	  }
-	}
 
-		dw_printf ("%s", stemp);			/* stations followed by : */
+		printf ("%s", stemp);			/* stations followed by : */
 	  ax25_safe_print ((char *)pinfo, info_len, ( ! ax25_is_aprs(pp)) && ( ! d_u_opt) );
-	  dw_printf ("\n");
+	  printf ("\n");
 
 
 // Also display in pure ASCII if non-ASCII characters and "-d u" option specified.
@@ -1145,9 +1040,9 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 	  }
 
 	  if (n > 0) {
-	    text_color_set(DW_COLOR_DEBUG);
+	    
 	    ax25_safe_print ((char *)pinfo, info_len, 1);
-	    dw_printf ("\n");
+	    printf ("\n");
 	  }
 	}
 
@@ -1155,10 +1050,10 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 
 	if (d_p_opt) {
 
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("------\n");
+	  
+	  printf ("------\n");
 	  ax25_hex_dump (pp);
-	  dw_printf ("------\n");
+	  printf ("------\n");
 	}
 
 
@@ -1172,7 +1067,6 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 	flen = ax25_pack(pp, fbuf);
 
 	kissnet_send_rec_packet (chan, KISS_CMD_DATA_FRAME, fbuf, flen, NULL, -1);	// KISS TCP
-	kissserial_send_rec_packet (chan, KISS_CMD_DATA_FRAME, fbuf, flen, NULL, -1);	// KISS serial port
 	kisspt_send_rec_packet (chan, KISS_CMD_DATA_FRAME, fbuf, flen, NULL, -1);	// KISS pseudo terminal
 
 } /* end app_process_rec_packet */
@@ -1186,8 +1080,8 @@ void app_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alev
 static BOOL cleanup_win (int ctrltype)
 {
 	if (ctrltype == CTRL_C_EVENT || ctrltype == CTRL_CLOSE_EVENT) {
-	  text_color_set(DW_COLOR_INFO);
-	  dw_printf ("\nQRT\n");
+	  
+	  printf ("\nQRT\n");
 	  log_term ();
 	  ptt_term ();
 	  ExitProcess (0);
@@ -1200,8 +1094,8 @@ static BOOL cleanup_win (int ctrltype)
 
 static void cleanup_linux (int x)
 {
-	text_color_set(DW_COLOR_INFO);
-	dw_printf ("\nQRT\n");
+	
+	printf ("\nQRT\n");
 	log_term ();
 	ptt_term ();
 	exit(0);
@@ -1213,90 +1107,70 @@ static void cleanup_linux (int x)
 
 static void usage (char **argv)
 {
-	text_color_set(DW_COLOR_ERROR);
+	
 
-	dw_printf ("\n");
-	dw_printf ("Dire Wolf version %d.%d\n", MAJOR_VERSION, MINOR_VERSION);
-	dw_printf ("\n");
-	dw_printf ("Usage: direwolf [options] [ - | stdin | UDP:nnnn ]\n");
-	dw_printf ("Options:\n");
-	dw_printf ("    -c fname       Configuration file name.\n");
-	dw_printf ("    -l logdir      Directory name for log files.  Use . for current.\n");
-	dw_printf ("    -r n           Audio sample rate, per sec.\n");
-	dw_printf ("    -n n           Number of audio channels, 1 or 2.\n");
-	dw_printf ("    -b n           Bits per audio sample, 8 or 16.\n");
-	dw_printf ("    -B n           Data rate in bits/sec for channel 0.  Standard values are 300, 1200, 2400, 4800, 9600.\n");
-	dw_printf ("                     300 bps defaults to AFSK tones of 1600 & 1800.\n");
-	dw_printf ("                     1200 bps uses AFSK tones of 1200 & 2200.\n");
-	dw_printf ("                     2400 bps uses QPSK based on V.26 standard.\n");
-	dw_printf ("                     4800 bps uses 8PSK based on V.27 standard.\n");
-	dw_printf ("                     9600 bps and up uses K9NG/G3RUH standard.\n");
-	dw_printf ("                     AIS for ship Automatic Identification System.\n");
-	dw_printf ("                     EAS for Emergency Alert System (EAS) Specific Area Message Encoding (SAME).\n");
-	dw_printf ("    -g             Force G3RUH modem regardless of speed.\n");
-	dw_printf ("    -j             2400 bps QPSK compatible with direwolf <= 1.5.\n");
-	dw_printf ("    -J             2400 bps QPSK compatible with MFJ-2400.\n");
-	dw_printf ("    -P xxx         Modem Profiles.\n");
-	dw_printf ("    -A             Convert AIS positions to APRS Object Reports.\n");
-	dw_printf ("    -D n           Divide audio sample rate by n for channel 0.\n");
-	dw_printf ("    -X n           1 to enable FX.25 transmit.  16, 32, 64 for specific number of check bytes.\n");
-	dw_printf ("    -I n           Enable IL2P transmit.  n=1 is recommended.  0 uses weaker FEC.\n");
-	dw_printf ("    -i n           Enable IL2P transmit, inverted polarity.  n=1 is recommended.  0 uses weaker FEC.\n");
-	dw_printf ("    -d             Debug options:\n");
-	dw_printf ("       a             a = AGWPE network protocol client.\n");
-	dw_printf ("       k             k = KISS serial port or pseudo terminal client.\n");
-	dw_printf ("       n             n = KISS network client.\n");
-	dw_printf ("       u             u = Display non-ASCII text in hexadecimal.\n");
-	dw_printf ("       p             p = dump Packets in hexadecimal.\n");
-	dw_printf ("       g             g = GPS interface.\n");
-	dw_printf ("       w             w = Waypoints for Position or Object Reports.\n");
-	dw_printf ("       t             t = Tracker beacon.\n");
-	dw_printf ("       o             o = output controls such as PTT and DCD.\n");
-	dw_printf ("       i             i = IGate.\n");
-	dw_printf ("       m             m = Monitor heard station list.\n");
-	dw_printf ("       f             f = packet Filtering.\n");
+	printf ("\n");
+	printf ("Dire Wolf version %d.%d\n", MAJOR_VERSION, MINOR_VERSION);
+	printf ("\n");
+	printf ("Usage: direwolf [options] [ - | stdin | UDP:nnnn ]\n");
+	printf ("Options:\n");
+	printf ("    -c fname       Configuration file name.\n");
+	printf ("    -l logdir      Directory name for log files.  Use . for current.\n");
+	printf ("    -r n           Audio sample rate, per sec.\n");
+	printf ("    -n n           Number of audio channels, 1 or 2.\n");
+	printf ("    -b n           Bits per audio sample, 8 or 16.\n");
+	printf ("    -B n           Data rate in bits/sec for channel 0.  Standard values are 300 are 1200.\n");
+	printf ("                     300 bps defaults to AFSK tones of 1600 & 1800.\n");
+	printf ("                     1200 bps uses AFSK tones of 1200 & 2200.\n");
+	printf ("    -P xxx         Modem Profiles.\n");
+	printf ("    -D n           Divide audio sample rate by n for channel 0.\n");
+	printf ("    -X n           1 to enable FX.25 transmit.  16, 32, 64 for specific number of check bytes.\n");
+	printf ("    -d             Debug options:\n");
+	printf ("       k             k = KISS serial port or pseudo terminal client.\n");
+	printf ("       n             n = KISS network client.\n");
+	printf ("       u             u = Display non-ASCII text in hexadecimal.\n");
+	printf ("       p             p = dump Packets in hexadecimal.\n");
+	printf ("       o             o = output controls such as PTT and DCD.\n");
 #if USE_HAMLIB
-	dw_printf ("       h             h = hamlib increase verbose level.\n");
+	printf ("       h             h = hamlib increase verbose level.\n");
 #endif
-	dw_printf ("       x             x = FX.25 increase verbose level.\n");
-	dw_printf ("       2             2 = IL2P.\n");
-	dw_printf ("       d             d = APRStt (DTMF to APRS object translation).\n");
-	dw_printf ("    -q             Quiet (suppress output) options:\n");
-	dw_printf ("       h             h = Heard line with the audio level.\n");
-	dw_printf ("       d             d = Decoding of APRS packets.\n");
-	dw_printf ("       x             x = Silence FX.25 information.\n");
-	dw_printf ("    -t n           Text colors.  0=disabled. 1=default.  2,3,4,... alternatives.\n");
-	dw_printf ("                     Use 9 to test compatibility with your terminal.\n");
-	dw_printf ("    -a n           Audio statistics interval in seconds.  0 to disable.\n");
+	printf ("       x             x = FX.25 increase verbose level.\n");
+	printf ("    -q             Quiet (suppress output) options:\n");
+	printf ("       h             h = Heard line with the audio level.\n");
+	printf ("       d             d = Decoding of APRS packets.\n");
+	printf ("       x             x = Silence FX.25 information.\n");
+	printf ("    -t n           Text colors.  0=disabled. 1=default.  2,3,4,... alternatives.\n");
+	printf ("                     Use 9 to test compatibility with your terminal.\n");
+	printf ("    -a n           Audio statistics interval in seconds.  0 to disable.\n");
 #if __WIN32__
 #else
-	dw_printf ("    -p             Enable pseudo terminal for KISS protocol.\n");
+	printf ("    -p             Enable pseudo terminal for KISS protocol.\n");
 #endif
-	dw_printf ("    -x             Send Xmit level calibration tones.\n");
-	dw_printf ("       a             a = Alternating mark/space tones.\n");
-	dw_printf ("       m             m = Steady mark tone (e.g. 1200Hz).\n");
-	dw_printf ("       s             s = Steady space tone (e.g. 2200Hz).\n");
-	dw_printf ("       p             p = Silence (Set PTT only).\n");
-	dw_printf ("        chan          Optionally add a number to specify radio channel.\n");
-	dw_printf ("    -u             Print UTF-8 test string and exit.\n");
-	dw_printf ("    -S             Print symbol tables and exit.\n");
-	dw_printf ("    -T fmt         Time stamp format for sent and received frames.\n");
-	dw_printf ("    -e ber         Receive Bit Error Rate (BER), e.g. 1e-5\n");
-	dw_printf ("\n");
+	printf ("    -x             Send Xmit level calibration tones.\n");
+	printf ("       a             a = Alternating mark/space tones.\n");
+	printf ("       m             m = Steady mark tone (e.g. 1200Hz).\n");
+	printf ("       s             s = Steady space tone (e.g. 2200Hz).\n");
+	printf ("       p             p = Silence (Set PTT only).\n");
+	printf ("        chan          Optionally add a number to specify radio channel.\n");
+	printf ("    -u             Print UTF-8 test string and exit.\n");
+	printf ("    -S             Print symbol tables and exit.\n");
+	printf ("    -T fmt         Time stamp format for sent and received frames.\n");
+	printf ("    -e ber         Receive Bit Error Rate (BER), e.g. 1e-5\n");
+	printf ("\n");
 
-	dw_printf ("After any options, there can be a single command line argument for the source of\n");
-	dw_printf ("received audio.  This can override the audio input specified in the configuration file.\n");
-	dw_printf ("\n");
+	printf ("After any options, there can be a single command line argument for the source of\n");
+	printf ("received audio.  This can override the audio input specified in the configuration file.\n");
+	printf ("\n");
   
 #if __WIN32__
-	dw_printf ("Documentation can be found in the 'doc' folder\n");
+	printf ("Documentation can be found in the 'doc' folder\n");
 #else
 	// TODO: Could vary by platform and build options.
-	dw_printf ("Documentation can be found in /usr/local/share/doc/direwolf\n");
+	printf ("Documentation can be found in /usr/local/share/doc/direwolf\n");
 #endif
-	dw_printf ("or online at https://github.com/wb2osz/direwolf/tree/master/doc\n");
-	dw_printf ("additional topics: https://github.com/wb2osz/direwolf-doc\n");
-	text_color_set(DW_COLOR_INFO);
+	printf ("or online at https://github.com/wb2osz/direwolf/tree/master/doc\n");
+	printf ("additional topics: https://github.com/wb2osz/direwolf-doc\n");
+	
 	exit (EXIT_FAILURE);
 }
 

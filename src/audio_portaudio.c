@@ -58,7 +58,6 @@
 
 #include "audio.h"
 #include "audio_stats.h"
-#include "textcolor.h"
 #include "dtime_now.h"
 #include "demod.h"		/* for alevel_t & demod_get_audio_level() */
 
@@ -143,8 +142,8 @@ static int calcbufsize(int rate, int chans, int bits)
 	int size1 = (rate * chans * bits  / 8 * ONE_BUF_TIME) / 1000;
 	int size2 = roundup1k(size1);
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
+	
+	printf ("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
 			   rate, chans, bits, size1, size2);
 #endif
 	return (size2);
@@ -201,7 +200,7 @@ static int pa_devNN(char *deviceStr, char *_devName, size_t length, int *_devNo)
 	char numStr[8];
 
 	if(!deviceStr || !_devName || !_devNo) {
-		dw_printf( "Internal Error: Func %s passed null pointer.\n", __func__);
+		printf( "Internal Error: Func %s passed null pointer.\n", __func__);
 		return -1;
 	}
 
@@ -268,24 +267,24 @@ static void list_supported_sample_rates(struct adev_s *dev)
 		err = Pa_IsFormatSupported(&dev->inputParameters, &dev->outputParameters, standardSampleRates[i] );
 		if( err == paFormatIsSupported ) {
 			if( printCount == 0 ) {
-				dw_printf( "\t%8.2f", standardSampleRates[i] );
+				printf( "\t%8.2f", standardSampleRates[i] );
 				printCount = 1;
 			}
 			else if( printCount == 4 ) {
-				dw_printf( ",\n\t%8.2f", standardSampleRates[i] );
+				printf( ",\n\t%8.2f", standardSampleRates[i] );
 				printCount = 1;
 			}
 			else {
-				dw_printf( ", %8.2f", standardSampleRates[i] );
+				printf( ", %8.2f", standardSampleRates[i] );
 				++printCount;
 			}
 		}
 	}
 
 	if( !printCount )
-		dw_printf( "None\n" );
+		printf( "None\n" );
 	else
-		dw_printf( "\n" );
+		printf( "\n" );
 }
 
 /*------------------------------------------------------------------
@@ -294,14 +293,14 @@ static void list_supported_sample_rates(struct adev_s *dev)
 static int check_pa_configure(struct adev_s *dev, int sample_rate)
 {
 	if(!dev) {
-		dw_printf( "Internal Error: Func %s struct adev_s *dev null pointer.\n", __func__);
+		printf( "Internal Error: Func %s struct adev_s *dev null pointer.\n", __func__);
 		return -1;
 	}
 
 	PaError err = 0;
 	err = Pa_IsFormatSupported(&dev->inputParameters, &dev->outputParameters, sample_rate);
 	if(err == paFormatIsSupported) return 0;
-	dw_printf( "PortAudio Config Error: %s\n", Pa_GetErrorText(err));
+	printf( "PortAudio Config Error: %s\n", Pa_GetErrorText(err));
 	return err;
 }
 
@@ -316,48 +315,48 @@ static void print_pa_devices(void)
 	numDevices = Pa_GetDeviceCount();
 
 	if( numDevices < 0 ) {
-		dw_printf( "ERROR: Pa_GetDeviceCount returned 0x%x\n", numDevices );
+		printf( "ERROR: Pa_GetDeviceCount returned 0x%x\n", numDevices );
 		return;
 	}
 
-	dw_printf( "Number of devices = %d\n", numDevices );
+	printf( "Number of devices = %d\n", numDevices );
 
 	for(i = 0; i < numDevices; i++ ) {
 		deviceInfo = Pa_GetDeviceInfo( i );
-		dw_printf( "--------------------------------------- device #%d\n", i );
+		printf( "--------------------------------------- device #%d\n", i );
 
 		/* Mark global and API specific default devices */
 		defaultDisplayed = 0;
 		if( i == Pa_GetDefaultInputDevice() ) {
-			dw_printf( "[ Default Input" );
+			printf( "[ Default Input" );
 			defaultDisplayed = 1;
 		}
 		else if( i == Pa_GetHostApiInfo( deviceInfo->hostApi )->defaultInputDevice ) {
 			const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
-			dw_printf( "[ Default %s Input", hostInfo->name );
+			printf( "[ Default %s Input", hostInfo->name );
 			defaultDisplayed = 1;
 		}
 
 		if( i == Pa_GetDefaultOutputDevice() ) {
-			dw_printf( (defaultDisplayed ? "," : "[") );
-			dw_printf( " Default Output" );
+			printf( (defaultDisplayed ? "," : "[") );
+			printf( " Default Output" );
 			defaultDisplayed = 1;
 		}
 		else if( i == Pa_GetHostApiInfo( deviceInfo->hostApi )->defaultOutputDevice ) {
 			const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
-			dw_printf( (defaultDisplayed ? "," : "[") );
-			dw_printf( " Default %s Output", hostInfo->name );
+			printf( (defaultDisplayed ? "," : "[") );
+			printf( " Default %s Output", hostInfo->name );
 			defaultDisplayed = 1;
 		}
 
 		if( defaultDisplayed )
-			dw_printf( " ]\n" );
+			printf( " ]\n" );
 
 		/* print device info fields */
-		dw_printf( "Name        = \"%s\"\n", deviceInfo->name );
-		dw_printf( "Host API    = %s\n",     Pa_GetHostApiInfo( deviceInfo->hostApi )->name );
-		dw_printf( "Max inputs  = %d\n",     deviceInfo->maxInputChannels  );
-		dw_printf( "Max outputs = %d\n",     deviceInfo->maxOutputChannels  );
+		printf( "Name        = \"%s\"\n", deviceInfo->name );
+		printf( "Host API    = %s\n",     Pa_GetHostApiInfo( deviceInfo->hostApi )->name );
+		printf( "Max inputs  = %d\n",     deviceInfo->maxInputChannels  );
+		printf( "Max outputs = %d\n",     deviceInfo->maxOutputChannels  );
 	}
 }
 
@@ -638,13 +637,13 @@ int audio_open (struct audio_s *pa)
 				snprintf (ctemp, sizeof(ctemp), " (channel %d)", ADEVFIRSTCHAN(a));
 			}
 
-			text_color_set(DW_COLOR_INFO);
+			
 
 			if (strcmp(audio_in_name,audio_out_name) == 0) {
-				dw_printf ("Audio device for both receive and transmit: %s %s\n", audio_in_name, ctemp);
+				printf ("Audio device for both receive and transmit: %s %s\n", audio_in_name, ctemp);
 			} else {
-				dw_printf ("Audio input device for receive: %s %s\n", audio_in_name, ctemp);
-				dw_printf ("Audio out device for transmit: %s %s\n", audio_out_name, ctemp);
+				printf ("Audio input device for receive: %s %s\n", audio_in_name, ctemp);
+				printf ("Audio out device for transmit: %s %s\n", audio_out_name, ctemp);
 			}
 
 			/*
@@ -686,8 +685,8 @@ int audio_open (struct audio_s *pa)
 					struct sockaddr_in si_me;
 					//Create UDP Socket
 					if ((adev[a].udp_sock=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
-						text_color_set(DW_COLOR_ERROR);
-						dw_printf ("Couldn't create socket, errno %d\n", errno);
+						
+						printf ("Couldn't create socket, errno %d\n", errno);
 						return -1;
 					}
 
@@ -698,8 +697,8 @@ int audio_open (struct audio_s *pa)
 
 					//Bind to the socket
 					if (bind(adev[a].udp_sock, (const struct sockaddr *) &si_me, sizeof(si_me))==-1) {
-						text_color_set(DW_COLOR_ERROR);
-						dw_printf ("Couldn't bind socket, errno %d\n", errno);
+						
+						printf ("Couldn't bind socket, errno %d\n", errno);
 						return -1;
 					}
 				}
@@ -720,8 +719,8 @@ int audio_open (struct audio_s *pa)
 
 				default:
 
-					text_color_set(DW_COLOR_ERROR);
-					dw_printf ("Internal error, invalid audio_in_type\n");
+					
+					printf ("Internal error, invalid audio_in_type\n");
 					return (-1);
 			}
 
@@ -733,21 +732,21 @@ int audio_open (struct audio_s *pa)
 	                /* There was a reported case of assert failure on buffer size in audio_get(). */
 
 	                if (adev[a].inbuf_size_in_bytes < 256 || adev[a].inbuf_size_in_bytes > 32768) {
-	                  text_color_set(DW_COLOR_ERROR);
-	                  dw_printf ("Audio input buffer has unexpected extreme size of %d bytes.\n", adev[a].inbuf_size_in_bytes);
-	                  dw_printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
-	                  dw_printf ("This might be caused by unusual audio device configuration values.\n"); 
+	                  
+	                  printf ("Audio input buffer has unexpected extreme size of %d bytes.\n", adev[a].inbuf_size_in_bytes);
+	                  printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
+	                  printf ("This might be caused by unusual audio device configuration values.\n"); 
 	                  adev[a].inbuf_size_in_bytes = 2048;
-	                  dw_printf ("Using %d to attempt recovery.\n", adev[a].inbuf_size_in_bytes);
+	                  printf ("Using %d to attempt recovery.\n", adev[a].inbuf_size_in_bytes);
 	                }
 
 	                if (adev[a].outbuf_size_in_bytes < 256 || adev[a].outbuf_size_in_bytes > 32768) {
-	                  text_color_set(DW_COLOR_ERROR);
-	                  dw_printf ("Audio output buffer has unexpected extreme size of %d bytes.\n", adev[a].outbuf_size_in_bytes);
-	                  dw_printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
-	                  dw_printf ("This might be caused by unusual audio device configuration values.\n"); 
+	                  
+	                  printf ("Audio output buffer has unexpected extreme size of %d bytes.\n", adev[a].outbuf_size_in_bytes);
+	                  printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
+	                  printf ("This might be caused by unusual audio device configuration values.\n"); 
 	                  adev[a].outbuf_size_in_bytes = 2048;
-	                  dw_printf ("Using %d to attempt recovery.\n", adev[a].outbuf_size_in_bytes);
+	                  printf ("Using %d to attempt recovery.\n", adev[a].outbuf_size_in_bytes);
 	                }
 
 			adev[a].inbuf_ptr = malloc(adev[a].inbuf_size_in_bytes);
@@ -765,14 +764,14 @@ int audio_open (struct audio_s *pa)
 			if(adev[a].inStream) {
 				err = Pa_StartStream(adev[a].inStream);
 				if(err != paNoError) {
-					dw_printf ("Input stream start Error %s\n", Pa_GetErrorText(err));
+					printf ("Input stream start Error %s\n", Pa_GetErrorText(err));
 				}
 			}
 
 			if(adev[a].outStream) {
 				err = Pa_StartStream(adev[a].outStream);
 				if(err != paNoError) {
-					dw_printf ("Output stream start Error %s\n", Pa_GetErrorText(err));
+					printf ("Output stream start Error %s\n", Pa_GetErrorText(err));
 				}
 			}
 		} /* end of audio device defined */
@@ -800,26 +799,26 @@ static int set_portaudio_params (int a, struct adev_s *dev, struct audio_s *pa, 
 	char input_devName[80];
 	char output_devName[80];
 
-	text_color_set(DW_COLOR_ERROR);
+	
 
 	if(!dev || !pa || !_audio_in_name || !_audio_out_name) {
-		dw_printf ("Internal error, invalid function parameter pointer(s) (null)\n");
+		printf ("Internal error, invalid function parameter pointer(s) (null)\n");
 		return -1;
 	}
 
 	if(_audio_in_name[0] == 0) {
-		dw_printf ("Input device name null\n");
+		printf ("Input device name null\n");
 		return -1;
 	}
 
 	if(_audio_out_name[0] == 0) {
-		dw_printf ("Output device name null\n");
+		printf ("Output device name null\n");
 		return -1;
 	}
 
 	numDevices = Pa_GetDeviceCount();
 	if( numDevices < 0 ) {
-		dw_printf( "ERROR: Pa_GetDeviceCount returned 0x%x\n", numDevices );
+		printf( "ERROR: Pa_GetDeviceCount returned 0x%x\n", numDevices );
 		return -1;
 	}
 
@@ -828,7 +827,7 @@ static int set_portaudio_params (int a, struct adev_s *dev, struct audio_s *pa, 
 
 	reqInDeviceNo = searchPADevice(dev, input_devName, reqInDeviceNo, PA_INPUT);
 	if(reqInDeviceNo < 0) {
-		dw_printf ("Requested Input Audio Device not found %s.\n", input_devName);
+		printf ("Requested Input Audio Device not found %s.\n", input_devName);
 		return -1;
 	}
 
@@ -837,7 +836,7 @@ static int set_portaudio_params (int a, struct adev_s *dev, struct audio_s *pa, 
 
 	reqOutDeviceNo = searchPADevice(dev, output_devName, reqOutDeviceNo, PA_OUTPUT);
 	if(reqOutDeviceNo < 0) {
-		dw_printf ("Requested Output Audio Device not found %s.\n", output_devName);
+		printf ("Requested Output Audio Device not found %s.\n", output_devName);
 		return -1;
 	}
 
@@ -858,7 +857,7 @@ static int set_portaudio_params (int a, struct adev_s *dev, struct audio_s *pa, 
 			break;
 
 		default:
-			dw_printf ("Unsupported Sample Size %s.\n", output_devName);
+			printf ("Unsupported Sample Size %s.\n", output_devName);
 			return -1;
 	}
 
@@ -896,7 +895,7 @@ static int set_portaudio_params (int a, struct adev_s *dev, struct audio_s *pa, 
 						pa->adev[a].samples_per_sec, dev->inbuf_frames_per_buffer, 0, paInput16CB, dev );
 
 	if( err != paNoError ) {
-		dw_printf( "PortAudio OpenStream (input) Error: %s\n", Pa_GetErrorText(err));
+		printf( "PortAudio OpenStream (input) Error: %s\n", Pa_GetErrorText(err));
 		return -1;
 	}
 
@@ -905,7 +904,7 @@ static int set_portaudio_params (int a, struct adev_s *dev, struct audio_s *pa, 
 						pa->adev[a].samples_per_sec, dev->outbuf_frames_per_buffer, 0, NULL, dev );
 
 	if( err != paNoError ) {
-		dw_printf( "PortAudio OpenStream (output) Error: %s\n", Pa_GetErrorText(err));
+		printf( "PortAudio OpenStream (output) Error: %s\n", Pa_GetErrorText(err));
 		return -1;
 	}
 
@@ -944,9 +943,9 @@ int audio_get (int a)
 
 
 #if DEBUGx
-	text_color_set(DW_COLOR_DEBUG);
+	
 
-	dw_printf ("audio_get():\n");
+	printf ("audio_get():\n");
 
 #endif
 
@@ -963,8 +962,8 @@ int audio_get (int a)
 
 				assert (adev[a].inStream != NULL);
 #if DEBUGx
-				text_color_set(DW_COLOR_DEBUG);
-				dw_printf ("audio_get(): readi asking for %d frames\n", adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);
+				
+				printf ("audio_get(): readi asking for %d frames\n", adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);
 #endif
 				if(adev[a].inbuf_len >= adev[a].inbuf_size_in_bytes) {
 					adev[a].inbuf_len = 0;
@@ -977,8 +976,8 @@ int audio_get (int a)
 
 				n = adev[a].inbuf_len / adev[a].inbuf_bytes_per_frame;
 #if DEBUGx
-				text_color_set(DW_COLOR_DEBUG);
-				dw_printf ("audio_get(): readi asked for %d and got %d frames\n",
+				
+				printf ("audio_get(): readi asked for %d and got %d frames\n",
 						   adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame, n);
 #endif
 
@@ -1001,8 +1000,8 @@ int audio_get (int a)
 					/* Didn't expect this, but it's not a problem. */
 					/* Wait a little while and try again. */
 
-					text_color_set(DW_COLOR_ERROR);
-					dw_printf ("[%s], Audio input got zero bytes\n", __func__);
+					
+					printf ("[%s], Audio input got zero bytes\n", __func__);
 					SLEEP_MS(10);
 
 					adev[a].inbuf_len = 0;
@@ -1015,8 +1014,8 @@ int audio_get (int a)
 					// TODO: print n.  should snd_strerror use n or errno?
 					// Audio input device error: Unknown error
 
-					text_color_set(DW_COLOR_ERROR);
-					dw_printf ("Audio input device %d error\n", a);
+					
+					printf ("Audio input device %d error\n", a);
 
 	        			audio_stats (a, 
 						save_audio_config_p->adev[a].num_channels, 
@@ -1063,8 +1062,8 @@ int audio_get (int a)
 				assert (adev[a].udp_sock > 0);
 				res = recv(adev[a].udp_sock, adev[a].inbuf_ptr, adev[a].inbuf_size_in_bytes, 0);
 				if (res < 0) {
-					text_color_set(DW_COLOR_ERROR);
-					dw_printf ("Can't read from udp socket, res=%d", res);
+					
+					printf ("Can't read from udp socket, res=%d", res);
 					adev[a].inbuf_len = 0;
 					adev[a].inbuf_next = 0;
 
@@ -1096,8 +1095,8 @@ int audio_get (int a)
 
 				res = read(STDIN_FILENO, adev[a].inbuf_ptr, (size_t)adev[a].inbuf_size_in_bytes);
 				if (res <= 0) {
-					text_color_set(DW_COLOR_INFO);
-					dw_printf ("\nEnd of file on stdin.  Exiting.\n");
+					
+					printf ("\nEnd of file on stdin.  Exiting.\n");
 					exit (0);
 				}
 
@@ -1121,8 +1120,8 @@ int audio_get (int a)
 
 #if DEBUGx
 
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_get(): returns %d\n", n);
+	
+	printf ("audio_get(): returns %d\n", n);
 
 #endif
 
@@ -1185,8 +1184,8 @@ int audio_put (int a, int c)
 		// Transfer Time:0.184750080 No of Frames:56264 Per frame:0.000003284 speed:6.905695
 
 		if ((err != paNoError) && (err != paOutputUnderflowed)) {
-			text_color_set(DW_COLOR_ERROR);
-			dw_printf ("[%s] Audio Output Error: %s\n", __func__, Pa_GetErrorText(err));
+			
+			printf ("[%s] Audio Output Error: %s\n", __func__, Pa_GetErrorText(err));
 		}
 
 #ifdef __TIMED__
@@ -1195,7 +1194,7 @@ int audio_put (int a, int c)
 			end = dtime_monotonic();
 			diff = end - start;
 			if(count)
-				dw_printf ("Transfer Time:%3.9f No of Frames:%d Per frame:%3.9f speed:%f\n",
+				printf ("Transfer Time:%3.9f No of Frames:%d Per frame:%3.9f speed:%f\n",
 						   diff, count, diff/(count * 1.0), (1.0/44100.0)/(diff/(count * 1.0)));
 			count = 0;
 		}
@@ -1269,8 +1268,8 @@ void audio_wait (int a)
 	audio_flush(a);
 	
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_wait(): after sync, status=%d\n", err);
+	
+	printf ("audio_wait(): after sync, status=%d\n", err);
 #endif
 } /* end audio_wait */
 

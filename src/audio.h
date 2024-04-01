@@ -57,7 +57,6 @@ typedef enum retry_e {
 
 enum medium_e { MEDIUM_NONE = 0,	// Channel is not valid for use.
 		MEDIUM_RADIO,		// Internal modem for radio.
-		MEDIUM_IGATE,		// Access IGate as ordinary channel.
 		MEDIUM_NETTNC };	// Remote network TNC.  (possible future)
 
 
@@ -107,27 +106,12 @@ struct audio_s {
 	float recv_ber;			/* Receive Bit Error Rate (BER). */
 					/* Probability of inverting a bit coming out of the modem. */
 
-	char timestamp_format[40];	/* -T option */
-					/* Precede received & transmitted frames with timestamp. */
-					/* Command line option uses "strftime" format string. */
-
-	/* originally a "channel" was always connected to an internal modem. */
-	/* In version 1.6, this is generalized so that a channel (as seen by client application) */
-	/* can be connected to something else.  Initially, this will allow application */
-	/* access to the IGate.  Later we might have network TNCs or other internal functions. */
-
 	// Properties for all channels.
 
 	enum medium_e chan_medium[MAX_TOTAL_CHANS];
 					// MEDIUM_NONE for invalid.
 					// MEDIUM_RADIO for internal modem.  (only possibility earlier)
-					// MEDIUM_IGATE allows application access to IGate.
 					// MEDIUM_NETTNC for external TNC via TCP.
-
-	int igate_vchannel;		/* Virtual channel mapped to APRS-IS. */
-					/* -1 for none. */
-					/* Redundant but it makes things quicker and simpler */
-					/* than always searching thru above. */
 
 	/* Properties for each radio channel, common to receive and transmit. */
 	/* Can be different for each radio channel. */

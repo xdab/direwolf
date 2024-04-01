@@ -26,7 +26,6 @@
 
 #include "fx25.h"
 #include "fcs_calc.h"
-#include "textcolor.h"
 #include "audio.h"
 #include "gen_tone.h"
 
@@ -55,10 +54,10 @@ static unsigned char preload[] = {
 
 int main ()
 {
-	text_color_set(DW_COLOR_ERROR);
-	dw_printf("fxsend - FX.25 unit test.\n");
-	dw_printf("This generates 11 files named fx01.dat, fx02.dat, ..., fx0b.dat\n");
-	dw_printf("Run fxrec as second part of test.\n");
+	
+	printf("fxsend - FX.25 unit test.\n");
+	printf("This generates 11 files named fx01.dat, fx02.dat, ..., fx0b.dat\n");
+	printf("Run fxrec as second part of test.\n");
 
 	fx25_init (3);
 	for (int i = 100 + CTAG_MIN; i <= 100 + CTAG_MAX; i++) {
@@ -113,9 +112,9 @@ int main ()
 int fx25_send_frame (int chan, unsigned char *fbuf, int flen, int fx_mode)
 {
 	if (fx25_get_debug() >= 3) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("------\n");
-	  dw_printf ("FX.25[%d] send frame: FX.25 mode = %d\n", chan, fx_mode);
+	  
+	  printf ("------\n");
+	  printf ("FX.25[%d] send frame: FX.25 mode = %d\n", chan, fx_mode);
 	  fx_hex_dump (fbuf, flen);
 	}
 
@@ -137,8 +136,8 @@ int fx25_send_frame (int chan, unsigned char *fbuf, int flen, int fx_mode)
 
 	assert (data[FX25_MAX_DATA] == fence);
 	if (dlen < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("FX.25[%d]: Frame length of %d + overhead is too large to encode.\n", chan, flen);
+	  
+	  printf ("FX.25[%d]: Frame length of %d + overhead is too large to encode.\n", chan, flen);
 	  return (-1);
 	}
 
@@ -149,8 +148,8 @@ int fx25_send_frame (int chan, unsigned char *fbuf, int flen, int fx_mode)
 	int ctag_num = fx25_pick_mode (fx_mode, dlen);
 
 	if (ctag_num < CTAG_MIN || ctag_num > CTAG_MAX) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("FX.25[%d]: Could not find suitable format for requested %d and data length %d.\n", chan, fx_mode, dlen);
+	  
+	  printf ("FX.25[%d]: Could not find suitable format for requested %d and data length %d.\n", chan, fx_mode, dlen);
 	  return (-1);
 	}
 
@@ -178,12 +177,12 @@ int fx25_send_frame (int chan, unsigned char *fbuf, int flen, int fx_mode)
 	assert (check[FX25_MAX_CHECK] == fence);
 
 	if (fx25_get_debug() >= 3) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("FX.25[%d]: transmit %d data bytes, ctag number 0x%02x\n", chan, k_data_radio, ctag_num);
+	  
+	  printf ("FX.25[%d]: transmit %d data bytes, ctag number 0x%02x\n", chan, k_data_radio, ctag_num);
 	  fx_hex_dump (data, k_data_radio);
-	  dw_printf ("FX.25[%d]: transmit %d check bytes:\n", chan, NROOTS);
+	  printf ("FX.25[%d]: transmit %d check bytes:\n", chan, NROOTS);
 	  fx_hex_dump (check, NROOTS);
-	  dw_printf ("------\n");
+	  printf ("------\n");
 	}
 
 #if FXTEST

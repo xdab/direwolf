@@ -54,8 +54,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "textcolor.h"
-
 /*
  * Copy src to string dst of size siz.  At most siz-1 characters
  * will be copied.  Always NUL terminates (unless siz == 0).
@@ -75,18 +73,15 @@ size_t strlcpy_debug(char *__restrict__ dst, const char *__restrict__ src, size_
 
 #if DEBUG_STRL
 	if (dst == NULL) {
-		text_color_set (DW_COLOR_ERROR);
-		dw_printf ("ERROR: strlcpy dst is NULL.  (%s %s %d)\n", file, func, line);
+		printf ("ERROR: strlcpy dst is NULL.  (%s %s %d)\n", file, func, line);
 		return (0);
 	}
 	if (src == NULL) {
-		text_color_set (DW_COLOR_ERROR);
-		dw_printf ("ERROR: strlcpy src is NULL.  (%s %s %d)\n", file, func, line);
+		printf ("ERROR: strlcpy src is NULL.  (%s %s %d)\n", file, func, line);
 		return (0);
 	}
 	if (siz == 1 || siz == 4) {
-		text_color_set (DW_COLOR_ERROR);
-		dw_printf ("Suspicious strlcpy siz.  Is it using sizeof a pointer variable?  (%s %s %d)\n", file, func, line);
+		printf ("Suspicious strlcpy siz.  Is it using sizeof a pointer variable?  (%s %s %d)\n", file, func, line);
 	}
 #endif
 
@@ -110,8 +105,7 @@ size_t strlcpy_debug(char *__restrict__ dst, const char *__restrict__ src, size_
 
 #if DEBUG_STRL
 	if (retval >= siz) {
-		text_color_set (DW_COLOR_ERROR);
-		dw_printf ("WARNING: strlcpy result length %d exceeds maximum length %d.  (%s %s %d)\n",
+		printf ("WARNING: strlcpy result length %d exceeds maximum length %d.  (%s %s %d)\n",
 				(int)retval, (int)(siz-1), file, func, line);
 	}
 #endif

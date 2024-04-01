@@ -65,7 +65,6 @@
 
 #include "audio.h"
 #include "audio_stats.h"
-#include "textcolor.h"
 #include "ptt.h"
 #include "demod.h"		/* for alevel_t & demod_get_audio_level() */
 
@@ -110,19 +109,19 @@ static int calcbufsize(int rate, int chans, int bits)
 	int size1 = (rate * chans * bits  / 8 * ONE_BUF_TIME) / 1000;
 	int size2 = roundup1k(size1);
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
+	
+	printf ("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
 		rate, chans, bits, size1, size2);
 #endif
 
 	/* Version 1.3 - add a sanity check. */
 	if (size2 < 256 || size2 > 32768) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Audio buffer has unexpected extreme size of %d bytes.\n", size2);
-	  dw_printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
-	  dw_printf ("This might be caused by unusual audio device configuration values.\n"); 
+	  
+	  printf ("Audio buffer has unexpected extreme size of %d bytes.\n", size2);
+	  printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
+	  printf ("This might be caused by unusual audio device configuration values.\n"); 
 	  size2 = 2048;
-	  dw_printf ("Using %d to attempt recovery.\n", size2);
+	  printf ("Using %d to attempt recovery.\n", size2);
 	}
 
 	return (size2);
@@ -251,9 +250,9 @@ int audio_open (struct audio_s *pa)
 	    assert (A->audio_in_handle == 0);
 	    assert (A->audio_out_handle == 0);
 
-	    //text_color_set(DW_COLOR_DEBUG);
-	    //dw_printf ("pa->adev[a].adevice_in = '%s'\n",  pa->adev[a].adevice_in);
-	    //dw_printf ("pa->adev[a].adevice_out = '%s'\n", pa->adev[a].adevice_out);
+	    //
+	    //printf ("pa->adev[a].adevice_in = '%s'\n",  pa->adev[a].adevice_in);
+	    //printf ("pa->adev[a].adevice_out = '%s'\n", pa->adev[a].adevice_out);
 
 
 /*
@@ -335,8 +334,8 @@ int audio_open (struct audio_s *pa)
 	          }
 	        }
 	        if ((UINT)(in_dev_no[a]) == WAVE_MAPPER) {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("\"%s\" doesn't match any of the input devices.\n", pa->adev[a].adevice_in);
+	          
+	          printf ("\"%s\" doesn't match any of the input devices.\n", pa->adev[a].adevice_in);
 	        }
 	      }
  	    }
@@ -363,8 +362,8 @@ int audio_open (struct audio_s *pa)
 	        }
 	      }
 	      if ((UINT)(out_dev_no[a]) == WAVE_MAPPER) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("\"%s\" doesn't match any of the output devices.\n", pa->adev[a].adevice_out);
+	        
+	        printf ("\"%s\" doesn't match any of the output devices.\n", pa->adev[a].adevice_out);
 	      }
 	    }
 	  }   /* if defined */
@@ -375,8 +374,8 @@ int audio_open (struct audio_s *pa)
  * Display the input devices (soundcards) available and what is selected.
  */
 
-	text_color_set(DW_COLOR_INFO);
-	dw_printf ("Available audio input devices for receive (*=selected):\n");
+	
+	printf ("Available audio input devices for receive (*=selected):\n");
 
 	num_devices = waveInGetNumDevs();
 
@@ -384,36 +383,36 @@ int audio_open (struct audio_s *pa)
           if (pa->adev[a].defined) {
 
 	    if (in_dev_no[a] < -1 || in_dev_no[a] >= num_devices) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Invalid input (receive) audio device number %d.\n", in_dev_no[a]);
+	      
+	      printf ("Invalid input (receive) audio device number %d.\n", in_dev_no[a]);
 	      in_dev_no[a] = WAVE_MAPPER;
 	    }
 	  }
         }
 
-	text_color_set(DW_COLOR_INFO);
+	
 	for (n=0; n<num_devices; n++) {
 
 	  if ( ! waveInGetDevCaps(n, &wic, sizeof(WAVEINCAPS))) {
 	    for (a=0; a<MAX_ADEVS; a++) {
 	      if (pa->adev[a].defined) {
-	        dw_printf (" %c", n==in_dev_no[a] ? '*' : ' ');
+	        printf (" %c", n==in_dev_no[a] ? '*' : ' ');
 
 	      }
 	    }
-	    dw_printf ("  %d: %s", n, wic.szPname);
+	    printf ("  %d: %s", n, wic.szPname);
 
 	    for (a=0; a<MAX_ADEVS; a++) {
 	      if (pa->adev[a].defined && n==in_dev_no[a]) {
 	        if (pa->adev[a].num_channels == 2) {
-	          dw_printf ("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
+	          printf ("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
 	        }
 	        else {
-	          dw_printf ("   (channel %d)", ADEVFIRSTCHAN(a));
+	          printf ("   (channel %d)", ADEVFIRSTCHAN(a));
 	        }
 	      }
 	    }
-	    dw_printf ("\n");
+	    printf ("\n");
  	  }
     	}
 
@@ -431,19 +430,19 @@ int audio_open (struct audio_s *pa)
 	      int aaa;
 	      for (aaa=0; aaa<MAX_ADEVS; aaa++) {
 	        if (pa->adev[aaa].defined) {
-	          dw_printf (" %c", a == aaa ? '*' : ' ');
+	          printf (" %c", a == aaa ? '*' : ' ');
 
 	        }
 	      }
-	      dw_printf ("  %s                             ", pa->adev[a].adevice_in);	/* should be UDP:nnnn or stdin */
+	      printf ("  %s                             ", pa->adev[a].adevice_in);	/* should be UDP:nnnn or stdin */
 
 	      if (pa->adev[a].num_channels == 2) {
-	        dw_printf ("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
+	        printf ("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
 	      }
 	      else {
-	        dw_printf ("   (channel %d)", ADEVFIRSTCHAN(a));
+	        printf ("   (channel %d)", ADEVFIRSTCHAN(a));
 	      }
-	      dw_printf ("\n");
+	      printf ("\n");
 	    }
       	  }
      	}
@@ -453,7 +452,7 @@ int audio_open (struct audio_s *pa)
  * Display the output devices (soundcards) available and what is selected.
  */
 
-	dw_printf ("Available audio output devices for transmit (*=selected):\n");
+	printf ("Available audio output devices for transmit (*=selected):\n");
 
 	/* TODO? */
 	/* No "*" is currently displayed when using the default device. */
@@ -465,36 +464,36 @@ int audio_open (struct audio_s *pa)
         for (a=0; a<MAX_ADEVS; a++) {
           if (pa->adev[a].defined) {
 	    if (out_dev_no[a] < -1 || out_dev_no[a] >= num_devices) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Invalid output (transmit) audio device number %d.\n", out_dev_no[a]);
+	      
+	      printf ("Invalid output (transmit) audio device number %d.\n", out_dev_no[a]);
 	      out_dev_no[a] = WAVE_MAPPER;
 	    }
 	  }
 	}
 
-	text_color_set(DW_COLOR_INFO);
+	
 	for (n=0; n<num_devices; n++) {
 
 	  if ( ! waveOutGetDevCaps(n, &woc, sizeof(WAVEOUTCAPS))) {
 	    for (a=0; a<MAX_ADEVS; a++) {
 	      if (pa->adev[a].defined) {
-	        dw_printf (" %c", n==out_dev_no[a] ? '*' : ' ');
+	        printf (" %c", n==out_dev_no[a] ? '*' : ' ');
 
 	      }
 	    }
-	    dw_printf ("  %d: %s", n, woc.szPname);
+	    printf ("  %d: %s", n, woc.szPname);
 
 	    for (a=0; a<MAX_ADEVS; a++) {
 	      if (pa->adev[a].defined && n==out_dev_no[a]) {
 	        if (pa->adev[a].num_channels == 2) {
-	          dw_printf ("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
+	          printf ("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
 	        }
 	        else {
-	          dw_printf ("   (channel %d)", ADEVFIRSTCHAN(a));
+	          printf ("   (channel %d)", ADEVFIRSTCHAN(a));
 	        }
 	      }
 	    }
-	    dw_printf ("\n");
+	    printf ("\n");
 	  }
 	}
 
@@ -528,8 +527,8 @@ int audio_open (struct audio_s *pa)
 
 	     err = waveOutOpen (&(A->audio_out_handle), out_dev_no[a], &wf, (DWORD_PTR)out_callback, a, CALLBACK_FUNCTION);
 	     if (err != MMSYSERR_NOERROR) {
-	       text_color_set(DW_COLOR_ERROR);
-	       dw_printf ("Could not open audio device for output.\n");
+	       
+	       printf ("Could not open audio device for output.\n");
 	       return (-1);
 	     }
 	  
@@ -567,8 +566,8 @@ int audio_open (struct audio_s *pa)
 
 	         err = waveInOpen (&(A->audio_in_handle), in_dev_no[a], &wf, (DWORD_PTR)in_callback, a, CALLBACK_FUNCTION);
 	         if (err != MMSYSERR_NOERROR) {
-	           text_color_set(DW_COLOR_ERROR);
-	           dw_printf ("Could not open audio device for input.\n");
+	           
+	           printf ("Could not open audio device for input.\n");
 	           return (-1);
 	         }	  
 
@@ -616,14 +615,14 @@ int audio_open (struct audio_s *pa)
 
 	           err = WSAStartup (MAKEWORD(2,2), &wsadata);
 	           if (err != 0) {
-	               text_color_set(DW_COLOR_ERROR);
-	               dw_printf("WSAStartup failed: %d\n", err);
+	               
+	               printf("WSAStartup failed: %d\n", err);
 	               return (-1);
 	           }
 
 	           if (LOBYTE(wsadata.wVersion) != 2 || HIBYTE(wsadata.wVersion) != 2) {
-	             text_color_set(DW_COLOR_ERROR);
-                     dw_printf("Could not find a usable version of Winsock.dll\n");
+	             
+                     printf("Could not find a usable version of Winsock.dll\n");
                      WSACleanup();
                      return (-1);
 	           }
@@ -632,8 +631,8 @@ int audio_open (struct audio_s *pa)
 
 	           A->udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	           if (A->udp_sock == INVALID_SOCKET) {
-	             text_color_set(DW_COLOR_ERROR);
-	             dw_printf ("Couldn't create socket, errno %d\n", WSAGetLastError());
+	             
+	             printf ("Couldn't create socket, errno %d\n", WSAGetLastError());
 	             return -1;
 	           }
 
@@ -645,8 +644,8 @@ int audio_open (struct audio_s *pa)
 	           // Bind to the socket
 
 	           if (bind(A->udp_sock, (SOCKADDR *) &si_me, sizeof(si_me)) != 0) {
-	             text_color_set(DW_COLOR_ERROR);
-	             dw_printf ("Couldn't bind socket, errno %d\n", WSAGetLastError());
+	             
+	             printf ("Couldn't bind socket, errno %d\n", WSAGetLastError());
 	             return -1;
 	           }
 	           A->stream_next= 0;
@@ -668,8 +667,8 @@ int audio_open (struct audio_s *pa)
 
 	       default:
 
-	         text_color_set(DW_COLOR_ERROR);
-	         dw_printf ("Internal error, invalid audio_in_type\n");
+	         
+	         printf ("Internal error, invalid audio_in_type\n");
 	         return (-1);
   	     }
 
@@ -689,7 +688,7 @@ int audio_open (struct audio_s *pa)
 static void CALLBACK in_callback (HWAVEIN handle, UINT msg, DWORD_PTR instance, DWORD_PTR param1, DWORD_PTR param2)
 {
 
-	//dw_printf ("in_callback, handle = %p, msg = %d, instance = %I64d\n", handle, msg, instance);
+	//printf ("in_callback, handle = %p, msg = %d, instance = %I64d\n", handle, msg, instance);
 
 	int a = instance;
 	assert (a >= 0 && a < MAX_ADEVS);
@@ -703,7 +702,7 @@ static void CALLBACK in_callback (HWAVEIN handle, UINT msg, DWORD_PTR instance, 
 					/* dwUser can be 32 or 64 bit unsigned int. */
 	  p->lpNext = NULL;
 
-	  // dw_printf ("dwBytesRecorded = %ld\n", p->dwBytesRecorded);
+	  // printf ("dwBytesRecorded = %ld\n", p->dwBytesRecorded);
 
 	  EnterCriticalSection (&(A->in_cs));
 
@@ -793,11 +792,11 @@ int audio_get (int a)
 	        SLEEP_MS (ONE_BUF_TIME);
 	        timeout--;
 	        if (timeout <= 0) {
-	          text_color_set(DW_COLOR_ERROR);
+	          
 
 // TODO1.2: Need more details.  Can we keep going?
 
-	          dw_printf ("Timeout waiting for input from audio device %d.\n", a);
+	          printf ("Timeout waiting for input from audio device %d.\n", a);
 
 	          audio_stats (a, 
 			save_audio_config_p->adev[a].num_channels, 
@@ -824,8 +823,8 @@ int audio_get (int a)
 	        n = ((unsigned char*)(p->lpData))[p->dwUser++];
 #if DEBUGx
 
-	        text_color_set(DW_COLOR_DEBUG);
-	        dw_printf ("audio_get(): returns %d\n", n);
+	        
+	        printf ("audio_get(): returns %d\n", n);
 
 #endif
 	        return (n);
@@ -855,8 +854,8 @@ int audio_get (int a)
 
 	      res = SOCK_RECV (A->udp_sock, A->stream_data, SDR_UDP_BUF_MAXLEN);
 	      if (res <= 0) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Can't read from udp socket, errno %d", WSAGetLastError());
+	        
+	        printf ("Can't read from udp socket, errno %d", WSAGetLastError());
 	        A->stream_len = 0;
 	        A->stream_next = 0;
 
@@ -890,8 +889,8 @@ int audio_get (int a)
 
 	      res = read(STDIN_FILENO, A->stream_data, 1024);
 	      if (res <= 0) {
-	        text_color_set(DW_COLOR_INFO);
-	        dw_printf ("\nEnd of file on stdin.  Exiting.\n");
+	        
+	        printf ("\nEnd of file on stdin.  Exiting.\n");
 	        exit (0);
 	      }
 
@@ -953,16 +952,16 @@ int audio_put (int a, int c)
 	  SLEEP_MS (ONE_BUF_TIME);
 	  timeout--;
 	  if (timeout <= 0) {
-	    text_color_set(DW_COLOR_ERROR);
+	    
 
 // TODO: open issues 78 & 165.  How can we avoid/improve this?
 
-	    dw_printf ("Audio output failure waiting for buffer.\n");
-	    dw_printf ("This can occur when we are producing audio output for\n");
-	    dw_printf ("transmit and the operating system doesn't provide buffer\n");
-	    dw_printf ("space after waiting and retrying many times.\n");
-	    //dw_printf ("In recent years, this has been reported only when running the\n");
-	    //dw_printf ("Windows version with VMWare on a Macintosh.\n");
+	    printf ("Audio output failure waiting for buffer.\n");
+	    printf ("This can occur when we are producing audio output for\n");
+	    printf ("transmit and the operating system doesn't provide buffer\n");
+	    printf ("space after waiting and retrying many times.\n");
+	    //printf ("In recent years, this has been reported only when running the\n");
+	    //printf ("Windows version with VMWare on a Macintosh.\n");
 	    ptt_term ();
 	    return (-1);
 	  }
@@ -1026,8 +1025,7 @@ int audio_flush (int a)
 
 	  e = waveOutWrite(A->audio_out_handle, p, sizeof(WAVEHDR));
 	  if (e != MMSYSERR_NOERROR) {
-	    text_color_set (DW_COLOR_ERROR);
-	    dw_printf ("audio out write error %d\n", e);
+	    printf ("audio out write error %d\n", e);
 
 	    /* I don't expect this to ever happen but if it */
 	    /* does, make the buffer available for filling. */
@@ -1145,8 +1143,8 @@ int audio_close (void)
 	          SLEEP_MS (ONE_BUF_TIME);
 	          timeout--;
 	          if (timeout <= 0) {
-	            text_color_set(DW_COLOR_ERROR);
-	            dw_printf ("Audio output failure on close.\n");
+	            
+	            printf ("Audio output failure on close.\n");
 	          }
 	        }
 

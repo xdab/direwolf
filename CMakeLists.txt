@@ -161,10 +161,6 @@ elseif(APPLE)
   set(CMAKE_MACOSX_RPATH ON)
   message(STATUS "RPATH support: ${CMAKE_MACOSX_RPATH}")
 
-  # just blindly enable dns-sd
-  set(USE_MACOS_DNSSD ON)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_MACOS_DNSSD")
-
 elseif (WIN32)
   if(C_MSVC)
     if (NOT VS2015 AND NOT VS2017 AND NOT VS2019)
@@ -320,11 +316,6 @@ if(LINUX)
   find_package(udev)
   if(UDEV_FOUND)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_CM108")
-  endif()
-
-  find_package(Avahi)
-  if(AVAHI_CLIENT_FOUND)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_AVAHI_CLIENT")
   endif()
 
 elseif (HAVE_SNDIO)

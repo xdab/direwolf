@@ -41,7 +41,6 @@
 
 #include "audio.h"
 #include "gen_tone.h"
-#include "textcolor.h"
 
 #include "fsk_demod_state.h"	/* for MAX_FILTER_SIZE which might be overly generous for here. */
 				/* but safe if we use same size as for receive. */
@@ -136,8 +135,8 @@ int gen_tone_init (struct audio_s *audio_config_p, int amp, int gen_packets)
 	int chan = 0;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("gen_tone_init ( audio_config_p=%p, amp=%d, gen_packets=%d )\n",
+	
+	printf ("gen_tone_init ( audio_config_p=%p, amp=%d, gen_packets=%d )\n",
 			audio_config_p, amp, gen_packets);
 #endif
 	
@@ -156,8 +155,8 @@ int gen_tone_init (struct audio_s *audio_config_p, int amp, int gen_packets)
 	    int a = ACHAN2ADEV(chan);
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("gen_tone_init: chan=%d, modem_type=%d, bps=%d, samples_per_sec=%d\n",
+	
+	printf ("gen_tone_init: chan=%d, modem_type=%d, bps=%d, samples_per_sec=%d\n",
 		chan,
 		save_audio_config_p->achan[chan].modem_type,
 		audio_config_p->achan[chan].baud,
@@ -185,13 +184,13 @@ int gen_tone_init (struct audio_s *audio_config_p, int amp, int gen_packets)
 	  /* 16 bit sound sample must fit in range of -32768 .. +32767. */
 	
 	  if (s < -32768) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("gen_tone_init: Excessive amplitude is being clipped.\n");
+	    
+	    printf ("gen_tone_init: Excessive amplitude is being clipped.\n");
 	    s = -32768;
 	  }
 	  else if (s > 32767) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("gen_tone_init: Excessive amplitude is being clipped.\n");
+	    
+	    printf ("gen_tone_init: Excessive amplitude is being clipped.\n");
 	    s = 32767;
 	  }
 	  sine_table[j] = s;
@@ -291,8 +290,8 @@ void tone_gen_put_bit (int chan, int dat)
 	assert (save_audio_config_p != NULL);
 
 	if (save_audio_config_p->chan_medium[chan] != MEDIUM_RADIO) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Invalid channel %d for tone generation.\n", chan);
+	  
+	  printf ("Invalid channel %d for tone generation.\n", chan);
 	  return;
 	}
 
@@ -314,8 +313,8 @@ void tone_gen_put_bit (int chan, int dat)
 	    case MODEM_AFSK:
 
 #if DEBUG2
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("tone_gen_put_bit %d AFSK\n", __LINE__);
+	      
+	      printf ("tone_gen_put_bit %d AFSK\n", __LINE__);
 #endif
 
 	      // v1.7 reversed.
@@ -330,8 +329,8 @@ void tone_gen_put_bit (int chan, int dat)
 	      break;
 
 	    default:
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("INTERNAL ERROR: %s %d achan[%d].modem_type = %d\n",
+	      
+	      printf ("INTERNAL ERROR: %s %d achan[%d].modem_type = %d\n",
 				__FILE__, __LINE__, chan, save_audio_config_p->achan[chan].modem_type);
 	      exit (EXIT_FAILURE);
 	  }
@@ -367,13 +366,13 @@ void gen_tone_put_sample (int chan, int a, int sam) {
 	// transmit audio level.
 
 	if (sam < -32767) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Warning: Audio sample %d clipped to -32767.\n", sam);
+	  
+	  printf ("Warning: Audio sample %d clipped to -32767.\n", sam);
 	  sam = -32767;
 	}
 	else if (sam > 32767) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Warning: Audio sample %d clipped to +32767.\n", sam);
+	  
+	  printf ("Warning: Audio sample %d clipped to +32767.\n", sam);
 	  sam = 32767;
 	}
 

@@ -42,7 +42,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "textcolor.h"
 #include "ax25_pad.h"
 #include "rrbb.h"
 
@@ -89,8 +88,8 @@ rrbb_t rrbb_new (int chan, int subchan, int slice, int is_scrambled, int descram
 
 	result = malloc(sizeof(struct rrbb_s));
 	if (result == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("FATAL ERROR: Out of memory.\n");
+	  
+	  printf ("FATAL ERROR: Out of memory.\n");
 	  exit (EXIT_FAILURE);
 	}
 	result->magic1 = MAGIC1;
@@ -102,8 +101,8 @@ rrbb_t rrbb_new (int chan, int subchan, int slice, int is_scrambled, int descram
 	new_count++;
 
 	if (new_count > delete_count + 100) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("MEMORY LEAK, rrbb_new, new_count=%d, delete_count=%d\n", new_count, delete_count);
+	  
+	  printf ("MEMORY LEAK, rrbb_new, new_count=%d, delete_count=%d\n", new_count, delete_count);
 	}
 
 	rrbb_clear (result, is_scrambled, descram_state, prev_descram);

@@ -89,7 +89,6 @@
 #include <string.h>
 
 #include "ax25_pad.h"
-#include "textcolor.h"
 #include "kiss_frame.h"
 #include "tq.h"
 #include "xmit.h"
@@ -98,9 +97,9 @@
 
 #if KISSTEST
 
-#define dw_printf printf
+#define printf printf
 
-void text_color_set (dw_color_t c)
+void 
 {
 	return;
 }
@@ -117,8 +116,8 @@ static void kiss_set_hardware (int chan, char *command, int debug, struct kisspo
 #endif
 
 //#if KISSUTIL
-//#define text_color_set(x)   ;
-//#define dw_printf printf
+//#define 
+//#define printf printf
 //#endif
 
 
@@ -242,8 +241,8 @@ int kiss_unwrap (unsigned char *in, int ilen, unsigned char *out)
 	if (ilen < 2) {
 	  /* Need at least the "type indicator" byte and FEND. */
 	  /* Probably more. */
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("KISS message less than minimum length.\n");
+	  
+	  printf ("KISS message less than minimum length.\n");
 	  return (0);
 	}
 
@@ -251,8 +250,8 @@ int kiss_unwrap (unsigned char *in, int ilen, unsigned char *out)
 	  ilen--;	/* Don't try to process below. */
 	}
 	else {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("KISS frame should end with FEND.\n");
+	  
+	  printf ("KISS frame should end with FEND.\n");
 	}
 
 	if (in[0] == FEND) {
@@ -265,8 +264,8 @@ int kiss_unwrap (unsigned char *in, int ilen, unsigned char *out)
 	for ( ; j<ilen; j++) {
 
 	  if (in[j] == FEND) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("KISS frame should not have FEND in the middle.\n");
+	    
+	    printf ("KISS frame should not have FEND in the middle.\n");
 	  }
 
 	  if (escaped_mode) {
@@ -278,8 +277,8 @@ int kiss_unwrap (unsigned char *in, int ilen, unsigned char *out)
 	      out[olen++] = FEND;
 	    }
 	    else {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("KISS protocol error.  Found 0x%02x after FESC.\n", in[j]);
+	      
+	      printf ("KISS protocol error.  Found 0x%02x after FESC.\n", in[j]);
 	    }
 	    escaped_mode = 0;
 	  }
@@ -355,7 +354,7 @@ void kiss_rec_byte (kiss_frame_t *kf, unsigned char ch, int debug,
 			void (*sendfun)(int chan, int kiss_cmd, unsigned char *fbuf, int flen, struct kissport_status_s *onlykps, int onlyclient))
 {
 
-	//dw_printf ("kiss_frame ( %c %02x ) \n", ch, ch);
+	//printf ("kiss_frame ( %c %02x ) \n", ch, ch);
 	
 	switch (kf->state) {
 	 
@@ -444,8 +443,8 @@ void kiss_rec_byte (kiss_frame_t *kf, unsigned char ch, int debug,
 	      kf->kiss_msg[kf->kiss_len++] = ch;
 	    }
 	    else {	    
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("KISS message exceeded maximum length.\n");
+	      
+	      printf ("KISS message exceeded maximum length.\n");
 	    }	      
 	    return;
 	    break;
@@ -570,20 +569,19 @@ void kiss_process_msg (unsigned char *kiss_msg, int kiss_len, int debug, struct 
 	    /* Verify that the radio channel number is valid. */
 	    /* Any sort of medium should be OK here. */
 
-	    if ((chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] == MEDIUM_NONE) 
-		&& save_audio_config_p->chan_medium[chan]  != MEDIUM_IGATE) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Invalid transmit channel %d from KISS client app.\n", chan);
-	      dw_printf ("\n");
-	      dw_printf ("Are you using AX.25 for Linux?  It might be trying to use a modified\n");
-	      dw_printf ("version of KISS which uses the channel field differently than the\n");
-	      dw_printf ("original KISS protocol specification.  The solution might be to use\n");
-	      dw_printf ("a command like \"kissparms -c 1 -p radio\" to set CRC none mode.\n");
-	      dw_printf ("Another way of doing this is pre-loading the \"kiss\" kernel module with CRC disabled:\n");
-	      dw_printf ("sudo /sbin/modprobe -q mkiss crc_force=1\n");
+	    if ((chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] == MEDIUM_NONE)) {
+	      
+	      printf ("Invalid transmit channel %d from KISS client app.\n", chan);
+	      printf ("\n");
+	      printf ("Are you using AX.25 for Linux?  It might be trying to use a modified\n");
+	      printf ("version of KISS which uses the channel field differently than the\n");
+	      printf ("original KISS protocol specification.  The solution might be to use\n");
+	      printf ("a command like \"kissparms -c 1 -p radio\" to set CRC none mode.\n");
+	      printf ("Another way of doing this is pre-loading the \"kiss\" kernel module with CRC disabled:\n");
+	      printf ("sudo /sbin/modprobe -q mkiss crc_force=1\n");
 
-	      dw_printf ("\n");
-              text_color_set(DW_COLOR_DEBUG);
+	      printf ("\n");
+              
 	      kiss_debug_print (FROM_CLIENT, NULL, kiss_msg, kiss_len);
 	      return;
 	    }
@@ -591,8 +589,8 @@ void kiss_process_msg (unsigned char *kiss_msg, int kiss_len, int debug, struct 
 	    memset (&alevel, 0xff, sizeof(alevel));
 	    packet_t pp = ax25_from_frame (kiss_msg+1, kiss_len-1, alevel);
 	    if (pp == NULL) {
-	       text_color_set(DW_COLOR_ERROR);
-	       dw_printf ("ERROR - Invalid KISS data frame from client app.\n");
+	       
+	       printf ("ERROR - Invalid KISS data frame from client app.\n");
 	    }
 	    else {
 
@@ -615,16 +613,16 @@ void kiss_process_msg (unsigned char *kiss_msg, int kiss_len, int debug, struct 
         case KISS_CMD_TXDELAY:				/* 1 = TXDELAY */
 
 	  if (kiss_len < 2) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("KISS ERROR: Missing value for TXDELAY command.\n");
+	    
+	    printf ("KISS ERROR: Missing value for TXDELAY command.\n");
 	    return;
 	  }
-          text_color_set(DW_COLOR_INFO);
-	  dw_printf ("KISS protocol set TXDELAY = %d (*10mS units = %d mS), chan %d\n", kiss_msg[1], kiss_msg[1] * 10, chan);
+          
+	  printf ("KISS protocol set TXDELAY = %d (*10mS units = %d mS), chan %d\n", kiss_msg[1], kiss_msg[1] * 10, chan);
 	  if (kiss_msg[1] < 4 || kiss_msg[1] > 100) {
-            text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Are you sure you want such an extreme value for TXDELAY?\n");
-	    dw_printf ("See \"Radio Channel - Transmit Timing\" section of User Guide for explanation.\n");
+            
+	    printf ("Are you sure you want such an extreme value for TXDELAY?\n");
+	    printf ("See \"Radio Channel - Transmit Timing\" section of User Guide for explanation.\n");
 	  }
 	  xmit_set_txdelay (chan, kiss_msg[1]);
 	  break;
@@ -632,16 +630,16 @@ void kiss_process_msg (unsigned char *kiss_msg, int kiss_len, int debug, struct 
         case KISS_CMD_PERSISTENCE:			/* 2 = Persistence */
 
 	  if (kiss_len < 2) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("KISS ERROR: Missing value for PERSISTENCE command.\n");
+	    
+	    printf ("KISS ERROR: Missing value for PERSISTENCE command.\n");
 	    return;
 	  }
-          text_color_set(DW_COLOR_INFO);
-	  dw_printf ("KISS protocol set Persistence = %d, chan %d\n", kiss_msg[1], chan);
+          
+	  printf ("KISS protocol set Persistence = %d, chan %d\n", kiss_msg[1], chan);
 	  if (kiss_msg[1] < 5 || kiss_msg[1] > 250) {
-            text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Are you sure you want such an extreme value for PERSIST?\n");
-	    dw_printf ("See \"Radio Channel - Transmit Timing\" section of User Guide for explanation.\n");
+            
+	    printf ("Are you sure you want such an extreme value for PERSIST?\n");
+	    printf ("See \"Radio Channel - Transmit Timing\" section of User Guide for explanation.\n");
 	  }
 	  xmit_set_persist (chan, kiss_msg[1]);
 	  break;
@@ -649,16 +647,16 @@ void kiss_process_msg (unsigned char *kiss_msg, int kiss_len, int debug, struct 
         case KISS_CMD_SLOTTIME:				/* 3 = SlotTime */
 
 	  if (kiss_len < 2) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("KISS ERROR: Missing value for SLOTTIME command.\n");
+	    
+	    printf ("KISS ERROR: Missing value for SLOTTIME command.\n");
 	    return;
 	  }
-          text_color_set(DW_COLOR_INFO);
-	  dw_printf ("KISS protocol set SlotTime = %d (*10mS units = %d mS), chan %d\n", kiss_msg[1], kiss_msg[1] * 10, chan);
+          
+	  printf ("KISS protocol set SlotTime = %d (*10mS units = %d mS), chan %d\n", kiss_msg[1], kiss_msg[1] * 10, chan);
 	  if (kiss_msg[1] < 2 || kiss_msg[1] > 50) {
-            text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Are you sure you want such an extreme value for SLOTTIME?\n");
-	    dw_printf ("See \"Radio Channel - Transmit Timing\" section of User Guide for explanation.\n");
+            
+	    printf ("Are you sure you want such an extreme value for SLOTTIME?\n");
+	    printf ("See \"Radio Channel - Transmit Timing\" section of User Guide for explanation.\n");
 	  }
 	  xmit_set_slottime (chan, kiss_msg[1]);
 	  break;
@@ -666,16 +664,16 @@ void kiss_process_msg (unsigned char *kiss_msg, int kiss_len, int debug, struct 
         case KISS_CMD_TXTAIL:				/* 4 = TXtail */
 
 	  if (kiss_len < 2) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("KISS ERROR: Missing value for TXTAIL command.\n");
+	    
+	    printf ("KISS ERROR: Missing value for TXTAIL command.\n");
 	    return;
 	  }
-          text_color_set(DW_COLOR_INFO);
-	  dw_printf ("KISS protocol set TXtail = %d (*10mS units = %d mS), chan %d\n", kiss_msg[1], kiss_msg[1] * 10, chan);
+          
+	  printf ("KISS protocol set TXtail = %d (*10mS units = %d mS), chan %d\n", kiss_msg[1], kiss_msg[1] * 10, chan);
 	  if (kiss_msg[1] < 2) {
-            text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Setting TXTAIL so low is asking for trouble.  You probably don't want to do this.\n");
-	    dw_printf ("See \"Radio Channel - Transmit Timing\" section of User Guide for explanation.\n");
+            
+	    printf ("Setting TXTAIL so low is asking for trouble.  You probably don't want to do this.\n");
+	    printf ("See \"Radio Channel - Transmit Timing\" section of User Guide for explanation.\n");
 	  }
 	  xmit_set_txtail (chan, kiss_msg[1]);
 	  break;
@@ -683,52 +681,52 @@ void kiss_process_msg (unsigned char *kiss_msg, int kiss_len, int debug, struct 
         case KISS_CMD_FULLDUPLEX:			/* 5 = FullDuplex */
 
 	  if (kiss_len < 2) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("KISS ERROR: Missing value for FULLDUPLEX command.\n");
+	    
+	    printf ("KISS ERROR: Missing value for FULLDUPLEX command.\n");
 	    return;
 	  }
-          text_color_set(DW_COLOR_INFO);
-	  dw_printf ("KISS protocol set FullDuplex = %d, chan %d\n", kiss_msg[1], chan);
+          
+	  printf ("KISS protocol set FullDuplex = %d, chan %d\n", kiss_msg[1], chan);
 	  xmit_set_fulldup (chan, kiss_msg[1]);
 	  break;
 
         case KISS_CMD_SET_HARDWARE:			/* 6 = TNC specific */
 
 	  if (kiss_len < 2) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("KISS ERROR: Missing value for SET HARDWARE command.\n");
+	    
+	    printf ("KISS ERROR: Missing value for SET HARDWARE command.\n");
 	    return;
 	  }
 	  kiss_msg[kiss_len] = '\0';
-          text_color_set(DW_COLOR_INFO);
-	  dw_printf ("KISS protocol set hardware \"%s\", chan %d\n", (char*)(kiss_msg+1), chan);
+          
+	  printf ("KISS protocol set hardware \"%s\", chan %d\n", (char*)(kiss_msg+1), chan);
 	  kiss_set_hardware (chan, (char*)(kiss_msg+1), debug, kps, client, sendfun);
 	  break;
 
         case KISS_CMD_END_KISS:			/* 15 = End KISS mode, channel should be 15. */
 						/* Ignore it. */
-          text_color_set(DW_COLOR_INFO);
-	  dw_printf ("KISS protocol end KISS mode - Ignored.\n");
+          
+	  printf ("KISS protocol end KISS mode - Ignored.\n");
 	  break;
 
         default:			
-          text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("KISS Invalid command %d\n", cmd);
+          
+	  printf ("KISS Invalid command %d\n", cmd);
           kiss_debug_print (FROM_CLIENT, NULL, kiss_msg, kiss_len);
 
-          text_color_set(DW_COLOR_INFO);
-	  dw_printf ("Troubleshooting tip:\n");
-	  dw_printf ("Use \"-d kn\" option on direwolf command line to observe\n");
-	  dw_printf ("all communication with the client application.\n");
+          
+	  printf ("Troubleshooting tip:\n");
+	  printf ("Use \"-d kn\" option on direwolf command line to observe\n");
+	  printf ("all communication with the client application.\n");
 
 	  if (cmd == XKISS_CMD_DATA || cmd == XKISS_CMD_POLL) {
-	    dw_printf ("\n");
-	    dw_printf ("It looks like you are trying to use the \"XKISS\" protocol which is not supported.\n");
-	    dw_printf ("Change your application settings to use standard \"KISS\" rather than some other variant.\n");
-	    dw_printf ("If you are using Winlink Express, configure like this:\n");
-	    dw_printf ("    Packet TNC Type:  KISS\n");
-	    dw_printf ("    Packet TNC Model:  NORMAL      -- Using ACKMODE will cause this error.\n");
-	    dw_printf ("\n");
+	    printf ("\n");
+	    printf ("It looks like you are trying to use the \"XKISS\" protocol which is not supported.\n");
+	    printf ("Change your application settings to use standard \"KISS\" rather than some other variant.\n");
+	    printf ("If you are using Winlink Express, configure like this:\n");
+	    printf ("    Packet TNC Type:  KISS\n");
+	    printf ("    Packet TNC Model:  NORMAL      -- Using ACKMODE will cause this error.\n");
+	    printf ("\n");
 	  }
 	  break;
 	}
@@ -839,8 +837,8 @@ static void kiss_set_hardware (int chan, char *command, int debug, struct kisspo
 	  if (strcmp(command, "TNC") == 0) {		/* TNC - Identify software version. */
 
 	    if (strlen(param) > 0) {
-              text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("KISS Set Hardware TNC: Did not expect a parameter.\n");
+              
+	      printf ("KISS Set Hardware TNC: Did not expect a parameter.\n");
 	    }
 
 	    snprintf (response, sizeof(response), "DIREWOLF %d.%d", MAJOR_VERSION, MINOR_VERSION);
@@ -850,8 +848,8 @@ static void kiss_set_hardware (int chan, char *command, int debug, struct kisspo
 	  else if (strcmp(command, "TXBUF") == 0) {	/* TXBUF - Number of bytes in transmit queue. */
 
 	    if (strlen(param) > 0) {
-              text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("KISS Set Hardware TXBUF: Did not expect a parameter.\n");
+              
+	      printf ("KISS Set Hardware TXBUF: Did not expect a parameter.\n");
 	    }
 
 	    int n = tq_count (chan, -1, "", "", 1);
@@ -860,13 +858,13 @@ static void kiss_set_hardware (int chan, char *command, int debug, struct kisspo
 	  }
 
 	  else {
-            text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("KISS Set Hardware unrecognized command: %s.\n", command);
+            
+	    printf ("KISS Set Hardware unrecognized command: %s.\n", command);
 	  }
 	}
 	else {
-          text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("KISS Set Hardware \"%s\" expected the form COMMAND:[parameter[,parameter...]]\n", command);
+          
+	  printf ("KISS Set Hardware \"%s\" expected the form COMMAND:[parameter[,parameter...]]\n", command);
 	}
 	return;
 
@@ -901,24 +899,24 @@ void kiss_debug_print (fromto_t fromto, char *special, unsigned char *pmsg, int 
 		"Invalid 12", 	"Invalid 13",	"Invalid 14",	"Return" };
 #endif
 
-	text_color_set(DW_COLOR_DEBUG);
+	
 
 #ifdef KISSUTIL
-	dw_printf ("From KISS TNC:\n");
+	printf ("From KISS TNC:\n");
 #else
-	dw_printf ("\n");
+	printf ("\n");
 	if (special == NULL) {
 	  unsigned char *p;	/* to skip over FEND if present. */
 
 	  p = pmsg;
 	  if (*p == FEND) p++;
 
-	  dw_printf ("%s %s %s KISS client application, channel %d, total length = %d\n",
+	  printf ("%s %s %s KISS client application, channel %d, total length = %d\n",
 			prefix[(int)fromto], function[p[0] & 0xf], direction[(int)fromto], 
 			(p[0] >> 4) & 0xf, msg_len);
 	}
 	else {
-	  dw_printf ("%s %s %s KISS client application, total length = %d\n",
+	  printf ("%s %s %s KISS client application, total length = %d\n",
 			prefix[(int)fromto], special, direction[(int)fromto], 
 			msg_len);
 	}
@@ -968,7 +966,7 @@ int main ()
 	assert (dlen == 512);
 	assert (memcmp(din, dout, 512) == 0);
 
-	dw_printf ("Quick KISS test passed OK.\n");
+	printf ("Quick KISS test passed OK.\n");
 	exit (EXIT_SUCCESS);
 }
 

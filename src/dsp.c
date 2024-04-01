@@ -39,7 +39,6 @@
 #include "audio.h"
 #include "fsk_demod_state.h"
 #include "fsk_gen_filter.h"
-#include "textcolor.h"
 #include "dsp.h"
 
 
@@ -133,10 +132,10 @@ void gen_lowpass (float fc, float *lp_filter, int filter_size, bp_window_t wtype
 
 
 #if DEBUG1
-	text_color_set(DW_COLOR_DEBUG);
+	
 
-	dw_printf ("Lowpass, size=%d, fc=%.2f\n", filter_size, fc);
-	dw_printf ("   j     shape   sinc   final\n");
+	printf ("Lowpass, size=%d, fc=%.2f\n", filter_size, fc);
+	printf ("   j     shape   sinc   final\n");
 #endif
 
 	assert (filter_size >= 3 && filter_size <= MAX_FILTER_SIZE);
@@ -159,7 +158,7 @@ void gen_lowpass (float fc, float *lp_filter, int filter_size, bp_window_t wtype
 	  lp_filter[j] = sinc * shape;
 
 #if DEBUG1
-	  dw_printf ("%6d  %6.2f  %6.3f  %6.3f\n", j, shape, sinc, lp_filter[j] ) ;
+	  printf ("%6d  %6.2f  %6.3f  %6.3f\n", j, shape, sinc, lp_filter[j] ) ;
 #endif
         }
 
@@ -212,10 +211,10 @@ void gen_bandpass (float f1, float f2, float *bp_filter, int filter_size, bp_win
 	float center = 0.5 * (filter_size - 1);
 
 #if DEBUG1
-	text_color_set(DW_COLOR_DEBUG);
+	
 
-	dw_printf ("Bandpass, size=%d\n", filter_size);
-	dw_printf ("   j     shape   sinc   final\n");
+	printf ("Bandpass, size=%d\n", filter_size);
+	printf ("   j     shape   sinc   final\n");
 #endif
 
 	assert (filter_size >= 3 && filter_size <= MAX_FILTER_SIZE);
@@ -236,7 +235,7 @@ void gen_bandpass (float f1, float f2, float *bp_filter, int filter_size, bp_win
 	  bp_filter[j] = sinc * shape;
 
 #if DEBUG1
-	  dw_printf ("%6d  %6.2f  %6.3f  %6.3f\n", j, shape, sinc, bp_filter[j] ) ;
+	  printf ("%6d  %6.2f  %6.3f  %6.3f\n", j, shape, sinc, bp_filter[j] ) ;
 #endif
 	}
 
@@ -254,7 +253,7 @@ void gen_bandpass (float f1, float f2, float *bp_filter, int filter_size, bp_win
 	}
 
 #if DEBUG1
-	dw_printf ("Before normalizing, G=%.3f\n", G);
+	printf ("Before normalizing, G=%.3f\n", G);
 #endif
         for (j=0; j<filter_size; j++) {
 	  bp_filter[j] = bp_filter[j] / G;
@@ -303,7 +302,7 @@ void gen_ms (int fc, int sps, float *sin_table, float *cos_table, int filter_siz
 	  Gc += cos_table[j] * cosf(am);
 
 #if DEBUG1
-	  dw_printf ("%6d  %6.2f  %6.2f  %6.2f\n", j, shape, sin_table[j], cos_table[j]) ;
+	  printf ("%6d  %6.2f  %6.2f  %6.2f\n", j, shape, sin_table[j], cos_table[j]) ;
 #endif
         }
 
@@ -311,7 +310,7 @@ void gen_ms (int fc, int sps, float *sin_table, float *cos_table, int filter_siz
 /* Normalize for unity gain */
 
 #if DEBUG1
-	dw_printf ("Before normalizing, Gs = %.2f, Gc = %.2f\n", Gs, Gc) ;
+	printf ("Before normalizing, Gs = %.2f, Gc = %.2f\n", Gs, Gc) ;
 #endif
         for (j=0; j<filter_size; j++) {
 	  sin_table[j] = sin_table[j] / Gs;

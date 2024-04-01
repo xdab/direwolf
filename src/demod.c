@@ -48,7 +48,6 @@
 #include "fsk_demod_state.h"
 #include "fsk_gen_filter.h"
 #include "hdlc_rec.h"
-#include "textcolor.h"
 #include "demod_afsk.h"
 
 
@@ -152,8 +151,8 @@ int demod_init (struct audio_s *pa)
 	        else if (*p == '+') {
 	          have_plus = 1;
 	          if (p[1] != '\0') {
-		    text_color_set(DW_COLOR_ERROR);
-		    dw_printf ("Channel %d: + option must appear at end of demodulator types \"%s\" \n", 
+		    
+		    printf ("Channel %d: + option must appear at end of demodulator types \"%s\" \n", 
 					chan, save_audio_config_p->achan[chan].profiles);
 		  }	    
 	        }
@@ -161,14 +160,14 @@ int demod_init (struct audio_s *pa)
 	        else if (*p == '-') {
 	          have_plus = -1;
 	          if (p[1] != '\0') {
-		    text_color_set(DW_COLOR_ERROR);
-		    dw_printf ("Channel %d: - option must appear at end of demodulator types \"%s\" \n", 
+		    
+		    printf ("Channel %d: - option must appear at end of demodulator types \"%s\" \n", 
 					chan, save_audio_config_p->achan[chan].profiles);
 		  }	
     
 	        } else {
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("Channel %d: Demodulator types \"%s\" can contain only letters and + - characters.\n", 
+		  
+		  printf ("Channel %d: Demodulator types \"%s\" can contain only letters and + - characters.\n", 
 					chan, save_audio_config_p->achan[chan].profiles);
 	        }
 	      }
@@ -258,16 +257,16 @@ int demod_init (struct audio_s *pa)
 
 	      if (have_plus && save_audio_config_p->achan[chan].num_freq > 1) {
 
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("Channel %d: Demodulator + option can't be combined with multiple frequencies.\n", chan);
+		  
+		  printf ("Channel %d: Demodulator + option can't be combined with multiple frequencies.\n", chan);
 	          save_audio_config_p->achan[chan].num_subchan = 1;	// Will be set higher later.
 	          save_audio_config_p->achan[chan].num_freq = 1;
 	      }
 
 	      if (num_letters > 1 && save_audio_config_p->achan[chan].num_freq > 1) {
 
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("Channel %d: Multiple demodulator types can't be combined with multiple frequencies.\n", chan);
+		  
+		  printf ("Channel %d: Multiple demodulator types can't be combined with multiple frequencies.\n", chan);
 
 	          save_audio_config_p->achan[chan].profiles[1] = '\0';
 		  num_letters = 1;
@@ -280,15 +279,15 @@ int demod_init (struct audio_s *pa)
 		}
 	      }
 
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("Channel %d: %d baud, AFSK %d & %d Hz, %s, %d sample rate",
+	      
+	      printf ("Channel %d: %d baud, AFSK %d & %d Hz, %s, %d sample rate",
 		    chan, save_audio_config_p->achan[chan].baud, 
 		    save_audio_config_p->achan[chan].mark_freq, save_audio_config_p->achan[chan].space_freq,
 		    save_audio_config_p->achan[chan].profiles,
 		    save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec);
 	      if (save_audio_config_p->achan[chan].decimate != 1) 
-	        dw_printf (" / %d", save_audio_config_p->achan[chan].decimate);
-	      dw_printf (".\n");
+	        printf (" / %d", save_audio_config_p->achan[chan].decimate);
+	      printf (".\n");
 
 
 /* 
@@ -314,14 +313,14 @@ int demod_init (struct audio_s *pa)
 	        save_audio_config_p->achan[chan].num_subchan = num_letters;
 		
 		if (save_audio_config_p->achan[chan].num_subchan != num_letters) {
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("INTERNAL ERROR, %s:%d, chan=%d, num_subchan(%d) != strlen(\"%s\")\n",
+		  
+		  printf ("INTERNAL ERROR, %s:%d, chan=%d, num_subchan(%d) != strlen(\"%s\")\n",
 				__FILE__, __LINE__, chan, save_audio_config_p->achan[chan].num_subchan, save_audio_config_p->achan[chan].profiles);
 		}
 
 	        if (save_audio_config_p->achan[chan].num_freq != 1) {
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("INTERNAL ERROR, %s:%d, chan=%d, num_freq(%d) != 1\n",
+		  
+		  printf ("INTERNAL ERROR, %s:%d, chan=%d, num_freq(%d) != 1\n",
 				__FILE__, __LINE__, chan, save_audio_config_p->achan[chan].num_freq);
 		}
 
@@ -337,8 +336,8 @@ int demod_init (struct audio_s *pa)
 	          space = save_audio_config_p->achan[chan].space_freq;
 
 	          if (save_audio_config_p->achan[chan].num_subchan != 1) {
-	            text_color_set(DW_COLOR_DEBUG);
-	            dw_printf ("        %d.%d: %c %d & %d\n", chan, d, profile, mark, space);
+	            
+	            printf ("        %d.%d: %c %d & %d\n", chan, d, profile, mark, space);
 	          }
 
 	          demod_afsk_init (save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec / save_audio_config_p->achan[chan].decimate, 
@@ -372,20 +371,20 @@ int demod_init (struct audio_s *pa)
  */
 
 	        if (num_letters != 1) {
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("INTERNAL ERROR, %s:%d, chan=%d, strlen(\"%s\") != 1\n",
+		  
+		  printf ("INTERNAL ERROR, %s:%d, chan=%d, strlen(\"%s\") != 1\n",
 				__FILE__, __LINE__, chan, just_letters);
 		}
 
 	        if (save_audio_config_p->achan[chan].num_freq != 1) {
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("INTERNAL ERROR, %s:%d, chan=%d, num_freq(%d) != 1\n",
+		  
+		  printf ("INTERNAL ERROR, %s:%d, chan=%d, num_freq(%d) != 1\n",
 				__FILE__, __LINE__, chan, save_audio_config_p->achan[chan].num_freq);
 		}
 
 	        if (save_audio_config_p->achan[chan].num_freq != save_audio_config_p->achan[chan].num_subchan) {
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("INTERNAL ERROR, %s:%d, chan=%d, num_freq(%d) != num_subchan(%d)\n",
+		  
+		  printf ("INTERNAL ERROR, %s:%d, chan=%d, num_freq(%d) != num_subchan(%d)\n",
 				__FILE__, __LINE__, chan, save_audio_config_p->achan[chan].num_freq, save_audio_config_p->achan[chan].num_subchan);
 		}
 
@@ -425,8 +424,8 @@ int demod_init (struct audio_s *pa)
  */
 
 	        if (num_letters != 1) {
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("INTERNAL ERROR, %s:%d, chan=%d, strlen(\"%s\") != 1\n",
+		  
+		  printf ("INTERNAL ERROR, %s:%d, chan=%d, strlen(\"%s\") != 1\n",
 				__FILE__, __LINE__, chan, save_audio_config_p->achan[chan].profiles);
 		}
 
@@ -447,8 +446,8 @@ int demod_init (struct audio_s *pa)
 	          space = save_audio_config_p->achan[chan].space_freq + k;
 
 	          if (save_audio_config_p->achan[chan].num_freq != 1) {
-	            text_color_set(DW_COLOR_DEBUG);
-	            dw_printf ("        %d.%d: %c %d & %d\n", chan, d, profile, mark, space);
+	            
+	            printf ("        %d.%d: %c %d & %d\n", chan, d, profile, mark, space);
 	          }
       
 	          demod_afsk_init (save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec / save_audio_config_p->achan[chan].decimate, 
@@ -546,15 +545,15 @@ int demod_init (struct audio_s *pa)
 	      save_audio_config_p->achan[chan].upsample = TUNE_UPSAMPLE;
 #endif
 
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("Channel %d: %d baud, modem type %d, %s, %d sample rate x %d",
+	      
+	      printf ("Channel %d: %d baud, modem type %d, %s, %d sample rate x %d",
 		    chan,
 	            save_audio_config_p->achan[chan].baud,
 	            save_audio_config_p->achan[chan].modem_type,
 		    save_audio_config_p->achan[chan].profiles,
 		    save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec,
 	            save_audio_config_p->achan[chan].upsample);
-	      dw_printf (".\n");
+	      printf (".\n");
 	      
 	      struct demodulator_state_s *D;
 	      D = &demodulator_state[chan][0];	// first subchannel
@@ -572,29 +571,29 @@ int demod_init (struct audio_s *pa)
      	      }
 	        
 
-	      text_color_set(DW_COLOR_INFO);
-	      dw_printf ("The ratio of audio samples per sec (%d) to data rate in baud (%d) is %.1f\n",
+	      
+	      printf ("The ratio of audio samples per sec (%d) to data rate in baud (%d) is %.1f\n",
 				save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec,
 				save_audio_config_p->achan[chan].baud,
 				(double)ratio);
 	      if (ratio < 3) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("There is little hope of success with such a low ratio.  Use a higher sample rate.\n");
+	        
+	        printf ("There is little hope of success with such a low ratio.  Use a higher sample rate.\n");
 	      }
 	      else if (ratio < 5) {
-	        dw_printf ("This is on the low side for best performance.  Can you use a higher sample rate?\n");
+	        printf ("This is on the low side for best performance.  Can you use a higher sample rate?\n");
 	        if (save_audio_config_p->adev[ACHAN2ADEV(chan)].samples_per_sec == 44100) {
-	          dw_printf ("For example, can you use 48000 rather than 44100?\n");
+	          printf ("For example, can you use 48000 rather than 44100?\n");
 	        }
 	      }
 	      else if (ratio < 6) {
-	        dw_printf ("Increasing the sample rate should improve decoder performance.\n");
+	        printf ("Increasing the sample rate should improve decoder performance.\n");
 	      }
 	      else if (ratio > 15) {
-	        dw_printf ("Sample rate is more than adequate.  You might lower it if CPU load is a concern.\n");
+	        printf ("Sample rate is more than adequate.  You might lower it if CPU load is a concern.\n");
 	      }
 	      else {
-	        dw_printf ("This is a suitable ratio for good performance.\n");
+	        printf ("This is a suitable ratio for good performance.\n");
 	      }
 
 	      if (strchr(save_audio_config_p->achan[chan].profiles, '+') != NULL) {
@@ -617,7 +616,7 @@ int demod_init (struct audio_s *pa)
     
 	 }  /* if channel medium is radio */
 
-// FIXME dw_printf ("-------- end of loop for chn %d \n", chan);
+// FIXME printf ("-------- end of loop for chn %d \n", chan);
 
 	}  /* for chan ... */
 
@@ -625,12 +624,7 @@ int demod_init (struct audio_s *pa)
 
 	for (chan = MAX_CHANS; chan < MAX_TOTAL_CHANS; chan++) {
 
-// FIXME dw_printf ("-------- virtual channel loop %d \n", chan);
-
-	  if (chan == save_audio_config_p->igate_vchannel) {
-	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("Channel %d: IGate virtual channel.\n", chan);
-	  }
+// FIXME printf ("-------- virtual channel loop %d \n", chan);
 	}
 
         return (0);

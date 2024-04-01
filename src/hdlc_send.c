@@ -25,7 +25,6 @@
 #include "hdlc_send.h"
 #include "audio.h"
 #include "gen_tone.h"
-#include "textcolor.h"
 #include "fcs_calc.h"
 #include "ax25_pad.h"
 #include "fx25.h"
@@ -84,8 +83,8 @@ int layer2_send_frame (int chan, packet_t pp, int bad_fcs, struct audio_s *audio
 	  if (n > 0) {
 	    return (n);
 	  }
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Unable to send FX.25.  Falling back to regular AX.25.\n");
+	  
+	  printf ("Unable to send FX.25.  Falling back to regular AX.25.\n");
 	  // Definitely need to fall back to AX.25 here because
 	  // the FX.25 frame length is so limited.
 	}
@@ -105,8 +104,8 @@ static int ax25_only_hdlc_send_frame (int chan, unsigned char *fbuf, int flen, i
 	number_of_bits_sent[chan] = 0;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("hdlc_send_frame ( chan = %d, fbuf = %p, flen = %d, bad_fcs = %d)\n", chan, fbuf, flen, bad_fcs);
+	
+	printf ("hdlc_send_frame ( chan = %d, fbuf = %p, flen = %d, bad_fcs = %d)\n", chan, fbuf, flen, bad_fcs);
 	fflush (stdout);
 #endif
 
@@ -171,8 +170,8 @@ int layer2_preamble_postamble (int chan, int nbytes, int finish, struct audio_s 
 	number_of_bits_sent[chan] = 0;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("hdlc_send_flags ( chan = %d, nflags = %d, finish = %d )\n", chan, nflags, finish);
+	
+	printf ("hdlc_send_flags ( chan = %d, nflags = %d, finish = %d )\n", chan, nflags, finish);
 	fflush (stdout);
 #endif
 

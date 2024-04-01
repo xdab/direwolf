@@ -109,17 +109,15 @@
 #ifdef CM108_MAIN
 
 
-#include "textcolor.h"
 
 int main (void)
 {
-	text_color_init (0);    // Turn off text color.
 #if defined(__OpenBSD__) || defined(__FreeBSD__)
-	dw_printf ("CM108 PTT support is not available for this operating system.\n");
+	printf ("CM108 PTT support is not available for this operating system.\n");
 #else
-	dw_printf ("CM108 PTT support was excluded because /usr/include/libudev.h was missing.\n");
-	dw_printf ("Install it with \"sudo apt-get install libudev-dev\" or\n");
-	dw_printf ("\"sudo yum install libudev-devel\" then rebuild.\n");
+	printf ("CM108 PTT support was excluded because /usr/include/libudev.h was missing.\n");
+	printf ("Install it with \"sudo apt-get install libudev-dev\" or\n");
+	printf ("\"sudo yum install libudev-devel\" then rebuild.\n");
 #endif
 	return (0);
 }
@@ -148,7 +146,6 @@ int main (void)
 #include <linux/hidraw.h>		// for HIDIOCGRAWINFO
 #endif
 
-#include "textcolor.h"
 #include "cm108.h"
 
 static int cm108_write (char *name, int iomask, int iodata);
@@ -312,25 +309,25 @@ int cm108_inventory (struct thing_s *things, int max_things);
 
 static void usage(void)
 {
-	text_color_set(DW_COLOR_ERROR);
-	dw_printf ("\n");
-	dw_printf ("Usage:    cm108  [ device-path [ gpio-num ] ]\n");
-	dw_printf ("\n");
-	dw_printf ("With no command line arguments, this will produce a list of\n");
+	
+	printf ("\n");
+	printf ("Usage:    cm108  [ device-path [ gpio-num ] ]\n");
+	printf ("\n");
+	printf ("With no command line arguments, this will produce a list of\n");
 #if __WIN32__
-	dw_printf ("Human Interface Devices (HID) and indicate which ones can be\n");
-	dw_printf ("used for GPIO PTT.\n");
+	printf ("Human Interface Devices (HID) and indicate which ones can be\n");
+	printf ("used for GPIO PTT.\n");
 #else
-	dw_printf ("Audio devices and Human Interface Devices (HID) and indicate\n");
-	dw_printf ("which ones can be used for GPIO PTT.\n");
+	printf ("Audio devices and Human Interface Devices (HID) and indicate\n");
+	printf ("which ones can be used for GPIO PTT.\n");
 #endif
-	dw_printf ("\n");
-	dw_printf ("Specify the HID device path to test the PTT function.\n");
-	dw_printf ("Its state should change once per second.\n");
+	printf ("\n");
+	printf ("Specify the HID device path to test the PTT function.\n");
+	printf ("Its state should change once per second.\n");
 #if __WIN32__
-	dw_printf ("You might need to quote the path depending on the command processor.\n");
+	printf ("You might need to quote the path depending on the command processor.\n");
 #endif
-	dw_printf ("GPIO 3 is the default.  A different number can be optionally specified.\n");
+	printf ("GPIO 3 is the default.  A different number can be optionally specified.\n");
 	exit (EXIT_FAILURE);
 }
 
@@ -340,9 +337,6 @@ int main (int argc, char **argv)
 	int num_things;
 	int i;
 
-	text_color_init (0);    // Turn off text color.
-	text_color_set(DW_COLOR_INFO);
-
 	if (argc >=2) {
 	  char path[128];
 	  strlcpy(path, argv[1], sizeof(path));
@@ -351,17 +345,17 @@ int main (int argc, char **argv)
 	    gpio = atoi(argv[2]);
 	  }
 	  if (gpio < 1 || gpio > 8) {
-	    dw_printf ("GPIO number must be in range of 1 - 8.\n");
+	    printf ("GPIO number must be in range of 1 - 8.\n");
 	    usage();
 	    exit (EXIT_FAILURE);
 	  }
 	  int state = 0;
 	  while (1) {
-	    dw_printf ("%d", state);
+	    printf ("%d", state);
 	    fflush (stdout);
 	    int err = cm108_set_gpio_pin (path, gpio, state);
 	    if (err != 0) {
-	      dw_printf ("\nWRITE ERROR for USB Audio Adapter GPIO!\n");
+	      printf ("\nWRITE ERROR for USB Audio Adapter GPIO!\n");
 	      usage();
 	      exit (EXIT_FAILURE);
 	    }
@@ -381,19 +375,19 @@ int main (int argc, char **argv)
 // Windows - Remove the sound related columns for now.
 /////////////////////////////////////////////////////
 
-	dw_printf ("    VID  PID   %-*s %-*s"
+	printf ("    VID  PID   %-*s %-*s"
 						"\n", 	(int)sizeof(things[0].product),	"Product",
 							17, "HID [ptt]"
 							);
 
-	dw_printf ("    ---  ---   %-*s %-*s"
+	printf ("    ---  ---   %-*s %-*s"
 
 						"\n", 	(int)sizeof(things[0].product),	"-------",
 							17, "---------"
 							);
 	for (i = 0; i < num_things; i++) {
 
-	  dw_printf ("%2s  %04x %04x  %-*s %s"
+	  printf ("%2s  %04x %04x  %-*s %s"
 
 						"\n",
 							GOOD_DEVICE(things[i].vid,things[i].pid) ? "**" : "  ",
@@ -402,9 +396,9 @@ int main (int argc, char **argv)
 							things[i].devnode_hidraw
 							);
 	}
-	dw_printf ("\n");
-	dw_printf ("** = Can use Audio Adapter GPIO for PTT.\n");
-	dw_printf ("\n");
+	printf ("\n");
+	printf ("** = Can use Audio Adapter GPIO for PTT.\n");
+	printf ("\n");
 
 	// T.B.D. - additional text ???
 
@@ -415,7 +409,7 @@ int main (int argc, char **argv)
 /////////////////////////////////////////////
 
 
-	dw_printf ("    VID  PID   %-*s %-*s %-*s %-*s %-*s"
+	printf ("    VID  PID   %-*s %-*s %-*s %-*s %-*s"
 #if EXTRA
 						" %-*s"
 #endif
@@ -429,7 +423,7 @@ int main (int argc, char **argv)
 #endif
 							);
 
-	dw_printf ("    ---  ---   %-*s %-*s %-*s %-*s %-*s"
+	printf ("    ---  ---   %-*s %-*s %-*s %-*s %-*s"
 #if EXTRA
 						" %-*s"
 #endif
@@ -444,7 +438,7 @@ int main (int argc, char **argv)
 							);
 	for (i = 0; i < num_things; i++) {
 
-	  dw_printf ("%2s  %04x %04x  %-*s %-*s %-*s %-*s %s"
+	  printf ("%2s  %04x %04x  %-*s %-*s %-*s %-*s %s"
 #if EXTRA
 						" %-*s"
 #endif
@@ -460,26 +454,26 @@ int main (int argc, char **argv)
 							, (int)sizeof(things[i].devnode_usb), things[i].devnode_usb
 #endif
 							);
-	  //dw_printf ("             %-*s\n", (int)sizeof(things[i].devpath), things[i].devpath);
+	  //printf ("             %-*s\n", (int)sizeof(things[i].devpath), things[i].devpath);
 	}
-	dw_printf ("\n");
-	dw_printf ("** = Can use Audio Adapter GPIO for PTT.\n");
-	dw_printf ("\n");
+	printf ("\n");
+	printf ("** = Can use Audio Adapter GPIO for PTT.\n");
+	printf ("\n");
 
 	static const char *suggested_names[] = {"Fred", "Wilma", "Pebbles", "Dino", "Barney", "Betty", "Bamm_Bamm", "Chip", "Roxy" };
 	int iname = 0;
 
 	// From example in https://alsa.opensrc.org/Udev
 
-	dw_printf ("Notice that each USB Audio adapter is assigned a number and a name.  These are not predictable so you could\n");
-	dw_printf ("end up using the wrong adapter after adding or removing other USB devices or after rebooting.  You can assign a\n");
-	dw_printf ("name to each USB adapter so you can refer to the same one each time.  This can be based on any characteristics\n");
-	dw_printf ("that makes them unique such as product id or serial number.  Unfortunately these devices don't have unique serial\n");
-	dw_printf ("numbers so how can we tell them apart?  A name can also be assigned based on the physical USB socket.\n");
-	dw_printf ("Create a file like \"/etc/udev/rules.d/85-my-usb-audio.rules\" with the following contents and then reboot.\n");
-	dw_printf ("\n");
-	dw_printf ("SUBSYSTEM!=\"sound\", GOTO=\"my_usb_audio_end\"\n");
-	dw_printf ("ACTION!=\"add\", GOTO=\"my_usb_audio_end\"\n");
+	printf ("Notice that each USB Audio adapter is assigned a number and a name.  These are not predictable so you could\n");
+	printf ("end up using the wrong adapter after adding or removing other USB devices or after rebooting.  You can assign a\n");
+	printf ("name to each USB adapter so you can refer to the same one each time.  This can be based on any characteristics\n");
+	printf ("that makes them unique such as product id or serial number.  Unfortunately these devices don't have unique serial\n");
+	printf ("numbers so how can we tell them apart?  A name can also be assigned based on the physical USB socket.\n");
+	printf ("Create a file like \"/etc/udev/rules.d/85-my-usb-audio.rules\" with the following contents and then reboot.\n");
+	printf ("\n");
+	printf ("SUBSYSTEM!=\"sound\", GOTO=\"my_usb_audio_end\"\n");
+	printf ("ACTION!=\"add\", GOTO=\"my_usb_audio_end\"\n");
 
 // Consider only the 'devnode' paths that end with "card" and a number.
 // Replace the number with a question mark.
@@ -490,8 +484,8 @@ int main (int argc, char **argv)
 	int e = regcomp (&devpath_re, "(/devices/.+/card)[0-9]$", REG_EXTENDED);
 	if (e) {
 	  regerror (e, &devpath_re, emsg, sizeof(emsg));
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf("INTERNAL ERROR:  %s:%d: %s\n", __FILE__, __LINE__, emsg);
+	  
+	  printf("INTERNAL ERROR:  %s:%d: %s\n", __FILE__, __LINE__, emsg);
 	  return (-1);
 	}
 
@@ -501,13 +495,13 @@ int main (int argc, char **argv)
 	    if (regexec (&devpath_re, things[i].devpath, 2, devpath_match, 0) == 0) {
 	      char without_number[256];
 	      substr_se (without_number, things[i].devpath, devpath_match[1].rm_so, devpath_match[1].rm_eo);
-	      dw_printf ("DEVPATH==\"%s?\", ATTR{id}=\"%s\"\n", without_number, suggested_names[iname]);
+	      printf ("DEVPATH==\"%s?\", ATTR{id}=\"%s\"\n", without_number, suggested_names[iname]);
 	      if (iname < 6) iname++;
 	    }
 	  }
 	}
-	dw_printf ("LABEL=\"my_usb_audio_end\"\n");
-	dw_printf ("\n");
+	printf ("LABEL=\"my_usb_audio_end\"\n");
+	printf ("\n");
 #endif
 	return (0);
 }
@@ -544,8 +538,8 @@ int cm108_inventory (struct thing_s *things, int max_things)
 	struct hid_device_info *devs, *cur_dev;
 
 	if (hid_init()) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf("cm108_inventory: hid_init() failed.\n");
+	  
+	  printf("cm108_inventory: hid_init() failed.\n");
 	  return (-1);
 	}
 
@@ -594,8 +588,8 @@ int cm108_inventory (struct thing_s *things, int max_things)
  */
 	udev = udev_new();
 	if (!udev) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf("INTERNAL ERROR: Can't create udev.\n");
+	  
+	  printf("INTERNAL ERROR: Can't create udev.\n");
 	  return (-1);
 	}
 	
@@ -614,9 +608,9 @@ int cm108_inventory (struct thing_s *things, int max_things)
 	    strlcpy (card_devpath, path, sizeof(card_devpath));
 	    pattrs_id = udev_device_get_sysattr_value(dev,"id");
 	    pattrs_number = udev_device_get_sysattr_value(dev,"number");
-	    //dw_printf (" >card_devpath = %s\n", card_devpath);
-	    //dw_printf (" >>pattrs_id = %s\n", pattrs_id);
-	    //dw_printf (" >>pattrs_number = %s\n", pattrs_number);
+	    //printf (" >card_devpath = %s\n", card_devpath);
+	    //printf (" >>pattrs_id = %s\n", pattrs_id);
+	    //printf (" >>pattrs_number = %s\n", pattrs_number);
 	  }
 	  else {
 	    parentdev = udev_device_get_parent_with_subsystem_devtype( dev, "usb", "usb_device"); 
@@ -653,8 +647,8 @@ int cm108_inventory (struct thing_s *things, int max_things)
  */
 	udev = udev_new();
 	if (!udev) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf("INTERNAL ERROR: Can't create udev.\n");
+	  
+	  printf("INTERNAL ERROR: Can't create udev.\n");
 	  return (-1);
 	}
 
@@ -719,8 +713,8 @@ int cm108_inventory (struct thing_s *things, int max_things)
 	int e = regcomp (&pcm_re, "pcmC([0-9]+)D([0-9]+)[cp]", REG_EXTENDED);
 	if (e) {
 	  regerror (e, &pcm_re, emsg, sizeof(emsg));
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf("INTERNAL ERROR:  %s:%d: %s\n", __FILE__, __LINE__, emsg);
+	  
+	  printf("INTERNAL ERROR:  %s:%d: %s\n", __FILE__, __LINE__, emsg);
 	  return (-1);
 	}
 
@@ -772,7 +766,7 @@ void cm108_find_ptt (char *output_audio_device, char *ptt_device,  int ptt_devic
 	struct thing_s things[MAXX_THINGS];
 	int num_things;
 
-	//dw_printf ("DEBUG: cm108_find_ptt('%s')\n", output_audio_device);
+	//printf ("DEBUG: cm108_find_ptt('%s')\n", output_audio_device);
 
 	strlcpy (ptt_device, "", ptt_device_size);
 
@@ -793,7 +787,7 @@ void cm108_find_ptt (char *output_audio_device, char *ptt_device,  int ptt_devic
 	for (int i = 0; i < num_things; i++) {
 	  if (GOOD_DEVICE(things[i].vid,things[i].pid) ) {
 	    good_devices++;
-	    //dw_printf ("DEBUG: success! returning '%s'\n", things[i].devnode_hidraw);
+	    //printf ("DEBUG: success! returning '%s'\n", things[i].devnode_hidraw);
 	    strlcpy (ptt_device, things[i].devnode_hidraw, ptt_device_size);
 	  }
 	}
@@ -802,24 +796,24 @@ void cm108_find_ptt (char *output_audio_device, char *ptt_device,  int ptt_devic
 
 	if (good_devices == 1) return;		// Success - Only one candidate device.
 
-	text_color_set(DW_COLOR_ERROR);
-	dw_printf ("There are multiple USB Audio Devices with GPIO capability.\n");
-	dw_printf ("Explicitly specify one of them for more predictable results:\n");
+	
+	printf ("There are multiple USB Audio Devices with GPIO capability.\n");
+	printf ("Explicitly specify one of them for more predictable results:\n");
 	for (int i = 0; i < num_things; i++) {
 	  if (GOOD_DEVICE(things[i].vid,things[i].pid) ) {
-	    dw_printf ("   \"%s\"\n", things[i].devnode_hidraw);
+	    printf ("   \"%s\"\n", things[i].devnode_hidraw);
 	  }
 	}
-	dw_printf ("Run the \"cm108\" utility for more details.\n");
-	text_color_set(DW_COLOR_INFO);
+	printf ("Run the \"cm108\" utility for more details.\n");
+	
 #else
 	regex_t sound_re;
 	char emsg[100];
 	int e = regcomp (&sound_re, ".+:(CARD=)?([A-Za-z0-9_]+)(,.*)?", REG_EXTENDED);
 	if (e) {
 	  regerror (e, &sound_re, emsg, sizeof(emsg));
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf("INTERNAL ERROR:  %s:%d: %s\n", __FILE__, __LINE__, emsg);
+	  
+	  printf("INTERNAL ERROR:  %s:%d: %s\n", __FILE__, __LINE__, emsg);
 	  return;
 	}
 
@@ -828,23 +822,23 @@ void cm108_find_ptt (char *output_audio_device, char *ptt_device,  int ptt_devic
 	regmatch_t sound_match[4];
 	if (regexec (&sound_re, output_audio_device, 4, sound_match, 0) == 0) {
 	  substr_se (num_or_name, output_audio_device, sound_match[2].rm_so, sound_match[2].rm_eo);
-	  //dw_printf ("DEBUG: Got '%s' from '%s'\n", num_or_name, output_audio_device);
+	  //printf ("DEBUG: Got '%s' from '%s'\n", num_or_name, output_audio_device);
 	}
 	if (strlen(num_or_name) == 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not extract card number or name from %s\n", output_audio_device);
-	  dw_printf ("Can't automatically find matching HID for PTT.\n");
+	  
+	  printf ("Could not extract card number or name from %s\n", output_audio_device);
+	  printf ("Can't automatically find matching HID for PTT.\n");
 	  return;
 	}
 
 	for (int i = 0; i < num_things; i++) {
-	  //dw_printf ("DEBUG: i=%d, card_name='%s', card_number='%s'\n", i, things[i].card_name, things[i].card_number);
+	  //printf ("DEBUG: i=%d, card_name='%s', card_number='%s'\n", i, things[i].card_name, things[i].card_number);
 	  if (strcmp(num_or_name,things[i].card_name) == 0 || strcmp(num_or_name,things[i].card_number) == 0) {
-	    //dw_printf ("DEBUG: success! returning '%s'\n", things[i].devnode_hidraw);
+	    //printf ("DEBUG: success! returning '%s'\n", things[i].devnode_hidraw);
 	    strlcpy (ptt_device, things[i].devnode_hidraw, ptt_device_size);
 	    if ( ! GOOD_DEVICE(things[i].vid,things[i].pid) ) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Warning: USB audio card %s (%s) is not a device known to work with GPIO PTT.\n",
+	      
+	      printf ("Warning: USB audio card %s (%s) is not a device known to work with GPIO PTT.\n",
 				things[i].card_number, things[i].card_name);
 	    }
 	    return;
@@ -890,14 +884,14 @@ int cm108_set_gpio_pin (char *name, int num, int state)
 	int iodata;
 
 	if (num < 1 || num > 8) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf("%s CM108 GPIO number %d must be in range of 1 thru 8.\n", name, num);
+	  
+	  printf("%s CM108 GPIO number %d must be in range of 1 thru 8.\n", name, num);
 	  return (-1);
 	}
 
 	if (state != 0 && state != 1) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf("%s CM108 GPIO state %d must be 0 or 1.\n", name, state);
+	  
+	  printf("%s CM108 GPIO state %d must be 0 or 1.\n", name, state);
 	  return (-1);
 	}
 
@@ -936,13 +930,13 @@ static int cm108_write (char *name, int iomask, int iodata)
 
 #if __WIN32__
 
-	//text_color_set(DW_COLOR_DEBUG);
-	//dw_printf ("TEMP DEBUG cm108_write:  %s %d %d\n", name, iomask, iodata);
+	//
+	//printf ("TEMP DEBUG cm108_write:  %s %d %d\n", name, iomask, iodata);
 
 	hid_device *handle = hid_open_path(name);
 	if (handle == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not open %s for write\n", name);
+	  
+	  printf ("Could not open %s for write\n", name);
 	  return (-1);
 	}
 
@@ -955,8 +949,8 @@ static int cm108_write (char *name, int iomask, int iodata)
 
 	int res = hid_write(handle, io, sizeof(io));
 	if (res < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Write failed to %s\n", name);
+	  
+	  printf ("Write failed to %s\n", name);
 	  return (-1);
 	}
 
@@ -968,8 +962,8 @@ static int cm108_write (char *name, int iomask, int iodata)
 	char io[5];
 	int n;
 
-	//text_color_set(DW_COLOR_DEBUG);
-	//dw_printf ("TEMP DEBUG cm108_write:  %s %d %d\n", name, iomask, iodata);
+	//
+	//printf ("TEMP DEBUG cm108_write:  %s %d %d\n", name, iomask, iodata);
 
 /*
  * By default, the USB HID are accessible only by root:
@@ -1006,13 +1000,13 @@ static int cm108_write (char *name, int iomask, int iodata)
 
 	fd = open (name, O_WRONLY);
 	if (fd == -1) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not open %s for write, errno=%d\n", name, errno);
+	  
+	  printf ("Could not open %s for write, errno=%d\n", name, errno);
 	  if (errno == EACCES) {		// 13
-	    dw_printf ("Type \"ls -l %s\" and verify that it has audio group rw similar to this:\n", name);
-	    dw_printf ("    crw-rw---- 1 root audio 247, 0 Oct  6 19:24 %s\n", name);
-	    dw_printf ("rather than root-only access like this:\n");
-	    dw_printf ("    crw------- 1 root root 247, 0 Sep 24 09:40 %s\n", name);
+	    printf ("Type \"ls -l %s\" and verify that it has audio group rw similar to this:\n", name);
+	    printf ("    crw-rw---- 1 root audio 247, 0 Oct  6 19:24 %s\n", name);
+	    printf ("rather than root-only access like this:\n");
+	    printf ("    crw------- 1 root root 247, 0 Sep 24 09:40 %s\n", name);
 	  }
 	  return (-1);
 	}
@@ -1023,13 +1017,13 @@ static int cm108_write (char *name, int iomask, int iodata)
 	n = ioctl(fd, HIDIOCGRAWINFO, &info);
 	if (n == 0) {
 	  if ( ! GOOD_DEVICE(info.vendor, info.product)) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("ioctl HIDIOCGRAWINFO failed for %s. errno = %d.\n", name, errno);
+	    
+	    printf ("ioctl HIDIOCGRAWINFO failed for %s. errno = %d.\n", name, errno);
 	  }
 	}
 	else {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("%s is not a supported device type.  Proceed at your own risk.  vid=%04x pid=%04x\n", name, info.vendor, info.product);
+	  
+	  printf ("%s is not a supported device type.  Proceed at your own risk.  vid=%04x pid=%04x\n", name, info.vendor, info.product);
 	}
 #endif
 	// To make a long story short, I think we need 0 for the first two bytes.
@@ -1052,14 +1046,14 @@ static int cm108_write (char *name, int iomask, int iodata)
 	  //  as pi		EACCES          13      /* Permission denied */
 	  //  as root		EPIPE           32      /* Broken pipe - Happens if we send 4 bytes */
 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Write to %s failed, n=%d, errno=%d\n", name, n, errno);
+	  
+	  printf ("Write to %s failed, n=%d, errno=%d\n", name, n, errno);
 
 	  if (errno == EACCES) {
-	    dw_printf ("Type \"ls -l %s\" and verify that it has audio group rw similar to this:\n", name);
-	    dw_printf ("    crw-rw---- 1 root audio 247, 0 Oct  6 19:24 %s\n", name);
-	    dw_printf ("rather than root-only access like this:\n");
-	    dw_printf ("    crw------- 1 root root 247, 0 Sep 24 09:40 %s\n", name);
+	    printf ("Type \"ls -l %s\" and verify that it has audio group rw similar to this:\n", name);
+	    printf ("    crw-rw---- 1 root audio 247, 0 Oct  6 19:24 %s\n", name);
+	    printf ("rather than root-only access like this:\n");
+	    printf ("    crw------- 1 root root 247, 0 Sep 24 09:40 %s\n", name);
 	  }
 
 	  close (fd);

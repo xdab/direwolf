@@ -46,10 +46,8 @@
 #include <string.h>
 
 #include "ax25_pad.h"
-#include "textcolor.h"
 #include "audio.h"
 #include "tq.h"
-#include "dtime_now.h"
 
 
 
@@ -120,8 +118,8 @@ void tq_init (struct audio_s *audio_config_p)
 	int c, p;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_init (  )\n");
+	
+	printf ("tq_init (  )\n");
 #endif
 
 	save_audio_config_p = audio_config_p;
@@ -152,8 +150,8 @@ void tq_init (struct audio_s *audio_config_p)
 	    wake_up_event[c] = CreateEvent (NULL, 0, 0, NULL);
 
 	    if (wake_up_event[c] == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("tq_init: CreateEvent: can't create transmit wake up event, c=%d", c);
+	      
+	      printf ("tq_init: CreateEvent: can't create transmit wake up event, c=%d", c);
 	      exit (1);
 	    }	
 	  }
@@ -169,8 +167,8 @@ void tq_init (struct audio_s *audio_config_p)
 	  if (audio_config_p->chan_medium[c] == MEDIUM_RADIO) {
 	    err = pthread_cond_init (&(wake_up_cond[c]), NULL);
 	    if (err != 0) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("tq_init: pthread_cond_init c=%d err=%d", c, err);
+	      
+	      printf ("tq_init: pthread_cond_init c=%d err=%d", c, err);
 	      perror ("");
 	      exit (1);
 	    }
@@ -228,57 +226,24 @@ void tq_append (int chan, int prio, packet_t pp)
 	unsigned char *pinfo;
 	int info_len = ax25_get_info (pp, &pinfo);
 	if (info_len > 10) info_len = 10;
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_append (chan=%d, prio=%d, pp=%p) \"%*s\"\n", chan, prio, pp, info_len, (char*)pinfo);
+	
+	printf ("tq_append (chan=%d, prio=%d, pp=%p) \"%*s\"\n", chan, prio, pp, info_len, (char*)pinfo);
 #endif
 
 
 	assert (prio >= 0 && prio < TQ_NUM_PRIO);
 
 	if (pp == NULL) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("INTERNAL ERROR:  tq_append NULL packet pointer. Please report this!\n");
+	  
+	  printf ("INTERNAL ERROR:  tq_append NULL packet pointer. Please report this!\n");
 	  return;
 	}
 
 #if AX25MEMDEBUG
 
 	if (ax25memdebug_get()) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("tq_append (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
-	}
-#endif
-
-// New in 1.7 - A channel can be assigned to the IGate rather than a radio.
-
-#ifndef DIGITEST		// avoid dtest link error
-
-	if (save_audio_config_p->chan_medium[chan] == MEDIUM_IGATE) {
-
-	  char ts[100];		// optional time stamp.
-
-	  if (strlen(save_audio_config_p->timestamp_format) > 0) {
-	    char tstmp[100];
-	    timestamp_user_format (tstmp, sizeof(tstmp), save_audio_config_p->timestamp_format);
-	    strlcpy (ts, " ", sizeof(ts));	// space after channel.
-	    strlcat (ts, tstmp, sizeof(ts));
-	  }
-	  else {
-	    strlcpy (ts, "", sizeof(ts));
-	  }
-
-	  char stemp[256];	// Formated addresses.
-	  ax25_format_addrs (pp, stemp);
-	  unsigned char *pinfo;
-	  int info_len = ax25_get_info (pp, &pinfo);
-	  text_color_set(DW_COLOR_XMIT);
-	  dw_printf ("[%d>is%s] ", chan, ts);
-	  dw_printf ("%s", stemp);			/* stations followed by : */
-	  ax25_safe_print ((char *)pinfo, info_len, ! ax25_is_aprs(pp));
-	  dw_printf ("\n");
-
-	  ax25_delete(pp);
-	  return;
+	  
+	  printf ("tq_append (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
 	}
 #endif
 
@@ -286,14 +251,14 @@ void tq_append (int chan, int prio, packet_t pp)
 // Error if trying to transmit to a radio channel which was not configured.
 
 	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] == MEDIUM_NONE) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
-	  dw_printf ("This is probably a client application error, not a problem with direwolf.\n");
-	  dw_printf ("Are you using AX.25 for Linux?  It might be trying to use a modified\n");
-	  dw_printf ("version of KISS which uses the port field differently than the\n");
-	  dw_printf ("original KISS protocol specification.  The solution might be to use\n");
-	  dw_printf ("a command like \"kissparms -c 1 -p radio\" to set CRC none mode.\n");
-	  dw_printf ("\n");
+	  
+	  printf ("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
+	  printf ("This is probably a client application error, not a problem with direwolf.\n");
+	  printf ("Are you using AX.25 for Linux?  It might be trying to use a modified\n");
+	  printf ("version of KISS which uses the port field differently than the\n");
+	  printf ("original KISS protocol specification.  The solution might be to use\n");
+	  printf ("a command like \"kissparms -c 1 -p radio\" to set CRC none mode.\n");
+	  printf ("\n");
 	  ax25_delete(pp);
 	  return;
 	}
@@ -322,16 +287,16 @@ void tq_append (int chan, int prio, packet_t pp)
  */
 
 	if (ax25_is_aprs(pp) && tq_count(chan,prio,"","",0) > 100) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Transmit packet queue for channel %d is too long.  Discarding packet.\n", chan);
-	  dw_printf ("Perhaps the channel is so busy there is no opportunity to send.\n");
+	  
+	  printf ("Transmit packet queue for channel %d is too long.  Discarding packet.\n", chan);
+	  printf ("Perhaps the channel is so busy there is no opportunity to send.\n");
 	  ax25_delete(pp);
 	  return;
 	}
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_append: enter critical section\n");
+	
+	printf ("tq_append: enter critical section\n");
 #endif
 
 	dw_mutex_lock (&tq_mutex);
@@ -351,9 +316,9 @@ void tq_append (int chan, int prio, packet_t pp)
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_append: left critical section\n");
-	dw_printf ("tq_append (): about to wake up xmit thread.\n");
+	
+	printf ("tq_append: left critical section\n");
+	printf ("tq_append (): about to wake up xmit thread.\n");
 #endif
 
 #if __WIN32__
@@ -366,8 +331,8 @@ void tq_append (int chan, int prio, packet_t pp)
 
 	  err = pthread_cond_signal (&(wake_up_cond[chan]));
 	  if (err != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("tq_append: pthread_cond_signal err=%d", err);
+	    
+	    printf ("tq_append: pthread_cond_signal err=%d", err);
 	    perror ("");
 	    exit (1);
 	  }
@@ -466,34 +431,34 @@ void lm_data_request (int chan, int prio, packet_t pp)
 	unsigned char *pinfo;
 	int info_len = ax25_get_info (pp, &pinfo);
 	if (info_len > 10) info_len = 10;
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("lm_data_request (chan=%d, prio=%d, pp=%p) \"%*s\"\n", chan, prio, pp, info_len, (char*)pinfo);
+	
+	printf ("lm_data_request (chan=%d, prio=%d, pp=%p) \"%*s\"\n", chan, prio, pp, info_len, (char*)pinfo);
 #endif
 
 
 	assert (prio >= 0 && prio < TQ_NUM_PRIO);
 
 	if (pp == NULL) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("INTERNAL ERROR:  lm_data_request NULL packet pointer. Please report this!\n");
+	  
+	  printf ("INTERNAL ERROR:  lm_data_request NULL packet pointer. Please report this!\n");
 	  return;
 	}
 
 #if AX25MEMDEBUG
 
 	if (ax25memdebug_get()) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("lm_data_request (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
+	  
+	  printf ("lm_data_request (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
 	}
 #endif
 
 	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] != MEDIUM_RADIO) {
 	  // Connected mode is allowed only with internal modems.
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
-	  dw_printf ("Connected packet mode is allowed only with internal modems.\n");
-	  dw_printf ("Why aren't external KISS modems allowed?  See\n");
-	  dw_printf ("Why-is-9600-only-twice-as-fast-as-1200.pdf for explanation.\n");
+	  
+	  printf ("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
+	  printf ("Connected packet mode is allowed only with internal modems.\n");
+	  printf ("Why aren't external KISS modems allowed?  See\n");
+	  printf ("Why-is-9600-only-twice-as-fast-as-1200.pdf for explanation.\n");
 	  ax25_delete(pp);
 	  return;
 	}
@@ -503,14 +468,14 @@ void lm_data_request (int chan, int prio, packet_t pp)
  */
 
 	if (tq_count(chan,prio,"","",0) > 250) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Warning: Transmit packet queue for channel %d is extremely long.\n", chan);
-	  dw_printf ("Perhaps the channel is so busy there is no opportunity to send.\n");
+	  
+	  printf ("Warning: Transmit packet queue for channel %d is extremely long.\n", chan);
+	  printf ("Perhaps the channel is so busy there is no opportunity to send.\n");
 	}
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("lm_data_request: enter critical section\n");
+	
+	printf ("lm_data_request: enter critical section\n");
 #endif
 
 	dw_mutex_lock (&tq_mutex);
@@ -531,8 +496,8 @@ void lm_data_request (int chan, int prio, packet_t pp)
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("lm_data_request: left critical section\n");
+	
+	printf ("lm_data_request: left critical section\n");
 #endif
 
 	// Appendix C2a, from the Ax.25 protocol spec, says that a priority frame
@@ -547,7 +512,7 @@ void lm_data_request (int chan, int prio, packet_t pp)
 //NO!	if (prio == TQ_PRIO_0_HI) {
 
 #if DEBUG
-	  dw_printf ("lm_data_request (): about to wake up xmit thread.\n");
+	  printf ("lm_data_request (): about to wake up xmit thread.\n");
 #endif
 #if __WIN32__
 	  SetEvent (wake_up_event[chan]);
@@ -559,8 +524,8 @@ void lm_data_request (int chan, int prio, packet_t pp)
 
 	    err = pthread_cond_signal (&(wake_up_cond[chan]));
 	    if (err != 0) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("lm_data_request: pthread_cond_signal err=%d", err);
+	      
+	      printf ("lm_data_request: pthread_cond_signal err=%d", err);
 	      perror ("");
 	      exit (1);
 	    }
@@ -640,18 +605,18 @@ void lm_seize_request (int chan)
 
 #if DEBUG
 	unsigned char *pinfo;
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("lm_seize_request (chan=%d)\n", chan);
+	
+	printf ("lm_seize_request (chan=%d)\n", chan);
 #endif
 
 
 	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] != MEDIUM_RADIO) {
 	  // Connected mode is allowed only with internal modems.
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
-	  dw_printf ("Connected packet mode is allowed only with internal modems.\n");
-	  dw_printf ("Why aren't external KISS modems allowed?  See\n");
-	  dw_printf ("Why-is-9600-only-twice-as-fast-as-1200.pdf for explanation.\n");
+	  
+	  printf ("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
+	  printf ("Connected packet mode is allowed only with internal modems.\n");
+	  printf ("Why aren't external KISS modems allowed?  See\n");
+	  printf ("Why-is-9600-only-twice-as-fast-as-1200.pdf for explanation.\n");
 	  return;
 	}
 
@@ -660,14 +625,14 @@ void lm_seize_request (int chan)
 #if AX25MEMDEBUG
 
 	if (ax25memdebug_get()) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("lm_seize_request (chan=%d, seq=%d)\n", chan, ax25memdebug_seq(pp));
+	  
+	  printf ("lm_seize_request (chan=%d, seq=%d)\n", chan, ax25memdebug_seq(pp));
 	}
 #endif
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("lm_seize_request: enter critical section\n");
+	
+	printf ("lm_seize_request: enter critical section\n");
 #endif
 
 	dw_mutex_lock (&tq_mutex);
@@ -688,13 +653,13 @@ void lm_seize_request (int chan)
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("lm_seize_request: left critical section\n");
+	
+	printf ("lm_seize_request: left critical section\n");
 #endif
 
 
 #if DEBUG
-	dw_printf ("lm_seize_request (): about to wake up xmit thread.\n");
+	printf ("lm_seize_request (): about to wake up xmit thread.\n");
 #endif
 #if __WIN32__
 	SetEvent (wake_up_event[chan]);
@@ -706,8 +671,8 @@ void lm_seize_request (int chan)
 
 	  err = pthread_cond_signal (&(wake_up_cond[chan]));
 	  if (err != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("lm_seize_request: pthread_cond_signal err=%d", err);
+	    
+	    printf ("lm_seize_request: pthread_cond_signal err=%d", err);
 	    perror ("");
 	    exit (1);
 	  }
@@ -742,35 +707,35 @@ void tq_wait_while_empty (int chan)
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_wait_while_empty (%d) : enter critical section\n", chan);
+	
+	printf ("tq_wait_while_empty (%d) : enter critical section\n", chan);
 #endif
 	assert (chan >= 0 && chan < MAX_CHANS);
 
 	dw_mutex_lock (&tq_mutex);
 
 #if DEBUG
-	//text_color_set(DW_COLOR_DEBUG);
-	//dw_printf ("tq_wait_while_empty (%d): after pthread_mutex_lock\n", chan);
+	//
+	//printf ("tq_wait_while_empty (%d): after pthread_mutex_lock\n", chan);
 #endif
 	is_empty = tq_is_empty(chan);
 
 	dw_mutex_unlock (&tq_mutex);
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_wait_while_empty (%d) : left critical section\n", chan);
+	
+	printf ("tq_wait_while_empty (%d) : left critical section\n", chan);
 #endif
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_wait_while_empty (%d): is_empty = %d\n", chan, is_empty);
+	
+	printf ("tq_wait_while_empty (%d): is_empty = %d\n", chan, is_empty);
 #endif
 
 	if (is_empty) {
 #if DEBUG
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("tq_wait_while_empty (%d): SLEEP - about to call cond wait\n", chan);
+	  
+	  printf ("tq_wait_while_empty (%d): SLEEP - about to call cond wait\n", chan);
 #endif
 
 
@@ -778,8 +743,8 @@ void tq_wait_while_empty (int chan)
 	  WaitForSingleObject (wake_up_event[chan], INFINITE);
 
 #if DEBUG
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("tq_wait_while_empty (): returned from wait\n");
+	  
+	  printf ("tq_wait_while_empty (): returned from wait\n");
 #endif
 
 #else
@@ -791,13 +756,13 @@ void tq_wait_while_empty (int chan)
 	  xmit_thread_is_waiting[chan] = 0;
 
 #if DEBUG
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("tq_wait_while_empty (%d): WOKE UP - returned from cond wait, err = %d\n", chan, err);
+	  
+	  printf ("tq_wait_while_empty (%d): WOKE UP - returned from cond wait, err = %d\n", chan, err);
 #endif
 
 	  if (err != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("tq_wait_while_empty (%d): pthread_cond_wait err=%d", chan, err);
+	    
+	    printf ("tq_wait_while_empty (%d): pthread_cond_wait err=%d", chan, err);
 	    perror ("");
 	    exit (1);
 	  }
@@ -808,8 +773,8 @@ void tq_wait_while_empty (int chan)
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_wait_while_empty (%d) returns\n", chan);
+	
+	printf ("tq_wait_while_empty (%d) returns\n", chan);
 #endif
 
 }
@@ -836,8 +801,8 @@ packet_t tq_remove (int chan, int prio)
 	packet_t result_p;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_remove(%d,%d) enter critical section\n", chan, prio);
+	
+	printf ("tq_remove(%d,%d) enter critical section\n", chan, prio);
 #endif
 
 	dw_mutex_lock (&tq_mutex);
@@ -856,15 +821,15 @@ packet_t tq_remove (int chan, int prio)
 	dw_mutex_unlock (&tq_mutex);
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
+	
+	printf ("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
 #endif
 
 #if AX25MEMDEBUG
 
 	if (ax25memdebug_get() && result_p != NULL) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
+	  
+	  printf ("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
 	}
 #endif
 	return (result_p);
@@ -895,8 +860,8 @@ packet_t tq_peek (int chan, int prio)
 	packet_t result_p;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_peek(%d,%d) enter critical section\n", chan, prio);
+	
+	printf ("tq_peek(%d,%d) enter critical section\n", chan, prio);
 #endif
 
 	// I don't think we need critical region here.
@@ -908,15 +873,15 @@ packet_t tq_peek (int chan, int prio)
 	//dw_mutex_unlock (&tq_mutex);
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
+	
+	printf ("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
 #endif
 
 #if AX25MEMDEBUG
 
 	if (ax25memdebug_get() && result_p != NULL) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
+	  
+	  printf ("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
 	}
 #endif
 	return (result_p);
@@ -987,8 +952,8 @@ int tq_count (int chan, int prio, char *source, char *dest, int bytes)
 
 
 #if DEBUG2
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_count(chan=%d, prio=%d, source=\"%s\", dest=\"%s\", bytes=%d)\n", chan, prio, source, dest, bytes);
+	
+	printf ("tq_count(chan=%d, prio=%d, source=\"%s\", dest=\"%s\", bytes=%d)\n", chan, prio, source, dest, bytes);
 #endif
 
 	if (prio == -1) {
@@ -999,15 +964,15 @@ int tq_count (int chan, int prio, char *source, char *dest, int bytes)
 	// Array bounds check.  FIXME: TODO:  should have internal error instead of dying.
 
 	if (chan < 0 || chan >= MAX_CHANS || prio < 0 || prio >= TQ_NUM_PRIO) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("INTERNAL ERROR - tq_count(%d, %d, \"%s\", \"%s\", %d)\n", chan, prio, source, dest, bytes);
+	  
+	  printf ("INTERNAL ERROR - tq_count(%d, %d, \"%s\", \"%s\", %d)\n", chan, prio, source, dest, bytes);
 	  return (0);
 	}
 
 	if (queue_head[chan][prio] == 0) {
 #if DEBUG2
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("tq_count: queue chan %d, prio %d is empty, returning 0.\n", chan, prio);
+	  
+	  printf ("tq_count: queue chan %d, prio %d is empty, returning 0.\n", chan, prio);
 #endif
 	  return (0);
 	}
@@ -1030,8 +995,8 @@ int tq_count (int chan, int prio, char *source, char *dest, int bytes)
 	    ax25_get_addr_with_ssid (pp, AX25_SOURCE, frame_source);
 #if DEBUG2
 	// I'm cringing at the thought of printing while in a critical region.  But it's only for temp debug.  :-(
-	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("tq_count: compare to frame source %s\n", frame_source);
+	    
+	    printf ("tq_count: compare to frame source %s\n", frame_source);
 #endif
 	    if (strcmp(source,frame_source) != 0) count_it = 0;
 	  }
@@ -1040,8 +1005,8 @@ int tq_count (int chan, int prio, char *source, char *dest, int bytes)
 	    ax25_get_addr_with_ssid (pp, AX25_DESTINATION, frame_dest);
 #if DEBUG2
 	// I'm cringing at the thought of printing while in a critical region.  But it's only for debug debug.  :-(
-	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("tq_count: compare to frame destination %s\n", frame_dest);
+	    
+	    printf ("tq_count: compare to frame destination %s\n", frame_dest);
 #endif
 	    if (strcmp(dest,frame_dest) != 0) count_it = 0;
 	  }
@@ -1061,8 +1026,8 @@ int tq_count (int chan, int prio, char *source, char *dest, int bytes)
 	dw_mutex_unlock (&tq_mutex);
 
 #if DEBUG2
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("tq_count(%d, %d, \"%s\", \"%s\", %d) returns %d\n", chan, prio, source, dest, bytes, n);
+	
+	printf ("tq_count(%d, %d, \"%s\", \"%s\", %d) returns %d\n", chan, prio, source, dest, bytes, n);
 #endif
 
 	return (n);

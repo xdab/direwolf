@@ -45,10 +45,8 @@
 #include <math.h>
 
 #include "ax25_pad.h"
-#include "textcolor.h"
 #include "audio.h"
 #include "config.h"
-#include "symbols.h"
 #include "xmit.h"
 
 #if USE_CM108		// Current Linux or Windows only
@@ -171,15 +169,15 @@ long parse_utm_zone (char *szone, char *latband, char *hemi)
 	    }
 	  }
 	  else {
-	    text_color_set(DW_COLOR_ERROR);
-            dw_printf ("Latitudinal band in \"%s\" must be one of CDEFGHJKLMNPQRSTUVWX.\n", szone);
+	    
+            printf ("Latitudinal band in \"%s\" must be one of CDEFGHJKLMNPQRSTUVWX.\n", szone);
  	    *hemi = '?';
 	  }
         }
 
         if (lzone < 1 || lzone > 60) {
-	  text_color_set(DW_COLOR_ERROR);
-          dw_printf ("UTM Zone number %ld must be in range of 1 to 60.\n", lzone);
+	  
+          printf ("UTM Zone number %ld must be in range of 1 to 60.\n", lzone);
         
         }
 
@@ -233,7 +231,7 @@ static char *split (char *string, int rest_of_line)
  */
 	if (string != NULL) {
 
-	  // dw_printf("split in: '%s'\n", string);
+	  // printf("split in: '%s'\n", string);
 
 	  c = cmd;
 	  for (s = string; *s != '\0'; s++) {
@@ -291,7 +289,7 @@ static char *split (char *string, int rest_of_line)
 	}
 	*t = '\0';
 
-	// dw_printf("split out: '%s'\n", token);
+	// printf("split out: '%s'\n", token);
 
 	t = token;
 	if (*t == '\0') {
@@ -314,14 +312,6 @@ static char *split (char *string, int rest_of_line)
  *
  * Outputs:	p_audio_config		- Radio channel parameters stored here.
  *
- *		p_digi_config	- APRS Digipeater configuration stored here.
- *
- *		p_cdigi_config	- Connected Digipeater configuration stored here.
- *
- *		p_tt_config	- APRStt stuff.
- *
- *		p_igate_config	- Internet Gateway.
- *	
  *		p_misc_config	- Everything else.  This wasn't thought out well.
  *
  * Description:	Apply default values for various parameters then read the 
@@ -338,11 +328,11 @@ static char *split (char *string, int rest_of_line)
 
 static void rtfm()
 {
-	text_color_set(DW_COLOR_ERROR);
-	dw_printf ("See online documentation:\n");
-	dw_printf ("    stable release:    https://github.com/wb2osz/direwolf/tree/master/doc\n");
-	dw_printf ("    development version:    https://github.com/wb2osz/direwolf/tree/dev/doc\n");
-	dw_printf ("    additional topics:    https://github.com/wb2osz/direwolf-doc\n");
+	
+	printf ("See online documentation:\n");
+	printf ("    stable release:    https://github.com/wb2osz/direwolf/tree/master/doc\n");
+	printf ("    development version:    https://github.com/wb2osz/direwolf/tree/dev/doc\n");
+	printf ("    additional topics:    https://github.com/wb2osz/direwolf-doc\n");
 }
 
 void config_init (char *fname, struct audio_s *p_audio_config,
@@ -356,8 +346,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	int adevice;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("config_init ( %s )\n", fname);
+	
+	printf ("config_init ( %s )\n", fname);
 #endif
 
 /* 
@@ -365,8 +355,6 @@ void config_init (char *fname, struct audio_s *p_audio_config,
  */
 
 	memset (p_audio_config, 0, sizeof(struct audio_s));
-
-	p_audio_config->igate_vchannel = -1;		// none.
 
 	/* First audio device is always available with defaults. */
 	/* Others must be explicitly defined before use. */
@@ -438,7 +426,6 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	p_audio_config->chan_medium[0] = MEDIUM_RADIO;
 
 	memset (p_misc_config, 0, sizeof(struct misc_config_s));
-	p_misc_config->agwpe_port = DEFAULT_AGWPE_PORT;
 
 	for (int i=0; i<MAX_KISS_TCP_PORTS; i++) {
 	  p_misc_config->kiss_port[i] = 0;	// entry not used.
@@ -449,8 +436,6 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	p_misc_config->enable_kiss_pt = 0;				/* -p option */
 	p_misc_config->kiss_copy = 0;
-
-	p_misc_config->dns_sd_enabled = 1;
 
 	strlcpy (p_misc_config->kiss_serial_port, "", sizeof(p_misc_config->kiss_serial_port));
 	p_misc_config->kiss_serial_speed = 0;
@@ -500,14 +485,14 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 #endif
 	if (fp == NULL)	{
 	  // TODO: not exactly right for all situations.
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("ERROR - Could not open config file %s\n", filepath);
-	  dw_printf ("Try using -c command line option for alternate location.\n");
+	  
+	  printf ("ERROR - Could not open config file %s\n", filepath);
+	  printf ("Try using -c command line option for alternate location.\n");
 	  rtfm();
 	  exit(EXIT_FAILURE);
 	}
 	
-	dw_printf ("\nReading config file %s\n", filepath);
+	printf ("\nReading config file %s\n", filepath);
 
 	line = 0;
 	while (fgets(stuff, sizeof(stuff), fp) != NULL) {
@@ -549,17 +534,17 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    }
 
 	    if (adevice < 0 || adevice >= MAX_ADEVS) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file: Device number %d out of range for ADEVICE command on line %d.\n", adevice, line);
-	      dw_printf ("If you really need more than %d audio devices, increase MAX_ADEVS and recompile.\n", MAX_ADEVS);
+	      
+	      printf ("Config file: Device number %d out of range for ADEVICE command on line %d.\n", adevice, line);
+	      printf ("If you really need more than %d audio devices, increase MAX_ADEVS and recompile.\n", MAX_ADEVS);
 	      adevice = 0;
 	      continue;
 	    }
 
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file: Missing name of audio device for ADEVICE command on line %d.\n", line);
+	      
+	      printf ("Config file: Missing name of audio device for ADEVICE command on line %d.\n", line);
 	      rtfm();
 	      exit(EXIT_FAILURE);
 	    }
@@ -606,16 +591,16 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 		  }
 
 		  if (adevice < 0 || adevice >= MAX_ADEVS) {
-			  text_color_set(DW_COLOR_ERROR);
-			  dw_printf ("Config file: Device number %d out of range for PADEVICE command on line %d.\n", adevice, line);
+			  
+			  printf ("Config file: Device number %d out of range for PADEVICE command on line %d.\n", adevice, line);
 			  adevice = 0;
 			  continue;
 		  }
 
 		  t = split(NULL,1);
 		  if (t == NULL) {
-			  text_color_set(DW_COLOR_ERROR);
-			  dw_printf ("Config file: Missing name of audio device for PADEVICE command on line %d.\n", line);
+			  
+			  printf ("Config file: Missing name of audio device for PADEVICE command on line %d.\n", line);
 			  continue;
 		  }
 
@@ -633,16 +618,16 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 		  }
 
 		  if (adevice < 0 || adevice >= MAX_ADEVS) {
-			  text_color_set(DW_COLOR_ERROR);
-			  dw_printf ("Config file: Device number %d out of range for PADEVICE command on line %d.\n", adevice, line);
+			  
+			  printf ("Config file: Device number %d out of range for PADEVICE command on line %d.\n", adevice, line);
 			  adevice = 0;
 			  continue;
 		  }
 
 		  t = split(NULL,1);
 		  if (t == NULL) {
-			  text_color_set(DW_COLOR_ERROR);
-			  dw_printf ("Config file: Missing name of audio device for PADEVICE command on line %d.\n", line);
+			  
+			  printf ("Config file: Missing name of audio device for PADEVICE command on line %d.\n", line);
 			  continue;
 		  }
 
@@ -663,8 +648,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing audio sample rate for ARATE command.\n", line);
+	      
+	      printf ("Line %d: Missing audio sample rate for ARATE command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -672,8 +657,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      p_audio_config->adev[adevice].samples_per_sec = n;
 	    }
 	    else {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Use a more reasonable audio sample rate in range of %d - %d.\n", 
+	      
+              printf ("Line %d: Use a more reasonable audio sample rate in range of %d - %d.\n", 
 							line, MIN_SAMPLES_PER_SEC, MAX_SAMPLES_PER_SEC);
    	    }
 	  }
@@ -686,8 +671,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing number of audio channels for ACHANNELS command.\n", line);
+	      
+	      printf ("Line %d: Missing number of audio channels for ACHANNELS command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -702,8 +687,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      }
 	    }
 	    else {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Number of audio channels must be 1 or 2.\n", line);
+	      
+              printf ("Line %d: Number of audio channels must be 1 or 2.\n", line);
    	    }
 	  }
 
@@ -719,8 +704,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing channel number for CHANNEL command.\n", line);
+	      
+	      printf ("Line %d: Missing channel number for CHANNEL command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -731,20 +716,20 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      if (p_audio_config->chan_medium[n] != MEDIUM_RADIO) {
 
 	        if ( ! p_audio_config->adev[ACHAN2ADEV(n)].defined) {
-	          text_color_set(DW_COLOR_ERROR);
-                  dw_printf ("Line %d: Channel number %d is not valid because audio device %d is not defined.\n", 
+	          
+                  printf ("Line %d: Channel number %d is not valid because audio device %d is not defined.\n", 
 								line, n, ACHAN2ADEV(n));
 	        }
 	        else {
-	          text_color_set(DW_COLOR_ERROR);
-                  dw_printf ("Line %d: Channel number %d is not valid because audio device %d is not in stereo.\n", 
+	          
+                  printf ("Line %d: Channel number %d is not valid because audio device %d is not in stereo.\n", 
 								line, n, ACHAN2ADEV(n));
 	        }
 	      }
 	    }
 	    else {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Channel number must in range of 0 to %d.\n", line, MAX_CHANS-1);
+	      
+              printf ("Line %d: Channel number must in range of 0 to %d.\n", line, MAX_CHANS-1);
    	    }
 	  }
 
@@ -770,8 +755,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing data transmission speed for MODEM command.\n", line);
+	      
+	      printf ("Line %d: Missing data transmission speed for MODEM command.\n", line);
 	      continue;
 	    }
 
@@ -779,14 +764,14 @@ void config_init (char *fname, struct audio_s *p_audio_config,
             if (n >= MIN_BAUD && n <= MAX_BAUD) {
 	      p_audio_config->achan[channel].baud = n;
 	      if (n != 300 && n != 1200 && n != 2400 && n != 4800 && n != 9600 && n != 19200 && n != MAX_BAUD-1 && n != MAX_BAUD-2) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Line %d: Warning: Non-standard data rate of %d bits per second.  Are you sure?\n", line, n);
+	        
+	        printf ("Line %d: Warning: Non-standard data rate of %d bits per second.  Are you sure?\n", line, n);
     	      }
 	    }
 	    else {
 	      p_audio_config->achan[channel].baud = DEFAULT_BAUD;
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Unreasonable data rate. Using %d bits per second.\n",
+	      
+              printf ("Line %d: Unreasonable data rate. Using %d bits per second.\n",
 				 line, p_audio_config->achan[channel].baud);
    	    }
 
@@ -819,8 +804,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 /* old style */
 
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Old style (pre version 1.2) format will no longer be supported in next version.\n", line);
+	      
+	      printf ("Line %d: Old style (pre version 1.2) format will no longer be supported in next version.\n", line);
 
 	      n = atoi(t);
 	      /* Originally the upper limit was 3000. */
@@ -833,8 +818,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      }
 	      else {
 	        p_audio_config->achan[channel].mark_freq = DEFAULT_MARK_FREQ;
-	        text_color_set(DW_COLOR_ERROR);
-                dw_printf ("Line %d: Unreasonable mark tone frequency. Using %d.\n", 
+	        
+                printf ("Line %d: Unreasonable mark tone frequency. Using %d.\n", 
 				 line, p_audio_config->achan[channel].mark_freq);
    	      }
 	    
@@ -842,8 +827,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	      t = split(NULL,0);
 	      if (t == NULL) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Line %d: Missing tone frequency for space.\n", line);
+	        
+	        printf ("Line %d: Missing tone frequency for space.\n", line);
 	        continue;
 	      }
 	      n = atoi(t);
@@ -852,8 +837,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      }
 	      else {
 	        p_audio_config->achan[channel].space_freq = DEFAULT_SPACE_FREQ;
-	        text_color_set(DW_COLOR_ERROR);
-                dw_printf ("Line %d: Unreasonable space tone frequency. Using %d.\n", 
+	        
+                printf ("Line %d: Unreasonable space tone frequency. Using %d.\n", 
 					 line, p_audio_config->achan[channel].space_freq);
    	      }
 
@@ -863,15 +848,15 @@ void config_init (char *fname, struct audio_s *p_audio_config,
                   p_audio_config->achan[channel].mark_freq == 1200 &&
                   p_audio_config->achan[channel].space_freq == 2200) {
 
-	        text_color_set(DW_COLOR_ERROR);
-                dw_printf ("Line %d: The AFSK frequencies can be omitted when using the 1200 baud default 1200:2200.\n", line);
+	        
+                printf ("Line %d: The AFSK frequencies can be omitted when using the 1200 baud default 1200:2200.\n", line);
 	      }
 	      if (p_audio_config->achan[channel].baud == 300 &&
                   p_audio_config->achan[channel].mark_freq == 1600 &&
                   p_audio_config->achan[channel].space_freq == 1800) {
 
-	        text_color_set(DW_COLOR_ERROR);
-                dw_printf ("Line %d: The AFSK frequencies can be omitted when using the 300 baud default 1600:1800.\n", line);
+	        
+                printf ("Line %d: The AFSK frequencies can be omitted when using the 300 baud default 1600:1800.\n", line);
 	      }
 
 	      /* New feature in 0.9 - Optional filter profile(s). */
@@ -889,16 +874,16 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	          for (pc = t; *pc != '\0'; pc++) {
 		    if ( ! isalpha(*pc) && ! (*pc == '+')) {
-	              text_color_set(DW_COLOR_ERROR);
-                      dw_printf ("Line %d: Demodulator type can only contain letters and + character.\n", line);
+	              
+                      printf ("Line %d: Demodulator type can only contain letters and + character.\n", line);
 		    }
 		  }    
 		
 		  strlcpy (p_audio_config->achan[channel].profiles, t, sizeof(p_audio_config->achan[channel].profiles));
 	          t = split(NULL,0);
 		  if (strlen(p_audio_config->achan[channel].profiles) > 1 && t != NULL) {
-	            text_color_set(DW_COLOR_ERROR);
-                    dw_printf ("Line %d: Can't combine multiple demodulator types and multiple frequencies.\n", line);
+	            
+                    printf ("Line %d: Can't combine multiple demodulator types and multiple frequencies.\n", line);
 		    continue;
 		  }
 	        }
@@ -909,8 +894,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      if (t != NULL) {
 	        n = atoi(t);
                 if (n < 1 || n > MAX_SUBCHANS) {
-	          text_color_set(DW_COLOR_ERROR);
-                  dw_printf ("Line %d: Number of demodulators is out of range. Using 3.\n", line);
+	          
+                  printf ("Line %d: Number of demodulators is out of range. Using 3.\n", line);
 		  n = 3;
 	        }
 	        p_audio_config->achan[channel].num_freq = n;
@@ -919,19 +904,19 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	        if (t != NULL) {
 	          n = atoi(t);
                   if (n < 5 || n > abs(p_audio_config->achan[channel].mark_freq - p_audio_config->achan[channel].space_freq)/2) {
-	            text_color_set(DW_COLOR_ERROR);
-                    dw_printf ("Line %d: Unreasonable value for offset between modems.  Using 50 Hz.\n", line);
+	            
+                    printf ("Line %d: Unreasonable value for offset between modems.  Using 50 Hz.\n", line);
 		    n = 50;
 	          }
 		  p_audio_config->achan[channel].offset = n;
 
-	          text_color_set(DW_COLOR_ERROR);
-                  dw_printf ("Line %d: New style for multiple demodulators is %d@%d\n", line,
+	          
+                  printf ("Line %d: New style for multiple demodulators is %d@%d\n", line,
 			p_audio_config->achan[channel].num_freq, p_audio_config->achan[channel].offset);	  
 	        }
 	        else {
-	          text_color_set(DW_COLOR_ERROR);
-                  dw_printf ("Line %d: Missing frequency offset between modems.  Using 50 Hz.\n", line);
+	          
+                  printf ("Line %d: Missing frequency offset between modems.  Using 50 Hz.\n", line);
 	          p_audio_config->achan[channel].offset = 50;
 	        }    
 	      }
@@ -952,14 +937,14 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 			if (p_audio_config->achan[channel].mark_freq < 300 || p_audio_config->achan[channel].mark_freq > 5000) {
 	              p_audio_config->achan[channel].mark_freq = DEFAULT_MARK_FREQ;
-	              text_color_set(DW_COLOR_ERROR);
-                      dw_printf ("Line %d: Unreasonable mark tone frequency. Using %d instead.\n", 
+	              
+                      printf ("Line %d: Unreasonable mark tone frequency. Using %d instead.\n", 
 				 line, p_audio_config->achan[channel].mark_freq);
 		    }
                     if (p_audio_config->achan[channel].space_freq < 300 || p_audio_config->achan[channel].space_freq > 5000) {
 	              p_audio_config->achan[channel].space_freq = DEFAULT_SPACE_FREQ;
-	              text_color_set(DW_COLOR_ERROR);
-                      dw_printf ("Line %d: Unreasonable space tone frequency. Using %d instead.\n", 
+	              
+                      printf ("Line %d: Unreasonable space tone frequency. Using %d instead.\n", 
 				 line, p_audio_config->achan[channel].space_freq);
 		    }
 
@@ -969,15 +954,15 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	          p_audio_config->achan[channel].offset = atoi(s+1);
 
                   if (p_audio_config->achan[channel].num_freq < 1 || p_audio_config->achan[channel].num_freq > MAX_SUBCHANS) {
-	            text_color_set(DW_COLOR_ERROR);
-                    dw_printf ("Line %d: Number of demodulators is out of range. Using 3.\n", line);
+	            
+                    printf ("Line %d: Number of demodulators is out of range. Using 3.\n", line);
 	            p_audio_config->achan[channel].num_freq = 3;
 		  }
 
                   if (p_audio_config->achan[channel].offset < 5 || 
 			p_audio_config->achan[channel].offset > abs(p_audio_config->achan[channel].mark_freq - p_audio_config->achan[channel].space_freq)/2) {
-	            text_color_set(DW_COLOR_ERROR);
-                    dw_printf ("Line %d: Offset between demodulators is unreasonable. Using 50 Hz.\n", line);
+	            
+                    printf ("Line %d: Offset between demodulators is unreasonable. Using 50 Hz.\n", line);
 	            p_audio_config->achan[channel].offset = 50;
 		  }
 		}
@@ -995,8 +980,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	            p_audio_config->achan[channel].decimate = n;
 		  }
 	    	  else {
-	            text_color_set(DW_COLOR_ERROR);
-                    dw_printf ("Line %d: Ignoring unreasonable sample rate division factor of %d.\n", line, n);
+	            
+                    printf ("Line %d: Ignoring unreasonable sample rate division factor of %d.\n", line, n);
 		  }
 		}
 
@@ -1007,14 +992,14 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	            p_audio_config->achan[channel].upsample = n;
 		  }
 	    	  else {
-	            text_color_set(DW_COLOR_ERROR);
-                    dw_printf ("Line %d: Ignoring unreasonable upsample ratio of %d.\n", line, n);
+	            
+                    printf ("Line %d: Ignoring unreasonable upsample ratio of %d.\n", line, n);
 		  }
 		}
 
 		else {
-	          text_color_set(DW_COLOR_ERROR);
-                  dw_printf ("Line %d: Unrecognized option for MODEM: %s\n", line, t);
+	          
+                  printf ("Line %d: Unrecognized option for MODEM: %s\n", line, t);
 	        } 
 
 	        t = split(NULL,0);
@@ -1023,7 +1008,7 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      /* A later place catches disallowed combination of + and @. */
 	      /* A later place sets /n for 300 baud if not specified by user. */
 
-	      //dw_printf ("debug: div = %d\n", p_audio_config->achan[channel].decimate);
+	      //printf ("debug: div = %d\n", p_audio_config->achan[channel].decimate);
 
 	    }
 	  }
@@ -1042,8 +1027,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing value for FIX_BITS command.\n", line);
+	      
+	      printf ("Line %d: Missing value for FIX_BITS command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -1052,18 +1037,18 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    }
 	    else {
 	      p_audio_config->achan[channel].fix_bits = DEFAULT_FIX_BITS;
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Invalid value %d for FIX_BITS. Using default of %d.\n",
+	      
+              printf ("Line %d: Invalid value %d for FIX_BITS. Using default of %d.\n",
 			line, n, p_audio_config->achan[channel].fix_bits);
 	    }
 
 	    if (p_audio_config->achan[channel].fix_bits > DEFAULT_FIX_BITS) {
-	      text_color_set(DW_COLOR_INFO);
-              dw_printf ("Line %d: Using a FIX_BITS value greater than %d is not recommended for normal operation.\n",
+	      
+              printf ("Line %d: Using a FIX_BITS value greater than %d is not recommended for normal operation.\n",
 			line, DEFAULT_FIX_BITS);
-              dw_printf ("FIX_BITS > 1 was an interesting experiment but turned out to be a bad idea.\n");
-              dw_printf ("Don't be surprised if it takes 100%% CPU, direwolf can't keep up with the audio stream,\n");
-              dw_printf ("and you see messages like \"Audio input device 0 error code -32: Broken pipe\"\n");
+              printf ("FIX_BITS > 1 was an interesting experiment but turned out to be a bad idea.\n");
+              printf ("Don't be surprised if it takes 100%% CPU, direwolf can't keep up with the audio stream,\n");
+              printf ("and you see messages like \"Audio input device 0 error code -32: Broken pipe\"\n");
 	    }
 
 	    t = split(NULL,0);
@@ -1082,15 +1067,15 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      }
 	      else if (strcasecmp(t, "PASSALL") == 0) {
 	        p_audio_config->achan[channel].passall = 1;
-	        text_color_set(DW_COLOR_ERROR);
-                dw_printf ("Line %d: There is an old saying, \"Be careful what you ask for because you might get it.\"\n", line);
-                dw_printf ("The PASSALL option means allow all frames even when they are invalid.\n");
-                dw_printf ("You are asking to receive random trash and you WILL get your wish.\n");
-                dw_printf ("Don't complain when you see all sorts of random garbage.  That's what you asked for.\n");
+	        
+                printf ("Line %d: There is an old saying, \"Be careful what you ask for because you might get it.\"\n", line);
+                printf ("The PASSALL option means allow all frames even when they are invalid.\n");
+                printf ("You are asking to receive random trash and you WILL get your wish.\n");
+                printf ("Don't complain when you see all sorts of random garbage.  That's what you asked for.\n");
 	      }
 	      else {
-	        text_color_set(DW_COLOR_ERROR);
-                dw_printf ("Line %d: Invalid option '%s' for FIX_BITS.\n", line, t);
+	        
+                printf ("Line %d: Invalid option '%s' for FIX_BITS.\n", line, t);
 	      }
 	      t = split(NULL,0);
 	    }
@@ -1135,8 +1120,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file line %d: Missing output control device for %s command.\n",
+	      
+	      printf ("Config file line %d: Missing output control device for %s command.\n",
 			line, otname);
 	      continue;
 	    }
@@ -1146,13 +1131,13 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 /* GPIO case, Linux only. */
 
 #if __WIN32__
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file line %d: %s with GPIO is only available on Linux.\n", line, otname);
+	      
+	      printf ("Config file line %d: %s with GPIO is only available on Linux.\n", line, otname);
 #else		
 	      t = split(NULL,0);
 	      if (t == NULL) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file line %d: Missing GPIO number for %s.\n", line, otname);
+	        
+	        printf ("Config file line %d: Missing GPIO number for %s.\n", line, otname);
 	        continue;
 	      }
 
@@ -1175,8 +1160,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	      t = split(NULL,0);
 	      if (t == NULL) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file line %d: Missing LPT bit number for %s.\n", line, otname);
+	        
+	        printf ("Config file line %d: Missing LPT bit number for %s.\n", line, otname);
 	        continue;
 	      }
 
@@ -1190,8 +1175,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      }
 	      p_audio_config->achan[channel].octrl[ot].ptt_method = PTT_METHOD_LPT;
 #else
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file line %d: %s with LPT is only available on x86 Linux.\n", line, otname);
+	      
+	      printf ("Config file line %d: %s with LPT is only available on x86 Linux.\n", line, otname);
 #endif		
 	    }
 	    else if (strcasecmp(t, "RIG") == 0) {
@@ -1199,8 +1184,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	      t = split(NULL,0);
 	      if (t == NULL) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file line %d: Missing model number for hamlib.\n", line);
+	        
+	        printf ("Config file line %d: Missing model number for hamlib.\n", line);
 	        continue;
 	      }
 	      if (strcasecmp(t, "AUTO") == 0) {
@@ -1208,16 +1193,16 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      }
 	      else {
 		if ( ! alldigits(t)) {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("Config file line %d: A rig number, not a name, is required here.\n", line);
-	          dw_printf ("For example, if you have a Yaesu FT-847, specify 101.\n");
-	          dw_printf ("See https://github.com/Hamlib/Hamlib/wiki/Supported-Radios for more details.\n");
+	          
+	          printf ("Config file line %d: A rig number, not a name, is required here.\n", line);
+	          printf ("For example, if you have a Yaesu FT-847, specify 101.\n");
+	          printf ("See https://github.com/Hamlib/Hamlib/wiki/Supported-Radios for more details.\n");
 	          continue;
 	        }
 	        int n = atoi(t);
 		if (n < 1 || n > 9999) {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("Config file line %d: Unreasonable model number %d for hamlib.\n", line, n);
+	          
+	          printf ("Config file line %d: Unreasonable model number %d for hamlib.\n", line, n);
 	          continue;
 	        }
 	        p_audio_config->achan[channel].octrl[ot].ptt_model = n;
@@ -1225,8 +1210,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	      t = split(NULL,0);
 	      if (t == NULL) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file line %d: Missing port for hamlib.\n", line);
+	        
+	        printf ("Config file line %d: Missing port for hamlib.\n", line);
 	        continue;
 	      }
 	      strlcpy (p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
@@ -1236,8 +1221,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      t = split(NULL,0);
 	      if (t != NULL) {
 		if ( ! alldigits(t)) {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("Config file line %d: An optional number is required here for CAT serial port speed: %s\n", line, t);
+	          
+	          printf ("Config file line %d: An optional number is required here for CAT serial port speed: %s\n", line, t);
 	          continue;
 	        }
 	        int n = atoi(t);
@@ -1246,22 +1231,22 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	      t = split(NULL,0);
 	      if (t != NULL) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file line %d: %s was not expected after model & port for hamlib.\n", line, t);
+	        
+	        printf ("Config file line %d: %s was not expected after model & port for hamlib.\n", line, t);
 	      }
 
 	      p_audio_config->achan[channel].octrl[ot].ptt_method = PTT_METHOD_HAMLIB;
 
 #else
 #if __WIN32__
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file line %d: Windows version of direwolf does not support HAMLIB.\n", line);
+	      
+	      printf ("Config file line %d: Windows version of direwolf does not support HAMLIB.\n", line);
 	      exit (EXIT_FAILURE);
 #else
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file line %d: %s with RIG is only available when hamlib support is enabled.\n", line, otname);
-	      dw_printf ("You must rebuild direwolf with hamlib support.\n");
-	      dw_printf ("See User Guide for details.\n");
+	      
+	      printf ("Config file line %d: %s with RIG is only available when hamlib support is enabled.\n", line, otname);
+	      printf ("You must rebuild direwolf with hamlib support.\n");
+	      printf ("See User Guide for details.\n");
 #endif
 
 #endif
@@ -1279,8 +1264,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	        // copy of the status and then write out the byte for all of the pins.
 	        // Let's keep it simple with just PTT for the first stab at this.
 
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file line %d: PTT CM108 option is only valid for PTT, not %s.\n", line, otname);
+	        
+	        printf ("Config file line %d: PTT CM108 option is only valid for PTT, not %s.\n", line, otname);
 	        continue;
 	      }
 
@@ -1312,8 +1297,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	          strlcpy (p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
 		}
 		else {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("Config file line %d: Found \"%s\" when expecting GPIO number or device name like \\\\?\\hid#vid_0d8c&... .\n", line, t);
+	          
+	          printf ("Config file line %d: Found \"%s\" when expecting GPIO number or device name like \\\\?\\hid#vid_0d8c&... .\n", line, t);
 	          continue;
 	        }
 #else
@@ -1321,38 +1306,38 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	          strlcpy (p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
 		}
 		else {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("Config file line %d: Found \"%s\" when expecting GPIO number or device name like /dev/hidraw1.\n", line, t);
+	          
+	          printf ("Config file line %d: Found \"%s\" when expecting GPIO number or device name like /dev/hidraw1.\n", line, t);
 	          continue;
 	        }
 #endif
 	      }
 	      if (p_audio_config->achan[channel].octrl[ot].out_gpio_num < 1 || p_audio_config->achan[channel].octrl[ot].out_gpio_num > 8) {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("Config file line %d: CM108 GPIO number %d is not in range of 1 thru 8.\n", line,
+	          
+	          printf ("Config file line %d: CM108 GPIO number %d is not in range of 1 thru 8.\n", line,
 					p_audio_config->achan[channel].octrl[ot].out_gpio_num);
 	          continue;
 	      }
 	      if (strlen(p_audio_config->achan[channel].octrl[ot].ptt_device) == 0) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file line %d: Could not determine USB Audio GPIO PTT device for audio output %s.\n", line,
+	        
+	        printf ("Config file line %d: Could not determine USB Audio GPIO PTT device for audio output %s.\n", line,
 					p_audio_config->adev[ACHAN2ADEV(channel)].adevice_out);
 #if __WIN32__
-	        dw_printf ("You must explicitly mention a HID path.\n");
+	        printf ("You must explicitly mention a HID path.\n");
 #else
-	        dw_printf ("You must explicitly mention a device name such as /dev/hidraw1.\n");
+	        printf ("You must explicitly mention a device name such as /dev/hidraw1.\n");
 #endif
-	        dw_printf ("Run \"cm108\" utility to get a list.\n");
-	        dw_printf ("See Interface Guide for details.\n");
+	        printf ("Run \"cm108\" utility to get a list.\n");
+	        printf ("See Interface Guide for details.\n");
 	        continue;
 	      }
 	      p_audio_config->achan[channel].octrl[ot].ptt_method = PTT_METHOD_CM108;
 
 #else
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file line %d: %s with CM108 is only available when USB Audio GPIO support is enabled.\n", line, otname);
-	      dw_printf ("You must rebuild direwolf with CM108 Audio Adapter GPIO PTT support.\n");
-	      dw_printf ("See Interface Guide for details.\n");
+	      
+	      printf ("Config file line %d: %s with CM108 is only available when USB Audio GPIO support is enabled.\n", line, otname);
+	      printf ("You must rebuild direwolf with CM108 Audio Adapter GPIO PTT support.\n");
+	      printf ("See Interface Guide for details.\n");
 	      rtfm();
 	      exit (EXIT_FAILURE);
 #endif
@@ -1365,8 +1350,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	      t = split(NULL,0);
 	      if (t == NULL) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file line %d: Missing RTS or DTR after %s device name.\n", 
+	        
+	        printf ("Config file line %d: Missing RTS or DTR after %s device name.\n", 
 			line, otname);
 	        continue;
 	      }
@@ -1388,8 +1373,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 		p_audio_config->achan[channel].octrl[ot].ptt_invert = 1;
 	      }
 	      else {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file line %d: Expected RTS or DTR after %s device name.\n", 
+	        
+	        printf ("Config file line %d: Expected RTS or DTR after %s device name.\n", 
 			line, otname);
 	        continue;
 	      }
@@ -1422,8 +1407,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 		  p_audio_config->achan[channel].octrl[ot].ptt_invert2 = 1;
 	        }
 	        else {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("Config file line %d: Expected RTS or DTR after first RTS or DTR.\n", 
+	          
+	          printf ("Config file line %d: Expected RTS or DTR after first RTS or DTR.\n", 
 			line);
 	          continue;
 	        }
@@ -1431,7 +1416,7 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 		/* Would not make sense to specify the same one twice. */
 
 		if (p_audio_config->achan[channel].octrl[ot].ptt_line == p_audio_config->achan[channel].octrl[ot].ptt_line2) {
-	          dw_printf ("Config file line %d: Doesn't make sense to specify the some control line twice.\n", 
+	          printf ("Config file line %d: Doesn't make sense to specify the some control line twice.\n", 
 			line);
 	        }
 
@@ -1455,21 +1440,21 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file line %d: Missing input type name for %s command.\n", line, itname);
+	      
+	      printf ("Config file line %d: Missing input type name for %s command.\n", line, itname);
 	      continue;
 	    }
 
 	    if (strcasecmp(t, "GPIO") == 0) {
 
 #if __WIN32__
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file line %d: %s with GPIO is only available on Linux.\n", line, itname);
+	      
+	      printf ("Config file line %d: %s with GPIO is only available on Linux.\n", line, itname);
 #else
 	      t = split(NULL,0);
 	      if (t == NULL) {
-	        text_color_set(DW_COLOR_ERROR);
-		dw_printf ("Config file line %d: Missing GPIO number for %s.\n", line, itname);
+	        
+		printf ("Config file line %d: Missing GPIO number for %s.\n", line, itname);
 		continue;
 	      }
 
@@ -1495,8 +1480,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing delay time for DWAIT command.\n", line);
+	      
+	      printf ("Line %d: Missing delay time for DWAIT command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -1505,8 +1490,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    }
 	    else {
 	      p_audio_config->achan[channel].dwait = DEFAULT_DWAIT;
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Invalid delay time for DWAIT. Using %d.\n", 
+	      
+              printf ("Line %d: Invalid delay time for DWAIT. Using %d.\n", 
 			line, p_audio_config->achan[channel].dwait);
    	    }
 	  }
@@ -1519,8 +1504,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing delay time for SLOTTIME command.\n", line);
+	      
+	      printf ("Line %d: Missing delay time for SLOTTIME command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -1529,8 +1514,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    }
 	    else {
 	      p_audio_config->achan[channel].slottime = DEFAULT_SLOTTIME;
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Invalid delay time for persist algorithm. Using %d.\n", 
+	      
+              printf ("Line %d: Invalid delay time for persist algorithm. Using %d.\n", 
 			line, p_audio_config->achan[channel].slottime);
    	    }
 	  }
@@ -1543,8 +1528,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing probability for PERSIST command.\n", line);
+	      
+	      printf ("Line %d: Missing probability for PERSIST command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -1553,8 +1538,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    }
 	    else {
 	      p_audio_config->achan[channel].persist = DEFAULT_PERSIST;
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Invalid probability for persist algorithm. Using %d.\n", 
+	      
+              printf ("Line %d: Invalid probability for persist algorithm. Using %d.\n", 
 			line, p_audio_config->achan[channel].persist);
    	    }
 	  }
@@ -1567,8 +1552,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing time for TXDELAY command.\n", line);
+	      
+	      printf ("Line %d: Missing time for TXDELAY command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -1577,8 +1562,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    }
 	    else {
 	      p_audio_config->achan[channel].txdelay = DEFAULT_TXDELAY;
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Invalid time for transmit delay. Using %d.\n", 
+	      
+              printf ("Line %d: Invalid time for transmit delay. Using %d.\n", 
 			line, p_audio_config->achan[channel].txdelay);
    	    }
 	  }
@@ -1591,8 +1576,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing time for TXTAIL command.\n", line);
+	      
+	      printf ("Line %d: Missing time for TXTAIL command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -1601,8 +1586,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    }
 	    else {
 	      p_audio_config->achan[channel].txtail = DEFAULT_TXTAIL;
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Invalid time for transmit timing. Using %d.\n", 
+	      
+              printf ("Line %d: Invalid time for transmit timing. Using %d.\n", 
 			line, p_audio_config->achan[channel].txtail);
    	    }
 	  }
@@ -1614,8 +1599,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing parameter for FULLDUP command.  Expecting ON or OFF.\n", line);
+	      
+	      printf ("Line %d: Missing parameter for FULLDUP command.  Expecting ON or OFF.\n", line);
 	      continue;
 	    }
 	    if (strcasecmp(t, "ON") == 0) {
@@ -1626,8 +1611,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    }
 	    else {
 	      p_audio_config->achan[channel].fulldup = 0;
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Expected ON or OFF for FULLDUP.\n", line);
+	      
+	      printf ("Line %d: Expected ON or OFF for FULLDUP.\n", line);
 	    }
 	  }
 
@@ -1643,8 +1628,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int n;
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing FEC mode for FX25TX command.\n", line);
+	      
+	      printf ("Line %d: Missing FEC mode for FX25TX command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -1655,8 +1640,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    else {
 	      p_audio_config->achan[channel].fx25_strength = 1;
 	      p_audio_config->achan[channel].layer2_xmit = LAYER2_FX25;
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Unreasonable value for FX.25 transmission mode. Using %d.\n", 
+	      
+              printf ("Line %d: Unreasonable value for FX.25 transmission mode. Using %d.\n", 
 			line, p_audio_config->achan[channel].fx25_strength);
    	    }
 	  }
@@ -1692,8 +1677,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    int chan = -1;	// optional.  default to all if not specified.
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing TCP port number for KISSPORT command.\n", line);
+	      
+	      printf ("Line %d: Missing TCP port number for KISSPORT command.\n", line);
 	      continue;
 	    }
 	    n = atoi(t);
@@ -1701,9 +1686,9 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	      tcp_port = n;
 	    }
 	    else {
-	      text_color_set(DW_COLOR_ERROR);
-              dw_printf ("Line %d: Invalid TCP port number for KISS TCPIP Socket Interface.\n", line);
-              dw_printf ("Use something in the range of %d to %d.\n", MIN_IP_PORT_NUMBER, MAX_IP_PORT_NUMBER);
+	      
+              printf ("Line %d: Invalid TCP port number for KISS TCPIP Socket Interface.\n", line);
+              printf ("Use something in the range of %d to %d.\n", MIN_IP_PORT_NUMBER, MAX_IP_PORT_NUMBER);
 	      continue;
    	    }
 
@@ -1711,8 +1696,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    if (t != NULL) {
 	      chan = atoi(t);
 	      if (chan < 0 || chan >= MAX_CHANS) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Line %d: Invalid channel %d for KISSPORT command.  Must be in range 0 thru %d.\n", line, chan, MAX_CHANS-1);
+	        
+	        printf ("Line %d: Invalid channel %d for KISSPORT command.  Must be in range 0 thru %d.\n", line, chan, MAX_CHANS-1);
 	        continue;
 	      }
 	    }
@@ -1732,8 +1717,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	        if (p_misc_config->kiss_port[i] == tcp_port) {
 	          slot = i;
 	          if ( ! (slot == 0 && tcp_port == DEFAULT_KISS_PORT)) {
-	            text_color_set(DW_COLOR_ERROR);
-	            dw_printf ("Line %d: Warning: Duplicate TCP port %d will overwrite previous value.\n", line, tcp_port);
+	            
+	            printf ("Line %d: Warning: Duplicate TCP port %d will overwrite previous value.\n", line, tcp_port);
 	          }
 	        }
 	        else if (p_misc_config->kiss_port[i] == 0) {
@@ -1745,8 +1730,8 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	        p_misc_config->kiss_chan[slot] = chan;
 	      }
 	      else {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Line %d: Too many KISSPORT commands.\n", line);
+	        
+	        printf ("Line %d: Too many KISSPORT commands.\n", line);
 	      }
 	    }
 	  }
@@ -1764,14 +1749,14 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	  else if (strcasecmp(t, "NULLMODEM") == 0 || strcasecmp(t, "SERIALKISS") == 0) {
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file: Missing serial port name on line %d.\n", line);
+	      
+	      printf ("Config file: Missing serial port name on line %d.\n", line);
 	      continue;
 	    }
 	    else {
 	      if (strlen(p_misc_config->kiss_serial_port) > 0) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file: Warning serial port name on line %d replaces earlier value.\n", line);
+	        
+	        printf ("Config file: Warning serial port name on line %d replaces earlier value.\n", line);
 	      }
 	      strlcpy (p_misc_config->kiss_serial_port, t, sizeof(p_misc_config->kiss_serial_port));
 	      p_misc_config->kiss_serial_speed = 0;
@@ -1792,14 +1777,14 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	  else if (strcasecmp(t, "SERIALKISSPOLL") == 0) {
 	    t = split(NULL,0);
 	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Config file: Missing serial port name on line %d.\n", line);
+	      
+	      printf ("Config file: Missing serial port name on line %d.\n", line);
 	      continue;
 	    }
 	    else {
 	      if (strlen(p_misc_config->kiss_serial_port) > 0) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Config file: Warning serial port name on line %d replaces earlier value.\n", line);
+	        
+	        printf ("Config file: Warning serial port name on line %d replaces earlier value.\n", line);
 	      }
 	      strlcpy (p_misc_config->kiss_serial_port, t, sizeof(p_misc_config->kiss_serial_port));
 	      p_misc_config->kiss_serial_speed = 0;
@@ -1817,48 +1802,12 @@ void config_init (char *fname, struct audio_s *p_audio_config,
 	    p_misc_config->kiss_copy = 1;
 	  }
 
-
-/*
- * DNSSD 		- Enable or disable (1/0) dns-sd, DNS Service Discovery announcements
- * DNSSDNAME            - Set DNS-SD service name, defaults to "Dire Wolf on <hostname>"
- */
-
-	  else if (strcasecmp(t, "DNSSD") == 0) {
-	    int n;
-	    t = split(NULL,0);
-	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing integer value for DNSSD command.\n", line);
-	      continue;
-	    }
-	    n = atoi(t);
-	    if (n == 0 || n == 1) {
-	      p_misc_config->dns_sd_enabled = n;
-	    } else {
-	      p_misc_config->dns_sd_enabled = 0;
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Invalid integer value for DNSSD. Disabling dns-sd.\n", line);
-	    }
-	  }
-
-	  else if (strcasecmp(t, "DNSSDNAME") == 0) {
-	    t = split(NULL, 1);
-	    if (t == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Line %d: Missing service name for DNSSDNAME.\n", line);
-	      continue;
-	    }
-	    else {
-	      strlcpy(p_misc_config->dns_sd_name, t, sizeof(p_misc_config->dns_sd_name));
-	    }
-	  }
-
 /*
  * Invalid command.
  */
 	  else {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Config file: Unrecognized command '%s' on line %d.\n", t, line);
+	    
+	    printf ("Config file: Unrecognized command '%s' on line %d.\n", t, line);
 	  }  
 
 	}

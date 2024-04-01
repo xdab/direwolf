@@ -50,10 +50,8 @@
 #endif
 
 #include "ax25_pad.h"
-#include "textcolor.h"
 #include "audio.h"
 #include "dlq.h"
-#include "dtime_now.h"
 
 
 /* The queue is a linked list of these. */
@@ -112,16 +110,16 @@ static volatile int s_cdata_delete_count = 0;		// TODO:  need to test.
 void dlq_init (void)
 {
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq_init ( )\n");
+	
+	printf ("dlq_init ( )\n");
 #endif
 
 	queue_head = NULL;
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq_init: pthread_mutex_init...\n");
+	
+	printf ("dlq_init: pthread_mutex_init...\n");
 #endif
 
 #if __WIN32__
@@ -130,15 +128,15 @@ void dlq_init (void)
 	int err;
 	err = pthread_mutex_init (&wake_up_mutex, NULL);
 	if (err != 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("dlq_init: pthread_mutex_init err=%d", err);
+	  
+	  printf ("dlq_init: pthread_mutex_init err=%d", err);
 	  perror ("");
 	  exit (EXIT_FAILURE);
 	}
 	err = pthread_mutex_init (&dlq_mutex, NULL);
 	if (err != 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("dlq_init: pthread_mutex_init err=%d", err);
+	  
+	  printf ("dlq_init: pthread_mutex_init err=%d", err);
 	  perror ("");
 	  exit (EXIT_FAILURE);
 	}
@@ -147,8 +145,8 @@ void dlq_init (void)
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq_init: pthread_cond_init...\n");
+	
+	printf ("dlq_init: pthread_cond_init...\n");
 #endif
 
 #if __WIN32__
@@ -156,8 +154,8 @@ void dlq_init (void)
 	wake_up_event = CreateEvent (NULL, 0, 0, NULL);
 
 	if (wake_up_event == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("dlq_init: pthread_cond_init: can't create receive wake up event");
+	  
+	  printf ("dlq_init: pthread_cond_init: can't create receive wake up event");
 	  exit (1);
 	}
 
@@ -166,14 +164,14 @@ void dlq_init (void)
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq_init: pthread_cond_init returns %d\n", err);
+	
+	printf ("dlq_init: pthread_cond_init returns %d\n", err);
 #endif
 
 
 	if (err != 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("dlq_init: pthread_cond_init err=%d", err);
+	  
+	  printf ("dlq_init: pthread_cond_init err=%d", err);
 	  perror ("");
 	  exit (1);
 	}
@@ -234,23 +232,23 @@ void dlq_rec_frame (int chan, int subchan, int slice, packet_t pp, alevel_t alev
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq_rec_frame (chan=%d, pp=%p, ...)\n", chan, pp);
+	
+	printf ("dlq_rec_frame (chan=%d, pp=%p, ...)\n", chan, pp);
 #endif
 
 	assert (chan >= 0 && chan < MAX_TOTAL_CHANS);	// TOTAL to include virtual channels.
 
 	if (pp == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("INTERNAL ERROR:  dlq_rec_frame NULL packet pointer. Please report this!\n");
+	  
+	  printf ("INTERNAL ERROR:  dlq_rec_frame NULL packet pointer. Please report this!\n");
 	  return;
 	}
 
 #if AX25MEMDEBUG
 
 	if (ax25memdebug_get()) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("dlq_rec_frame (chan=%d.%d, seq=%d, ...)\n", chan, subchan, ax25memdebug_seq(pp));
+	  
+	  printf ("dlq_rec_frame (chan=%d.%d, seq=%d, ...)\n", chan, subchan, ax25memdebug_seq(pp));
 	}
 #endif
 
@@ -259,15 +257,15 @@ void dlq_rec_frame (int chan, int subchan, int slice, packet_t pp, alevel_t alev
 
 	pnew = (struct dlq_item_s *) calloc (sizeof(struct dlq_item_s), 1);
 	if (pnew == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("FATAL ERROR: Out of memory.\n");
+	  
+	  printf ("FATAL ERROR: Out of memory.\n");
 	  exit (EXIT_FAILURE);
 	}
 	s_new_count++;
 
 	if (s_new_count > s_delete_count + 50) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("INTERNAL ERROR:  DLQ memory leak, new=%d, delete=%d\n", s_new_count, s_delete_count);
+	  
+	  printf ("INTERNAL ERROR:  DLQ memory leak, new=%d, delete=%d\n", s_new_count, s_delete_count);
 	}
 
 	pnew->nextp = NULL;
@@ -322,8 +320,8 @@ static void append_to_queue (struct dlq_item_s *pnew)
 	pnew->nextp = NULL;
 
 #if DEBUG1
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq append_to_queue: enter critical section\n");
+	
+	printf ("dlq append_to_queue: enter critical section\n");
 #endif
 #if __WIN32__
 	EnterCriticalSection (&dlq_cs);
@@ -331,8 +329,8 @@ static void append_to_queue (struct dlq_item_s *pnew)
 	int err;
 	err = pthread_mutex_lock (&dlq_mutex);
 	if (err != 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("dlq append_to_queue: pthread_mutex_lock err=%d", err);
+	  
+	  printf ("dlq append_to_queue: pthread_mutex_lock err=%d", err);
 	  perror ("");
 	  exit (1);
 	}
@@ -358,16 +356,16 @@ static void append_to_queue (struct dlq_item_s *pnew)
 #else
 	err = pthread_mutex_unlock (&dlq_mutex);
 	if (err != 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("dlq append_to_queue: pthread_mutex_unlock err=%d", err);
+	  
+	  printf ("dlq append_to_queue: pthread_mutex_unlock err=%d", err);
 	  perror ("");
 	  exit (1);
 	}
 #endif
 #if DEBUG1
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq append_to_queue: left critical section\n");
-	dw_printf ("dlq append_to_queue (): about to wake up recv processing thread.\n");
+	
+	printf ("dlq append_to_queue: left critical section\n");
+	printf ("dlq append_to_queue (): about to wake up recv processing thread.\n");
 #endif
 
 
@@ -415,11 +413,11 @@ static void append_to_queue (struct dlq_item_s *pnew)
  */
 
 	if (queue_length > 10) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Received frame queue is out of control. Length=%d.\n", queue_length);
-	  dw_printf ("Reader thread is probably frozen.\n");
-	  dw_printf ("This can be caused by using a pseudo terminal (direwolf -p) where another\n");
-	  dw_printf ("application is not reading the frames from the other side.\n");
+	  
+	  printf ("Received frame queue is out of control. Length=%d.\n", queue_length);
+	  printf ("Reader thread is probably frozen.\n");
+	  printf ("This can be caused by using a pseudo terminal (direwolf -p) where another\n");
+	  printf ("application is not reading the frames from the other side.\n");
 	}
 
 
@@ -431,24 +429,24 @@ static void append_to_queue (struct dlq_item_s *pnew)
 
 	  err = pthread_mutex_lock (&wake_up_mutex);
 	  if (err != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("dlq append_to_queue: pthread_mutex_lock wu err=%d", err);
+	    
+	    printf ("dlq append_to_queue: pthread_mutex_lock wu err=%d", err);
 	    perror ("");
 	    exit (1);
 	  }
 
 	  err = pthread_cond_signal (&wake_up_cond);
 	  if (err != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("dlq append_to_queue: pthread_cond_signal err=%d", err);
+	    
+	    printf ("dlq append_to_queue: pthread_cond_signal err=%d", err);
 	    perror ("");
 	    exit (1);
 	  }
 
 	  err = pthread_mutex_unlock (&wake_up_mutex);
 	  if (err != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("dlq append_to_queue: pthread_mutex_unlock wu err=%d", err);
+	    
+	    printf ("dlq append_to_queue: pthread_mutex_unlock wu err=%d", err);
 	    perror ("");
 	    exit (1);
 	  }
@@ -481,8 +479,8 @@ int dlq_wait_while_empty (double timeout)
 	int timed_out_result = 0;
 
 #if DEBUG1
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq_wait_while_empty (%.3f)\n", timeout);
+	
+	printf ("dlq_wait_while_empty (%.3f)\n", timeout);
 #endif
 
 	if ( ! was_init) {
@@ -493,8 +491,8 @@ int dlq_wait_while_empty (double timeout)
 	if (queue_head == NULL) {
 
 #if DEBUG
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("dlq_wait_while_empty (): prepare to SLEEP...\n");
+	  
+	  printf ("dlq_wait_while_empty (): prepare to SLEEP...\n");
 #endif
 
 
@@ -505,8 +503,8 @@ int dlq_wait_while_empty (double timeout)
 	    DWORD ms = (timeout - dtime_now()) * 1000;
 	    if (ms <= 0) ms = 1;
 #if DEBUG
-	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("WaitForSingleObject: timeout after %d ms\n", ms);
+	    
+	    printf ("WaitForSingleObject: timeout after %d ms\n", ms);
 #endif
 	    if (WaitForSingleObject (wake_up_event, ms) == WAIT_TIMEOUT) {
 	      timed_out_result = 1;
@@ -521,8 +519,8 @@ int dlq_wait_while_empty (double timeout)
 
 	  err = pthread_mutex_lock (&wake_up_mutex);
 	  if (err != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("dlq_wait_while_empty: pthread_mutex_lock wu err=%d", err);
+	    
+	    printf ("dlq_wait_while_empty: pthread_mutex_lock wu err=%d", err);
 	    perror ("");
 	    exit (1);
 	  }
@@ -546,8 +544,8 @@ int dlq_wait_while_empty (double timeout)
 
 	  err = pthread_mutex_unlock (&wake_up_mutex);
 	  if (err != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("dlq_wait_while_empty: pthread_mutex_unlock wu err=%d", err);
+	    
+	    printf ("dlq_wait_while_empty: pthread_mutex_unlock wu err=%d", err);
 	    perror ("");
 	    exit (1);
 	  }
@@ -556,8 +554,8 @@ int dlq_wait_while_empty (double timeout)
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq_wait_while_empty () returns timedout=%d\n", timed_out_result);
+	
+	printf ("dlq_wait_while_empty () returns timedout=%d\n", timed_out_result);
 #endif
 	return (timed_out_result);
 
@@ -586,8 +584,8 @@ struct dlq_item_s *dlq_remove (void)
 	//int err;
 
 #if DEBUG1
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq_remove() enter critical section\n");
+	
+	printf ("dlq_remove() enter critical section\n");
 #endif
 
 	if ( ! was_init) {
@@ -601,8 +599,8 @@ struct dlq_item_s *dlq_remove (void)
 
 	err = pthread_mutex_lock (&dlq_mutex);
 	if (err != 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("dlq_remove: pthread_mutex_lock err=%d", err);
+	  
+	  printf ("dlq_remove: pthread_mutex_lock err=%d", err);
 	  perror ("");
 	  exit (1);
 	}
@@ -618,28 +616,28 @@ struct dlq_item_s *dlq_remove (void)
 #else
 	err = pthread_mutex_unlock (&dlq_mutex);
 	if (err != 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("dlq_remove: pthread_mutex_unlock err=%d", err);
+	  
+	  printf ("dlq_remove: pthread_mutex_unlock err=%d", err);
 	  perror ("");
 	  exit (1);
 	}
 #endif
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("dlq_remove()  returns \n");
+	
+	printf ("dlq_remove()  returns \n");
 #endif
 
 #if AX25MEMDEBUG
 
 	if (ax25memdebug_get() && result != NULL) {
-	  text_color_set(DW_COLOR_DEBUG);
+	  
 	  if (result->pp != NULL) {
 // TODO: mnemonics for type.
-	    dw_printf ("dlq_remove (chan=%d.%d, seq=%d, ...)\n", result->chan, result->subchan, ax25memdebug_seq(result->pp));
+	    printf ("dlq_remove (chan=%d.%d, seq=%d, ...)\n", result->chan, result->subchan, ax25memdebug_seq(result->pp));
 	  }
 	  else {
-	    dw_printf ("dlq_remove (chan=%d, ...)\n", result->chan);
+	    printf ("dlq_remove (chan=%d, ...)\n", result->chan);
 	  }
 	}
 #endif
@@ -662,8 +660,8 @@ struct dlq_item_s *dlq_remove (void)
 void dlq_delete (struct dlq_item_s *pitem)
 {
 	if (pitem == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("INTERNAL ERROR: dlq_delete()  given NULL pointer.\n");
+	  
+	  printf ("INTERNAL ERROR: dlq_delete()  given NULL pointer.\n");
 	  return;
 	}
 
@@ -726,8 +724,8 @@ cdata_t *cdata_new (int pid, char *data, int len)
 
 	cdata = malloc ( sizeof(cdata_t) + size );
 	if (cdata == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("FATAL ERROR: Out of memory.\n");
+	  
+	  printf ("FATAL ERROR: Out of memory.\n");
 	  exit (EXIT_FAILURE);
 	}
 
@@ -764,14 +762,14 @@ cdata_t *cdata_new (int pid, char *data, int len)
 void cdata_delete (cdata_t *cdata)
 {
 	if (cdata == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("INTERNAL ERROR: cdata_delete()  given NULL pointer.\n");
+	  
+	  printf ("INTERNAL ERROR: cdata_delete()  given NULL pointer.\n");
 	  return;
 	}
 
 	if (cdata->magic != TXDATA_MAGIC) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("INTERNAL ERROR: cdata_delete()  given corrupted data.\n");
+	  
+	  printf ("INTERNAL ERROR: cdata_delete()  given corrupted data.\n");
 	  return;
 	}
 
@@ -799,8 +797,8 @@ void cdata_check_leak (void)
 {
 	if (s_cdata_delete_count != s_cdata_new_count) {
 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal Error, %s, new=%d, delete=%d\n", __func__, s_cdata_new_count, s_cdata_delete_count);
+	  
+	  printf ("Internal Error, %s, new=%d, delete=%d\n", __func__, s_cdata_new_count, s_cdata_delete_count);
 	}
 
 } /* end cdata_check_leak */

@@ -64,7 +64,6 @@
 
 
 #include "audio_stats.h"
-#include "textcolor.h"
 #include "demod.h"		/* for alevel_t & demod_get_audio_level() */
 
 
@@ -152,7 +151,7 @@ void audio_stats (int adev, int nchan, int nsamp, int interval)
 	    else {
 	      float ave_rate = (sample_count[adev] / 1000.0) / interval;
 
-	      text_color_set(DW_COLOR_DEBUG);
+	      
 
 	      if (nchan > 1) {
 	        int ch0 = ADEVFIRSTCHAN(adev);
@@ -160,14 +159,14 @@ void audio_stats (int adev, int nchan, int nsamp, int interval)
 	        int ch1 = ADEVFIRSTCHAN(adev) + 1;
 	        alevel_t alevel1 = demod_get_audio_level(ch1,0);
 
-	        dw_printf ("\nADEVICE%d: Sample rate approx. %.1f k, %d errors, receive audio levels CH%d %d, CH%d %d\n\n", 
+	        printf ("\nADEVICE%d: Sample rate approx. %.1f k, %d errors, receive audio levels CH%d %d, CH%d %d\n\n", 
 			adev, ave_rate, error_count[adev], ch0, alevel0.rec, ch1, alevel1.rec);
 	      }
 	      else {
 	        int ch0 = ADEVFIRSTCHAN(adev);
 	        alevel_t alevel0 = demod_get_audio_level(ch0,0);
 
-	        dw_printf ("\nADEVICE%d: Sample rate approx. %.1f k, %d errors, receive audio level CH%d %d\n\n", 
+	        printf ("\nADEVICE%d: Sample rate approx. %.1f k, %d errors, receive audio level CH%d %d\n\n", 
 			adev, ave_rate, error_count[adev], ch0, alevel0.rec);
 	      }
 	    }

@@ -39,7 +39,6 @@
 #include "hdlc_rec.h"
 #include "hdlc_rec2.h"
 #include "fcs_calc.h"
-#include "textcolor.h"
 #include "ax25_pad.h"
 #include "rrbb.h"
 #include "multi_modem.h"
@@ -139,8 +138,8 @@ void hdlc_rec_init (struct audio_s *pa)
 	int ch, sub, slice;
 	struct hdlc_state_s *H;
 
-	//text_color_set(DW_COLOR_DEBUG);
-	//dw_printf ("hdlc_rec_init (%p) \n", pa);
+	//
+	//printf ("hdlc_rec_init (%p) \n", pa);
 
 	assert (pa != NULL);
 	g_audio_p = pa;
@@ -352,8 +351,8 @@ void hdlc_rec_bit (int chan, int subchan, int slice, int raw, int is_scrambled, 
 	  if (g_audio_p->recv_ber > r) {
 
 // FIXME
-//text_color_set(DW_COLOR_DEBUG);
-//dw_printf ("hdlc_rec_bit randomly clobber bit, ber = %.6f\n", g_audio_p->recv_ber);
+//
+//printf ("hdlc_rec_bit randomly clobber bit, ber = %.6f\n", g_audio_p->recv_ber);
 
 	    raw = ! raw;
 	  }
@@ -411,8 +410,8 @@ void hdlc_rec_bit (int chan, int subchan, int slice, int raw, int is_scrambled, 
 #if OLD_WAY
 
 #if TEST
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("\nfound flag, olen = %d, frame_len = %d\n", olen, frame_len);
+	  
+	  printf ("\nfound flag, olen = %d, frame_len = %d\n", olen, frame_len);
 #endif
 	  if (H->olen == 7 && H->frame_len >= MIN_FRAME_LEN) {
 
@@ -420,11 +419,11 @@ void hdlc_rec_bit (int chan, int subchan, int slice, int raw, int is_scrambled, 
 
 #if TEST
 	    int j;
-	    dw_printf ("TRADITIONAL: frame len = %d\n", H->frame_len);
+	    printf ("TRADITIONAL: frame len = %d\n", H->frame_len);
 	    for (j=0; j<H->frame_len; j++) {
-	      dw_printf ("  %02x", H->frame_buf[j]);
+	      printf ("  %02x", H->frame_buf[j]);
 	    }
-	    dw_printf ("\n");
+	    printf ("\n");
 
 #endif
 	    /* Check FCS, low byte first, and process... */
@@ -448,7 +447,7 @@ void hdlc_rec_bit (int chan, int subchan, int slice, int raw, int is_scrambled, 
 	    else {
 
 #if TEST
-	      dw_printf ("*** actual fcs = %04x, expected fcs = %04x ***\n", actual_fcs, expected_fcs);
+	      printf ("*** actual fcs = %04x, expected fcs = %04x ***\n", actual_fcs, expected_fcs);
 #endif
 
 	    }
@@ -462,8 +461,8 @@ void hdlc_rec_bit (int chan, int subchan, int slice, int raw, int is_scrambled, 
  */
 
 #if TEST
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("\nfound flag, channel %d.%d, %d bits in frame\n", chan, subchan, rrbb_get_len(H->rrbb) - 1);
+	  
+	  printf ("\nfound flag, channel %d.%d, %d bits in frame\n", chan, subchan, rrbb_get_len(H->rrbb) - 1);
 #endif
 	  if (rrbb_get_len(H->rrbb) >= MIN_FRAME_LEN * 8) {
 		
@@ -613,8 +612,8 @@ void dcd_change (int chan, int subchan, int slice, int state)
 	assert (state == 0 || state == 1);
 
 #if DEBUG3
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("DCD %d.%d.%d = %d \n", chan, subchan, slice, state);
+	
+	printf ("DCD %d.%d.%d = %d \n", chan, subchan, slice, state);
 #endif
 
 	old = hdlc_rec_data_detect_any(chan);

@@ -90,8 +90,6 @@
 
 #include "audio.h"
 #include "audio_stats.h"
-#include "textcolor.h"
-#include "dtime_now.h"
 #include "demod.h"		/* for alevel_t & demod_get_audio_level() */
 
 
@@ -158,8 +156,8 @@ static int calcbufsize(int rate, int chans, int bits)
 	int size1 = (rate * chans * bits  / 8 * ONE_BUF_TIME) / 1000;
 	int size2 = roundup1k(size1);
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
+	
+	printf ("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
 		rate, chans, bits, size1, size2);
 #endif
 	return (size2);
@@ -324,14 +322,14 @@ int audio_open (struct audio_s *pa)
 	      snprintf (ctemp, sizeof(ctemp), " (channel %d)", ADEVFIRSTCHAN(a));
 	    }
 
-            text_color_set(DW_COLOR_INFO);
+            
 
 	    if (strcmp(audio_in_name,audio_out_name) == 0) {
-              dw_printf ("Audio device for both receive and transmit: %s %s\n", audio_in_name, ctemp);
+              printf ("Audio device for both receive and transmit: %s %s\n", audio_in_name, ctemp);
 	    }
 	    else {
-              dw_printf ("Audio input device for receive: %s %s\n", audio_in_name, ctemp);
-              dw_printf ("Audio out device for transmit: %s %s\n", audio_out_name, ctemp);
+              printf ("Audio input device for receive: %s %s\n", audio_in_name, ctemp);
+              printf ("Audio out device for transmit: %s %s\n", audio_out_name, ctemp);
 	    }
 
 /*
@@ -351,12 +349,12 @@ int audio_open (struct audio_s *pa)
 #if USE_ALSA
 	        err = snd_pcm_open (&(adev[a].audio_in_handle), audio_in_name, SND_PCM_STREAM_CAPTURE, 0);
 	        if (err < 0) {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("Could not open audio device %s for input\n%s\n", 
+	          
+	          printf ("Could not open audio device %s for input\n%s\n", 
 	  		audio_in_name, snd_strerror(err));
 		  if (err == -EBUSY) {
-	            dw_printf ("This means that some other application is using that device.\n");
-	            dw_printf ("The solution is to identify that other application and stop it.\n");
+	            printf ("This means that some other application is using that device.\n");
+	            printf ("The solution is to identify that other application and stop it.\n");
 	          }
 	          return (-1);
 	        }
@@ -366,8 +364,8 @@ int audio_open (struct audio_s *pa)
 #elif USE_SNDIO
 		adev[a].sndio_in_handle = sio_open (audio_in_name, SIO_REC, 0);
 		if (adev[a].sndio_in_handle == NULL) {
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("Could not open audio device %s for input\n",
+		  
+		  printf ("Could not open audio device %s for input\n",
 			audio_in_name);
 		  return (-1);
 		}
@@ -375,8 +373,8 @@ int audio_open (struct audio_s *pa)
 		adev[a].inbuf_size_in_bytes = set_sndio_params (a, adev[a].sndio_in_handle, pa, audio_in_name, "input");
 
 		if (!sio_start (adev[a].sndio_in_handle)) {
-		  text_color_set(DW_COLOR_ERROR);
-		  dw_printf ("Could not start audio device %s for input\n",
+		  
+		  printf ("Could not start audio device %s for input\n",
 			audio_in_name);
 		  return (-1);
 		}
@@ -385,8 +383,8 @@ int audio_open (struct audio_s *pa)
 	        adev[a].oss_audio_device_fd = open (pa->adev[a].adevice_in, O_RDWR);
 
 	        if (adev[a].oss_audio_device_fd < 0) {
-	          text_color_set(DW_COLOR_ERROR);
-	          dw_printf ("%s:\n", pa->adev[a].adevice_in);
+	          
+	          printf ("%s:\n", pa->adev[a].adevice_in);
 //	          snprintf (message, sizeof(message), "Could not open audio device %s", pa->adev[a].adevice_in);
 //	          perror (message);
 	          return (-1);
@@ -413,8 +411,8 @@ int audio_open (struct audio_s *pa)
 
 	          //Create UDP Socket
 	          if ((adev[a].udp_sock=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
-	            text_color_set(DW_COLOR_ERROR);
-	            dw_printf ("Couldn't create socket, errno %d\n", errno);
+	            
+	            printf ("Couldn't create socket, errno %d\n", errno);
 	            return -1;
 	          }
 
@@ -425,8 +423,8 @@ int audio_open (struct audio_s *pa)
 
 	          //Bind to the socket
 	          if (bind(adev[a].udp_sock, (const struct sockaddr *) &si_me, sizeof(si_me))==-1) {
-	            text_color_set(DW_COLOR_ERROR);
-	            dw_printf ("Couldn't bind socket, errno %d\n", errno);
+	            
+	            printf ("Couldn't bind socket, errno %d\n", errno);
 	            return -1;
 	          }
 	        }
@@ -447,8 +445,8 @@ int audio_open (struct audio_s *pa)
 
 	      default:
 
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Internal error, invalid audio_in_type\n");
+	        
+	        printf ("Internal error, invalid audio_in_type\n");
 	        return (-1);
   	    }
 
@@ -460,12 +458,12 @@ int audio_open (struct audio_s *pa)
 	    err = snd_pcm_open (&(adev[a].audio_out_handle), audio_out_name, SND_PCM_STREAM_PLAYBACK, 0);
 
 	    if (err < 0) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Could not open audio device %s for output\n%s\n", 
+	      
+	      printf ("Could not open audio device %s for output\n%s\n", 
 			audio_out_name, snd_strerror(err));
 	      if (err == -EBUSY) {
-	        dw_printf ("This means that some other application is using that device.\n");
-	        dw_printf ("The solution is to identify that other application and stop it.\n");
+	        printf ("This means that some other application is using that device.\n");
+	        printf ("The solution is to identify that other application and stop it.\n");
 	      }
 	      return (-1);
 	    }
@@ -479,8 +477,8 @@ int audio_open (struct audio_s *pa)
 #elif USE_SNDIO
 	    adev[a].sndio_out_handle = sio_open (audio_out_name, SIO_PLAY, 0);
 	    if (adev[a].sndio_out_handle == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Could not open audio device %s for output\n",
+	      
+	      printf ("Could not open audio device %s for output\n",
 			audio_out_name);
 	      return (-1);
 	    }
@@ -492,8 +490,8 @@ int audio_open (struct audio_s *pa)
 	    }
 
 	    if (!sio_start (adev[a].sndio_out_handle)) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Could not start audio device %s for output\n",
+	      
+	      printf ("Could not start audio device %s for output\n",
 			audio_out_name);
 	      return (-1);
 	    }
@@ -552,19 +550,19 @@ static int set_alsa_params (int a, snd_pcm_t *handle, struct audio_s *pa, char *
 
 	err = snd_pcm_hw_params_malloc (&hw_params);
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not alloc hw param structure.\n%s\n", 
+	  
+	  printf ("Could not alloc hw param structure.\n%s\n", 
 			snd_strerror(err));
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  printf ("for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
 	err = snd_pcm_hw_params_any (handle, hw_params);
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not init hw param structure.\n%s\n", 
+	  
+	  printf ("Could not init hw param structure.\n%s\n", 
 			snd_strerror(err));
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  printf ("for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
@@ -573,10 +571,10 @@ static int set_alsa_params (int a, snd_pcm_t *handle, struct audio_s *pa, char *
 	err = snd_pcm_hw_params_set_access (handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED);
 
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not set interleaved mode.\n%s\n", 
+	  
+	  printf ("Could not set interleaved mode.\n%s\n", 
 			snd_strerror(err));
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  printf ("for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
@@ -586,10 +584,10 @@ static int set_alsa_params (int a, snd_pcm_t *handle, struct audio_s *pa, char *
 	err = snd_pcm_hw_params_set_format (handle, hw_params,
  		pa->adev[a].bits_per_sample == 8 ? SND_PCM_FORMAT_U8 : SND_PCM_FORMAT_S16_LE);
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not set bits per sample.\n%s\n", 
+	  
+	  printf ("Could not set bits per sample.\n%s\n", 
 			snd_strerror(err));
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  printf ("for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
@@ -598,10 +596,10 @@ static int set_alsa_params (int a, snd_pcm_t *handle, struct audio_s *pa, char *
 
 	err = snd_pcm_hw_params_set_channels (handle, hw_params, pa->adev[a].num_channels);
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not set number of audio channels.\n%s\n", 
+	  
+	  printf ("Could not set number of audio channels.\n%s\n", 
 			snd_strerror(err));
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  printf ("for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
@@ -615,20 +613,20 @@ static int set_alsa_params (int a, snd_pcm_t *handle, struct audio_s *pa, char *
 
 	err = snd_pcm_hw_params_set_rate_near (handle, hw_params, &val, &dir);
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not set audio sample rate.\n%s\n", 
+	  
+	  printf ("Could not set audio sample rate.\n%s\n", 
 			snd_strerror(err));
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  printf ("for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
 	if (val != pa->adev[a].samples_per_sec) {
 
-	  text_color_set(DW_COLOR_INFO);
-	  dw_printf ("Asked for %d samples/sec but got %d.\n",
+	  
+	  printf ("Asked for %d samples/sec but got %d.\n",
 
 				pa->adev[a].samples_per_sec, val);
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  printf ("for %s %s.\n", devname, inout);
 
 	  pa->adev[a].samples_per_sec = val;
 
@@ -667,25 +665,25 @@ static int set_alsa_params (int a, snd_pcm_t *handle, struct audio_s *pa, char *
 	fpp = buf_size_in_bytes / (pa->adev[a].num_channels * pa->adev[a].bits_per_sample / 8);
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
+	
 
-	dw_printf ("suggest period size of %d frames\n", (int)fpp);
+	printf ("suggest period size of %d frames\n", (int)fpp);
 #endif
 	dir = 0;
 	err = snd_pcm_hw_params_set_period_size_near (handle, hw_params, &fpp, &dir);
 
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not set period size\n%s\n", snd_strerror(err));
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  
+	  printf ("Could not set period size\n%s\n", snd_strerror(err));
+	  printf ("for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
 	err = snd_pcm_hw_params (handle, hw_params);
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not set hw params\n%s\n", snd_strerror(err));
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  
+	  printf ("Could not set hw params\n%s\n", snd_strerror(err));
+	  printf ("for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
@@ -694,9 +692,9 @@ static int set_alsa_params (int a, snd_pcm_t *handle, struct audio_s *pa, char *
 
 	err = snd_pcm_hw_params_get_period_size (hw_params, &fpp, NULL);
 	if (err < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not get audio period size.\n%s\n", snd_strerror(err));
-	  dw_printf ("for %s %s.\n", devname, inout);
+	  
+	  printf ("Could not get audio period size.\n%s\n", snd_strerror(err));
+	  printf ("for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
@@ -713,18 +711,18 @@ static int set_alsa_params (int a, snd_pcm_t *handle, struct audio_s *pa, char *
 	buf_size_in_bytes = fpp * adev[a].bytes_per_frame;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio buffer size = %d (bytes per frame) x %d (frames per period) = %d \n", adev[a].bytes_per_frame, (int)fpp, buf_size_in_bytes);
+	
+	printf ("audio buffer size = %d (bytes per frame) x %d (frames per period) = %d \n", adev[a].bytes_per_frame, (int)fpp, buf_size_in_bytes);
 #endif
 
 	/* Version 1.3 - after a report of this situation for Mac OSX version. */
 	if (buf_size_in_bytes < 256 || buf_size_in_bytes > 32768) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Audio buffer has unexpected extreme size of %d bytes.\n", buf_size_in_bytes);
-	  dw_printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
-	  dw_printf ("This might be caused by unusual audio device configuration values.\n"); 
+	  
+	  printf ("Audio buffer has unexpected extreme size of %d bytes.\n", buf_size_in_bytes);
+	  printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
+	  printf ("This might be caused by unusual audio device configuration values.\n"); 
 	  buf_size_in_bytes = 2048;
-	  dw_printf ("Using %d to attempt recovery.\n", buf_size_in_bytes);
+	  printf ("Using %d to attempt recovery.\n", buf_size_in_bytes);
 	}
 
 	return (buf_size_in_bytes);
@@ -760,35 +758,35 @@ static int set_sndio_params (int a, struct sio_hdl *handle, struct audio_s *pa, 
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("suggest buffer size %d bytes for %s %s.\n",
+	
+	printf ("suggest buffer size %d bytes for %s %s.\n",
 		q.appbufsz, devname, inout);
 #endif
 
 	/* challenge new setting */
 	if (!sio_setpar (handle, &q)) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not set hardware parameter for %s %s.\n",
+	  
+	  printf ("Could not set hardware parameter for %s %s.\n",
 		devname, inout);
 	  return (-1);
 	}
 
 	/* get response */
 	if (!sio_getpar (handle, &r)) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Could not obtain current hardware setting for %s %s.\n",
+	  
+	  printf ("Could not obtain current hardware setting for %s %s.\n",
 		devname, inout);
 	  return (-1);
 	}
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio buffer size %d bytes for %s %s.\n",
+	
+	printf ("audio buffer size %d bytes for %s %s.\n",
 		r.appbufsz, devname, inout);
 #endif
 	if (q.rate != r.rate) {
-	  text_color_set(DW_COLOR_INFO);
-	  dw_printf ("Asked for %d samples/sec but got %d for %s %s.",
+	  
+	  printf ("Asked for %d samples/sec but got %d for %s %s.",
 		     pa->adev[a].samples_per_sec, r.rate, devname, inout);
 	  pa->adev[a].samples_per_sec = r.rate;
 	}
@@ -798,8 +796,8 @@ static int set_sndio_params (int a, struct sio_hdl *handle, struct audio_s *pa, 
 	    (q.bits > 8 && q.le != r.le) ||
 	    (*inout == 'o' && q.pchan != r.pchan) ||
 	    (*inout == 'i' && q.rchan != r.rchan)) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Unsupported format for %s %s.\n", devname, inout);
+	  
+	  printf ("Unsupported format for %s %s.\n", devname, inout);
 	  return (-1);
 	}
 
@@ -822,8 +820,8 @@ static int poll_sndio (struct sio_hdl *hdl, int events)
 	    return (0);
 	  }
 	  if (poll (pfds, nfds, -1) < 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("poll %d\n", errno);
+	    
+	    printf ("poll %d\n", errno);
 	    return (-1);
 	  }
 	  revents = sio_revents (hdl, pfds);
@@ -831,8 +829,8 @@ static int poll_sndio (struct sio_hdl *hdl, int events)
 
 	/* unrecoverable error occurred */
 	if (revents & POLLHUP) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("waited for %s, POLLHUP received\n", (events & POLLIN) ? "POLLIN" : "POLLOUT");
+	  
+	  printf ("waited for %s, POLLHUP received\n", (events & POLLIN) ? "POLLIN" : "POLLOUT");
 	  return (-1);
 	}
 
@@ -859,7 +857,7 @@ static int set_oss_params (int a, int fd, struct audio_s *pa)
 
 	err = ioctl (fd, SNDCTL_DSP_CHANNELS, &(pa->adev[a].num_channels));
    	if (err == -1) {
-	  text_color_set(DW_COLOR_ERROR);
+	  
     	  perror("Not able to set audio device number of channels");
  	  return (-1);
 	}
@@ -868,14 +866,14 @@ static int set_oss_params (int a, int fd, struct audio_s *pa)
 
 	err = ioctl (fd, SNDCTL_DSP_SPEED, &(pa->adev[a].samples_per_sec));
    	if (err == -1) {
-	  text_color_set(DW_COLOR_ERROR);
+	  
     	  perror("Not able to set audio device sample rate");
  	  return (-1);
 	}
 
 	if (pa->adev[a].samples_per_sec != asked_for) {
-	  text_color_set(DW_COLOR_INFO);
-          dw_printf ("Asked for %d samples/sec but actually using %d.\n",
+	  
+          printf ("Asked for %d samples/sec but actually using %d.\n",
 		asked_for, pa->adev[a].samples_per_sec);
 	}
 
@@ -885,7 +883,7 @@ static int set_oss_params (int a, int fd, struct audio_s *pa)
 
 	err = ioctl (fd, SNDCTL_DSP_SETFMT, &(pa->adev[a].bits_per_sample));
    	if (err == -1) {
-	  text_color_set(DW_COLOR_ERROR);
+	  
     	  perror("Not able to set audio device sample size");
  	  return (-1);
 	}
@@ -895,28 +893,28 @@ static int set_oss_params (int a, int fd, struct audio_s *pa)
  */
 	err = ioctl (fd, SNDCTL_DSP_GETCAPS, &devcaps);
    	if (err == -1) {
-	  text_color_set(DW_COLOR_ERROR);
+	  
     	  perror("Not able to get audio device capabilities");
  	  // Is this fatal? //	return (-1);
 	}
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_open(): devcaps = %08x\n", devcaps);	
-	if (devcaps & DSP_CAP_DUPLEX) dw_printf ("Full duplex record/playback.\n");
-	if (devcaps & DSP_CAP_BATCH) dw_printf ("Device has some kind of internal buffers which may cause delays.\n");
-	if (devcaps & ~ (DSP_CAP_DUPLEX | DSP_CAP_BATCH)) dw_printf ("Others...\n");
+	
+	printf ("audio_open(): devcaps = %08x\n", devcaps);	
+	if (devcaps & DSP_CAP_DUPLEX) printf ("Full duplex record/playback.\n");
+	if (devcaps & DSP_CAP_BATCH) printf ("Device has some kind of internal buffers which may cause delays.\n");
+	if (devcaps & ~ (DSP_CAP_DUPLEX | DSP_CAP_BATCH)) printf ("Others...\n");
 #endif
 
 	if (!(devcaps & DSP_CAP_DUPLEX)) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Audio device does not support full duplex\n");
+	  
+	  printf ("Audio device does not support full duplex\n");
     	  // Do we care? //	return (-1);
 	}
 
 	err = ioctl (fd, SNDCTL_DSP_SETDUPLEX, NULL);
    	if (err == -1) {
-	  // text_color_set(DW_COLOR_ERROR);
+	  // 
     	  // perror("Not able to set audio full duplex mode");
  	  // Unfortunate but not a disaster.
 	}
@@ -937,14 +935,14 @@ static int set_oss_params (int a, int fd, struct audio_s *pa)
  */
 	err = ioctl (fd, SNDCTL_DSP_GETBLKSIZE, &ossbuf_size_in_bytes);
    	if (err == -1) {
-	  text_color_set(DW_COLOR_ERROR);
+	  
     	  perror("Not able to get audio block size");
 	  ossbuf_size_in_bytes = 2048;	/* pick something reasonable */
 	}
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_open(): suggestd block size is %d\n", ossbuf_size_in_bytes);	
+	
+	printf ("audio_open(): suggestd block size is %d\n", ossbuf_size_in_bytes);	
 #endif
 
 /*
@@ -955,8 +953,8 @@ static int set_oss_params (int a, int fd, struct audio_s *pa)
 	ossbuf_size_in_bytes = calcbufsize(pa->adev[a].samples_per_sec, pa->adev[a].num_channels, pa->adev[a].bits_per_sample);
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_open(): using block size of %d\n", ossbuf_size_in_bytes);	
+	
+	printf ("audio_open(): using block size of %d\n", ossbuf_size_in_bytes);	
 #endif
 
 #if 0
@@ -965,12 +963,12 @@ static int set_oss_params (int a, int fd, struct audio_s *pa)
 #else
 	/* Version 1.3 - after a report of this situation for Mac OSX version. */
 	if (ossbuf_size_in_bytes < 256 || ossbuf_size_in_bytes > 32768) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Audio buffer has unexpected extreme size of %d bytes.\n", ossbuf_size_in_bytes);
-	  dw_printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
-	  dw_printf ("This might be caused by unusual audio device configuration values.\n");
+	  
+	  printf ("Audio buffer has unexpected extreme size of %d bytes.\n", ossbuf_size_in_bytes);
+	  printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
+	  printf ("This might be caused by unusual audio device configuration values.\n");
 	  ossbuf_size_in_bytes = 2048;
-	  dw_printf ("Using %d to attempt recovery.\n", ossbuf_size_in_bytes);
+	  printf ("Using %d to attempt recovery.\n", ossbuf_size_in_bytes);
 	}
 #endif
 	return (ossbuf_size_in_bytes);
@@ -1021,9 +1019,9 @@ int audio_get (int a)
 #endif
 
 #if DEBUGx
-	text_color_set(DW_COLOR_DEBUG);
+	
 
-	dw_printf ("audio_get():\n");
+	printf ("audio_get():\n");
 
 #endif
 
@@ -1046,14 +1044,14 @@ int audio_get (int a)
 
 	      assert (adev[a].audio_in_handle != NULL);
 #if DEBUGx
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("audio_get(): readi asking for %d frames\n", adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);	
+	      
+	      printf ("audio_get(): readi asking for %d frames\n", adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);	
 #endif
 	      n = snd_pcm_readi (adev[a].audio_in_handle, adev[a].inbuf_ptr, adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);
 
 #if DEBUGx	  
-	      text_color_set(DW_COLOR_DEBUG);
-	      dw_printf ("audio_get(): readi asked for %d and got %d frames\n",
+	      
+	      printf ("audio_get(): readi asked for %d and got %d frames\n",
 		adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame, n);	
 #endif
 
@@ -1076,8 +1074,8 @@ int audio_get (int a)
 	        /* Didn't expect this, but it's not a problem. */
 	        /* Wait a little while and try again. */
 
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Audio input got zero bytes: %s\n", snd_strerror(n));
+	        
+	        printf ("Audio input got zero bytes: %s\n", snd_strerror(n));
 	        SLEEP_MS(10);
 
 	        adev[a].inbuf_len = 0;
@@ -1095,15 +1093,15 @@ int audio_get (int a)
 		// Data overrun is displayed as "broken pipe" which seems a little misleading.
 		// Add our own message which says something about CPU being too slow.
 
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Audio input device %d error code %d: %s\n", a, n, snd_strerror(n));
+	        
+	        printf ("Audio input device %d error code %d: %s\n", a, n, snd_strerror(n));
 
 	        if (n == (-EPIPE)) {
-	          dw_printf ("This is most likely caused by the CPU being too slow to keep up with the audio stream.\n");
-	          dw_printf ("Use the \"top\" command, in another command window, to look at CPU usage.\n");
-	          dw_printf ("This might be a temporary condition so we will attempt to recover a few times before giving up.\n");
-	          dw_printf ("If using a very slow CPU, try reducing the CPU load by using -P- command\n");
-	          dw_printf ("line option for 9600 bps or -D3 for slower AFSK .\n");
+	          printf ("This is most likely caused by the CPU being too slow to keep up with the audio stream.\n");
+	          printf ("Use the \"top\" command, in another command window, to look at CPU usage.\n");
+	          printf ("This might be a temporary condition so we will attempt to recover a few times before giving up.\n");
+	          printf ("If using a very slow CPU, try reducing the CPU load by using -P- command\n");
+	          printf ("line option for 9600 bps or -D3 for slower AFSK .\n");
 	        }
 
 	        audio_stats (a, 
@@ -1167,10 +1165,10 @@ int audio_get (int a)
 	    while (adev[a].g_audio_in_type == AUDIO_IN_TYPE_SOUNDCARD && adev[a].inbuf_next >= adev[a].inbuf_len) {
 	      assert (adev[a].oss_audio_device_fd > 0);
 	      n = read (adev[a].oss_audio_device_fd, adev[a].inbuf_ptr, adev[a].inbuf_size_in_bytes);
-	      //text_color_set(DW_COLOR_DEBUG);
-	      // dw_printf ("audio_get(): read %d returns %d\n", adev[a].inbuf_size_in_bytes, n);	
+	      //
+	      // printf ("audio_get(): read %d returns %d\n", adev[a].inbuf_size_in_bytes, n);	
 	      if (n < 0) {
-	        text_color_set(DW_COLOR_ERROR);
+	        
 	        perror("Can't read from audio device");
 	        adev[a].inbuf_len = 0;
 	        adev[a].inbuf_next = 0;
@@ -1208,8 +1206,8 @@ int audio_get (int a)
               assert (adev[a].udp_sock > 0);
 	      res = recv(adev[a].udp_sock, adev[a].inbuf_ptr, adev[a].inbuf_size_in_bytes, 0);
 	      if (res < 0) {
-	        text_color_set(DW_COLOR_ERROR);
-	        dw_printf ("Can't read from udp socket, res=%d", res);
+	        
+	        printf ("Can't read from udp socket, res=%d", res);
 	        adev[a].inbuf_len = 0;
 	        adev[a].inbuf_next = 0;
 
@@ -1243,8 +1241,8 @@ int audio_get (int a)
 
 	      res = read(STDIN_FILENO, adev[a].inbuf_ptr, (size_t)adev[a].inbuf_size_in_bytes);
 	      if (res <= 0) {
-	        text_color_set(DW_COLOR_INFO);
-	        dw_printf ("\nEnd of file on stdin.  Exiting.\n");
+	        
+	        printf ("\nEnd of file on stdin.  Exiting.\n");
 	        exit (0);
 	      }
 	    
@@ -1269,8 +1267,8 @@ int audio_get (int a)
 
 #if DEBUGx
 
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_get(): returns %d\n", n);
+	
+	printf ("audio_get(): returns %d\n", n);
 
 #endif
  
@@ -1356,20 +1354,20 @@ int audio_flush (int a)
 
 	k = snd_pcm_status (adev[a].audio_out_handle, status);
 	if (k != 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Audio output get status error.\n%s\n", snd_strerror(k));
+	  
+	  printf ("Audio output get status error.\n%s\n", snd_strerror(k));
 	}
 
 	if ((k = snd_pcm_status_get_state(status)) != SND_PCM_STATE_RUNNING) {
 
-	  //text_color_set(DW_COLOR_DEBUG);
-	  //dw_printf ("Audio output state = %d.  Try to start.\n", k);
+	  //
+	  //printf ("Audio output state = %d.  Try to start.\n", k);
 
 	  k = snd_pcm_prepare (adev[a].audio_out_handle);
 
 	  if (k != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Audio output start error.\n%s\n", snd_strerror(k));
+	    
+	    printf ("Audio output start error.\n%s\n", snd_strerror(k));
 	  }
 	}
 
@@ -1380,45 +1378,45 @@ int audio_flush (int a)
 
 	  k = snd_pcm_writei (adev[a].audio_out_handle, psound, adev[a].outbuf_len / adev[a].bytes_per_frame);	
 #if DEBUGx
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("audio_flush(): snd_pcm_writei %d frames returns %d\n",
+	  
+	  printf ("audio_flush(): snd_pcm_writei %d frames returns %d\n",
 				adev[a].outbuf_len / adev[a].bytes_per_frame, k);
 	  fflush (stdout);	
 #endif
 	  if (k == -EPIPE) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Audio output data underrun.\n");
+	    
+	    printf ("Audio output data underrun.\n");
 
 	    /* No problemo.  Recover and go around again. */
 
 	    snd_pcm_recover (adev[a].audio_out_handle, k, 1);
 	  }
           else if (k == -ESTRPIPE) {
-            text_color_set(DW_COLOR_ERROR);
-            dw_printf ("Driver suspended, recovering\n");
+            
+            printf ("Driver suspended, recovering\n");
             snd_pcm_recover(adev[a].audio_out_handle, k, 1);
           }
           else if (k == -EBADFD) {
             k = snd_pcm_prepare (adev[a].audio_out_handle);
             if(k < 0) {
-              dw_printf ("Error preparing after bad state: %s\n", snd_strerror(k));
+              printf ("Error preparing after bad state: %s\n", snd_strerror(k));
             }
           }
  	  else if (k < 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Audio write error: %s\n", snd_strerror(k));
+	    
+	    printf ("Audio write error: %s\n", snd_strerror(k));
 
 	    /* Some other error condition. */
 	    /* Try again. What do we have to lose? */
 
             k = snd_pcm_prepare (adev[a].audio_out_handle);
             if(k < 0) {
-              dw_printf ("Error preparing after error: %s\n", snd_strerror(k));
+              printf ("Error preparing after error: %s\n", snd_strerror(k));
             }
 	  }
  	  else if (k != adev[a].outbuf_len / adev[a].bytes_per_frame) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Audio write took %d frames rather than %d.\n",
+	    
+	    printf ("Audio write took %d frames rather than %d.\n",
  			k, adev[a].outbuf_len / adev[a].bytes_per_frame);
 	
 	    /* Go around again with the rest of it. */
@@ -1433,8 +1431,8 @@ int audio_flush (int a)
 	  }
 	}
 
-	text_color_set(DW_COLOR_ERROR);
-	dw_printf ("Audio write error retry count exceeded.\n");
+	
+	printf ("Audio write error retry count exceeded.\n");
 
 	adev[a].outbuf_len = 0;
 	return (-1);
@@ -1451,7 +1449,7 @@ int audio_flush (int a)
 	while (len > 0) {
 	  assert (adev[a].sndio_out_handle != NULL);
 	  if (poll_sndio (adev[a].sndio_out_handle, POLLOUT) < 0) {
-	    text_color_set(DW_COLOR_ERROR);
+	    
 	    perror("Can't write to audio device");
 	    adev[a].outbuf_len = 0;
 	    return (-1);
@@ -1459,8 +1457,8 @@ int audio_flush (int a)
 
 	  k = sio_write (adev[a].sndio_out_handle, ptr, len);
 #if DEBUGx
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("audio_flush(): write %d returns %d\n", len, k);
+	  
+	  printf ("audio_flush(): write %d returns %d\n", len, k);
 	  fflush (stdout);
 #endif
 	  ptr += k;
@@ -1483,12 +1481,12 @@ int audio_flush (int a)
 	  assert (adev[a].oss_audio_device_fd > 0);
 	  k = write (adev[a].oss_audio_device_fd, ptr, len);
 #if DEBUGx
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("audio_flush(): write %d returns %d\n", len, k);
+	  
+	  printf ("audio_flush(): write %d returns %d\n", len, k);
 	  fflush (stdout);	
 #endif
 	  if (k < 0) {
-	    text_color_set(DW_COLOR_ERROR);
+	    
 	    perror("Can't write to audio device");
 	    adev[a].outbuf_len = 0;
 	    return (-1);
@@ -1587,8 +1585,8 @@ void audio_wait (int a)
 #endif
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("audio_wait(): after sync, status=%d\n", err);	
+	
+	printf ("audio_wait(): after sync, status=%d\n", err);	
 #endif
 
 } /* end audio_wait */

@@ -99,7 +99,6 @@
 #include "audio.h"
 #include "demod.h"
 #include "multi_modem.h"
-#include "textcolor.h"
 #include "dlq.h"
 #include "recv.h"
 
@@ -149,15 +148,15 @@ void recv_init (struct audio_s *pa)
 	  if (pa->adev[a].defined) {
 
 #if DEBUG
-	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("recv_init: start up thread, a=%d\n", a);
+	    
+	    printf ("recv_init: start up thread, a=%d\n", a);
 #endif
 
 #if __WIN32__
 	    xmit_th[a] = (HANDLE)_beginthreadex (NULL, 0, recv_adev_thread, (void*)(ptrdiff_t)a, 0, NULL);
 	    if (xmit_th[a] == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("FATAL: Could not create audio receive thread for device %d.\n", a);
+	      
+	      printf ("FATAL: Could not create audio receive thread for device %d.\n", a);
 	      exit(1);
 	    }
 #else
@@ -165,16 +164,16 @@ void recv_init (struct audio_s *pa)
 	    e = pthread_create (&xmit_tid[a], NULL, recv_adev_thread, (void *)(ptrdiff_t)a);
 
 	    if (e != 0) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("FATAL: Could not create audio receive thread for device %d.\n", a);
+	      
+	      printf ("FATAL: Could not create audio receive thread for device %d.\n", a);
 	      exit(1);
 	    }
 #endif
 	  }
 
 #if DEBUG
-	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("recv_init: all done\n");
+	    
+	    printf ("recv_init: all done\n");
 #endif
 	}
 
@@ -207,8 +206,8 @@ static void * recv_adev_thread (void *arg)
 	int num_chan = save_pa->adev[a].num_channels;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("recv_adev_thread is now running for a=%d\n", a);
+	
+	printf ("recv_adev_thread is now running for a=%d\n", a);
 #endif
 /*
  * Get sound samples and decode them.
@@ -243,8 +242,8 @@ static void * recv_adev_thread (void *arg)
 // Seimply terminate the application?  
 // Try to re-init the audio device a couple times before giving up?
 
-	text_color_set(DW_COLOR_ERROR);
-	dw_printf ("Terminating after audio input failure.\n");
+	
+	printf ("Terminating after audio input failure.\n");
 	exit (1);
 }
 
@@ -265,8 +264,8 @@ void recv_process (void)
 		pitem = dlq_remove ();
 
 	#if DEBUG
-		text_color_set(DW_COLOR_DEBUG);
-		dw_printf ("recv_process: dlq_remove() returned pitem=%p\n", pitem);
+		
+		printf ("recv_process: dlq_remove() returned pitem=%p\n", pitem);
 	#endif
 
 		if (pitem != NULL) {

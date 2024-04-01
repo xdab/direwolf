@@ -200,8 +200,7 @@ typedef pthread_mutex_t dw_mutex_t;
 	  int err; \
 	  err = pthread_mutex_lock (x); \
 	  if (err != 0) { \
-	    text_color_set(DW_COLOR_ERROR); \
-	    dw_printf ("INTERNAL ERROR %s %d pthread_mutex_lock returned %d", __FILE__, __LINE__, err); \
+	    printf ("INTERNAL ERROR %s %d pthread_mutex_lock returned %d", __FILE__, __LINE__, err); \
 	    exit (1); \
 	  } \
 	}
@@ -214,8 +213,7 @@ typedef pthread_mutex_t dw_mutex_t;
 	  int err; \
 	  err = pthread_mutex_trylock (x); \
 	  if (err != 0 && err != EBUSY) { \
-	    text_color_set(DW_COLOR_ERROR); \
-	    dw_printf ("INTERNAL ERROR %s %d pthread_mutex_trylock returned %d", __FILE__, __LINE__, err); \
+	    printf ("INTERNAL ERROR %s %d pthread_mutex_trylock returned %d", __FILE__, __LINE__, err); \
 	    exit (1); \
 	  } ; \
 	  ! err; \
@@ -226,8 +224,7 @@ typedef pthread_mutex_t dw_mutex_t;
 	  int err; \
 	  err = pthread_mutex_unlock (x); \
 	  if (err != 0) { \
-	    text_color_set(DW_COLOR_ERROR); \
-	    dw_printf ("INTERNAL ERROR %s %d pthread_mutex_unlock returned %d", __FILE__, __LINE__, err); \
+	    printf ("INTERNAL ERROR %s %d pthread_mutex_unlock returned %d", __FILE__, __LINE__, err); \
 	    exit (1); \
 	  } \
 	}

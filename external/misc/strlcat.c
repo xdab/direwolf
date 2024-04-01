@@ -32,8 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "textcolor.h"
-
 
 /*	$NetBSD: strlcat.c,v 1.5 2014/10/31 18:59:32 spz Exp $	*/
 /*	from	NetBSD: strlcat.c,v 1.16 2003/10/27 00:12:42 lukem Exp	*/
@@ -79,18 +77,15 @@ size_t strlcat_debug(char *__restrict__ dst, const char *__restrict__ src, size_
 
 #if DEBUG_STRL
 	if (dst == NULL) {
-		text_color_set (DW_COLOR_ERROR);
-		dw_printf ("ERROR: strlcat dst is NULL.  (%s %s %d)\n", file, func, line);
+		printf ("ERROR: strlcat dst is NULL.  (%s %s %d)\n", file, func, line);
 		return (0);
 	}
 	if (src == NULL) {
-		text_color_set (DW_COLOR_ERROR);
-		dw_printf ("ERROR: strlcat src is NULL.  (%s %s %d)\n", file, func, line);
+		printf ("ERROR: strlcat src is NULL.  (%s %s %d)\n", file, func, line);
 		return (0);
 	}
 	if (siz == 1 || siz == 4) {
-		text_color_set (DW_COLOR_ERROR);
-		dw_printf ("Suspicious strlcat siz.  Is it using sizeof a pointer variable?  (%s %s %d)\n", file, func, line);
+		printf ("Suspicious strlcat siz.  Is it using sizeof a pointer variable?  (%s %s %d)\n", file, func, line);
 	}
 #endif
 
@@ -118,8 +113,7 @@ the_end:
 
 #if DEBUG_STRL
 	if (retval >= siz) {
-		text_color_set (DW_COLOR_ERROR);
-		dw_printf ("WARNING: strlcat result length %d exceeds maximum length %d.  (%s %s %d)\n",
+		printf ("WARNING: strlcat result length %d exceeds maximum length %d.  (%s %s %d)\n",
 				(int)retval, (int)(siz-1), file, func, line);
 	}
 #endif

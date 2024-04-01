@@ -188,20 +188,20 @@ static inline int ax25_get_num_control (packet_t this_p)
 
 	if ( (c & 0x01) == 0 ) {			/* I   xxxx xxx0 */
 #if DEBUGX
-	  dw_printf ("ax25_get_num_control, %02x is I frame, returns %d\n", c, (this_p->modulo == 128) ? 2 : 1);
+	  printf ("ax25_get_num_control, %02x is I frame, returns %d\n", c, (this_p->modulo == 128) ? 2 : 1);
 #endif
 	  return ((this_p->modulo == 128) ? 2 : 1);
 	}
 
 	if ( (c & 0x03) == 1 ) {			/* S   xxxx xx01 */
 #if DEBUGX
-	  dw_printf ("ax25_get_num_control, %02x is S frame, returns %d\n", c, (this_p->modulo == 128) ? 2 : 1);
+	  printf ("ax25_get_num_control, %02x is S frame, returns %d\n", c, (this_p->modulo == 128) ? 2 : 1);
 #endif
 	  return ((this_p->modulo == 128) ? 2 : 1);
 	}
 
 #if DEBUGX
-	dw_printf ("ax25_get_num_control, %02x is U frame, always returns 1.\n", c);
+	printf ("ax25_get_num_control, %02x is U frame, always returns 1.\n", c);
 #endif
 
 	return (1);					/* U   xxxx xx11 */
@@ -231,7 +231,7 @@ static int ax25_get_num_pid (packet_t this_p)
 
 	  pid = this_p->frame_data[ax25_get_pid_offset(this_p)];
 #if DEBUGX
-	  dw_printf ("ax25_get_num_pid, %02x is I or UI frame, pid = %02x, returns %d\n", c, pid, (pid==AX25_PID_ESCAPE_CHARACTER) ? 2 : 1);
+	  printf ("ax25_get_num_pid, %02x is I or UI frame, pid = %02x, returns %d\n", c, pid, (pid==AX25_PID_ESCAPE_CHARACTER) ? 2 : 1);
 #endif
 	  if (pid == AX25_PID_ESCAPE_CHARACTER) {
 	    return (2);			/* pid 1111 1111 means another follows. */
@@ -239,7 +239,7 @@ static int ax25_get_num_pid (packet_t this_p)
 	  return (1);		
 	}
 #if DEBUGX
-	dw_printf ("ax25_get_num_pid, %02x is neither I nor UI frame, returns 0\n", c);
+	printf ("ax25_get_num_pid, %02x is neither I nor UI frame, returns 0\n", c);
 #endif
 	return (0);
 }
@@ -261,7 +261,7 @@ static inline int ax25_get_info_offset (packet_t this_p)
 {
 	int offset = ax25_get_control_offset (this_p) + ax25_get_num_control(this_p) + ax25_get_num_pid(this_p);
 #if DEBUGX
-	dw_printf ("ax25_get_info_offset, returns %d\n", offset);
+	printf ("ax25_get_info_offset, returns %d\n", offset);
 #endif
 	return (offset);
 }
@@ -398,7 +398,6 @@ extern int ax25_get_rr (packet_t this_p, int n);
 
 extern int ax25_get_info (packet_t pp, unsigned char **paddr);
 extern void ax25_set_info (packet_t pp, unsigned char *info_ptr, int info_len);
-extern int ax25_cut_at_crlf (packet_t this_p);
 
 extern void ax25_set_nextp (packet_t this_p, packet_t next_p);
 

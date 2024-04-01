@@ -28,7 +28,6 @@ list(APPEND direwolf_SOURCES
   demod.c
   dlq.c
   dsp.c
-  dtime_now.c
   dwsock.c
   fcs_calc.c
   fx25_encode.c
@@ -43,16 +42,12 @@ list(APPEND direwolf_SOURCES
   hdlc_send.c
   kiss_frame.c
   kiss.c
-  kissserial.c
   kissnet.c
   log.c
   multi_modem.c
-  serial_port.c
   ptt.c
   recv.c
   rrbb.c
-  symbols.c
-  textcolor.c
   tq.c
   xmit.c
   )
@@ -64,12 +59,6 @@ if(LINUX)
   if(UDEV_FOUND)
     list(APPEND direwolf_SOURCES
       cm108.c
-      )
-  endif()
-  if(AVAHI_CLIENT_FOUND)
-    list(APPEND direwolf_SOURCES
-      dns_sd_common.c
-      dns_sd_avahi.c
       )
   endif()
   elseif(WIN32 OR CYGWIN) # windows
@@ -85,12 +74,6 @@ if(LINUX)
     list(APPEND direwolf_SOURCES
       audio_portaudio.c
       )
-    if(USE_MACOS_DNSSD)
-      list(APPEND direwolf_SOURCES
-        dns_sd_common.c
-        dns_sd_macos.c
-        )
-    endif()
 endif()
 
 add_executable(direwolf
@@ -107,7 +90,6 @@ target_link_libraries(direwolf
   ${UDEV_LIBRARIES}
   ${PORTAUDIO_LIBRARIES}
   ${SNDIO_LIBRARIES}
-  ${AVAHI_LIBRARIES}
   )
 
 if(WIN32 OR CYGWIN)
@@ -126,7 +108,6 @@ endif()
 if(UDEV_FOUND OR WIN32 OR CYGWIN)
   list(APPEND cm108_SOURCES
     cm108.c
-    textcolor.c
     )
 
   add_executable(cm108

@@ -178,7 +178,6 @@ char *strtok_r(char *str, const char *delim, char **saveptr);
 #endif
 
 
-#include "textcolor.h"
 #include "ax25_pad.h"
 #include "fcs_calc.h"
 
@@ -239,8 +238,8 @@ packet_t ax25_new (void)
 
 
 #if DEBUG 
-        text_color_set(DW_COLOR_DEBUG);
-        dw_printf ("ax25_new(): before alloc, new=%d, delete=%d\n", new_count, delete_count);
+        
+        printf ("ax25_new(): before alloc, new=%d, delete=%d\n", new_count, delete_count);
 #endif
 
 	last_seq_num++;
@@ -256,8 +255,8 @@ packet_t ax25_new (void)
 	if (new_count > delete_count + 256) {
 
 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Report to WB2OSZ - Memory leak for packet objects.  new=%d, delete=%d\n", new_count, delete_count);
+	  
+	  printf ("Report to WB2OSZ - Memory leak for packet objects.  new=%d, delete=%d\n", new_count, delete_count);
 #if AX25MEMDEBUG
 	  // Force on debug option to gather evidence.
 	  ax25memdebug_set();
@@ -267,8 +266,8 @@ packet_t ax25_new (void)
 	this_p = calloc(sizeof (struct packet_s), (size_t)1);
 
 	if (this_p == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("ERROR - can't allocate memory in ax25_new.\n");
+	  
+	  printf ("ERROR - can't allocate memory in ax25_new.\n");
 	}
 
 	assert (this_p != NULL);
@@ -296,13 +295,13 @@ void ax25_delete (packet_t this_p)
 #endif
 {
 #if DEBUG
-        text_color_set(DW_COLOR_DEBUG);
-        dw_printf ("ax25_delete(): before free, new=%d, delete=%d\n", new_count, delete_count);
+        
+        printf ("ax25_delete(): before free, new=%d, delete=%d\n", new_count, delete_count);
 #endif
 
 	if (this_p == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("ERROR - NULL pointer passed to ax25_delete.\n");
+	  
+	  printf ("ERROR - NULL pointer passed to ax25_delete.\n");
 	  return;
 	}
 
@@ -311,8 +310,8 @@ void ax25_delete (packet_t this_p)
 
 #if AX25MEMDEBUG	
 	if (ax25memdebug) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("ax25_delete, seq=%d, called from %s %d, new_count=%d, delete_count=%d\n", this_p->seq, src_file, src_line, new_count, delete_count);
+	  
+	  printf ("ax25_delete, seq=%d, called from %s %d, new_count=%d, delete_count=%d\n", this_p->seq, src_file, src_line, new_count, delete_count);
 	}
 #endif
 
@@ -386,8 +385,8 @@ packet_t ax25_from_text (char *monitor, int strict)
 
 #if AX25MEMDEBUG	
 	if (ax25memdebug) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("ax25_from_text, seq=%d, called from %s %d\n", this_p->seq, src_file, src_line);
+	  
+	  printf ("ax25_from_text, seq=%d, called from %s %d\n", this_p->seq, src_file, src_line);
 	}
 #endif
 
@@ -444,15 +443,15 @@ packet_t ax25_from_text (char *monitor, int strict)
 	char *pnxt = stuff;
 	char *pa = strsep (&pnxt, ">");
 	if (pa == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Failed to create packet from text.  No source address\n");
+	  
+	  printf ("Failed to create packet from text.  No source address\n");
 	  ax25_delete (this_p);
 	  return (NULL);
 	}
 
 	if ( ! ax25_parse_addr (AX25_SOURCE, pa, strict, atemp, &ssid_temp, &heard_temp)) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Failed to create packet from text.  Bad source address\n");
+	  
+	  printf ("Failed to create packet from text.  Bad source address\n");
 	  ax25_delete (this_p);
 	  return (NULL);
 	}
@@ -467,15 +466,15 @@ packet_t ax25_from_text (char *monitor, int strict)
  
 	pa = strsep (&pnxt, ",");
 	if (pa == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Failed to create packet from text.  No destination address\n");
+	  
+	  printf ("Failed to create packet from text.  No destination address\n");
 	  ax25_delete (this_p);
 	  return (NULL);
 	}
 
 	if ( ! ax25_parse_addr (AX25_DESTINATION, pa, strict, atemp, &ssid_temp, &heard_temp)) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Failed to create packet from text.  Bad destination address\n");
+	  
+	  printf ("Failed to create packet from text.  Bad destination address\n");
 	  ax25_delete (this_p);
 	  return (NULL);
 	}
@@ -516,8 +515,8 @@ packet_t ax25_from_text (char *monitor, int strict)
 	  }
 
 	  if ( ! ax25_parse_addr (k, pa, strict, atemp, &ssid_temp, &heard_temp)) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Failed to create packet from text.  Bad digipeater address\n");
+	    
+	    printf ("Failed to create packet from text.  Bad digipeater address\n");
 	    ax25_delete (this_p);
 	    return (NULL);
 	  }
@@ -548,10 +547,10 @@ packet_t ax25_from_text (char *monitor, int strict)
 //#define DEBUG14H 1
 
 #if DEBUG14H
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("BEFORE: %s\nSAFE:   ", pinfo);
+	
+	printf ("BEFORE: %s\nSAFE:   ", pinfo);
 	ax25_safe_print (pinfo, -1, 0);
-	dw_printf ("\n");
+	printf ("\n");
 #endif
 
 	info_len = 0;
@@ -580,10 +579,10 @@ packet_t ax25_from_text (char *monitor, int strict)
 	info_part[info_len] = '\0';
 
 #if DEBUG14H
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("AFTER:  %s\nSAFE:   ", info_part);
+	
+	printf ("AFTER:  %s\nSAFE:   ", info_part);
 	ax25_safe_print (info_part, info_len, 0);
-	dw_printf ("\n");
+	printf ("\n");
 #endif
 
 /*
@@ -645,8 +644,8 @@ packet_t ax25_from_frame (unsigned char *fbuf, int flen, alevel_t alevel)
 
 	if (flen < AX25_MIN_PACKET_LEN || flen > AX25_MAX_PACKET_LEN)
 	{
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Frame length %d not in allowable range of %d to %d.\n", flen, AX25_MIN_PACKET_LEN, AX25_MAX_PACKET_LEN);
+	  
+	  printf ("Frame length %d not in allowable range of %d to %d.\n", flen, AX25_MIN_PACKET_LEN, AX25_MAX_PACKET_LEN);
 	  return (NULL);
 	}
 
@@ -654,8 +653,8 @@ packet_t ax25_from_frame (unsigned char *fbuf, int flen, alevel_t alevel)
 
 #if AX25MEMDEBUG	
 	if (ax25memdebug) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("ax25_from_frame, seq=%d, called from %s %d\n", this_p->seq, src_file, src_line);
+	  
+	  printf ("ax25_from_frame, seq=%d, called from %s %d\n", this_p->seq, src_file, src_line);
 	}
 #endif
 
@@ -708,8 +707,8 @@ packet_t ax25_dup (packet_t copy_from)
 
 #if AX25MEMDEBUG
 	if (ax25memdebug) {	
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("ax25_dup, seq=%d, called from %s %d, clone of seq %d\n", this_p->seq, src_file, src_line, copy_from->seq);
+	  
+	  printf ("ax25_dup, seq=%d, called from %s %d, clone of seq %d\n", this_p->seq, src_file, src_line, copy_from->seq);
 	}
 #endif
 
@@ -770,39 +769,39 @@ int ax25_parse_addr (int position, char *in_addr, int strict, char *out_addr, in
 	*out_ssid = 0;
 	*out_heard = 0;
 
-	// dw_printf ("ax25_parse_addr in: position=%d, '%s', strict=%d\n", position, in_addr, strict);
+	// printf ("ax25_parse_addr in: position=%d, '%s', strict=%d\n", position, in_addr, strict);
 
 	if (position < -1) position = -1;
 	if (position > AX25_REPEATER_8) position = AX25_REPEATER_8;
 	position++;	/* Adjust for position_name above. */
 
 	if (strlen(in_addr) == 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("%sAddress \"%s\" is empty.\n", position_name[position], in_addr);
+	  
+	  printf ("%sAddress \"%s\" is empty.\n", position_name[position], in_addr);
 	  return 0;
 	}
 
 	if (strict && strlen(in_addr) >= 2 && strncmp(in_addr, "qA", 2) == 0) {
 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("%sAddress \"%s\" is a \"q-construct\" used for communicating with\n", position_name[position], in_addr);
-	  dw_printf ("APRS Internet Servers.  It should never appear when going over the radio.\n");
+	  
+	  printf ("%sAddress \"%s\" is a \"q-construct\" used for communicating with\n", position_name[position], in_addr);
+	  printf ("APRS Internet Servers.  It should never appear when going over the radio.\n");
 	}
 
-	// dw_printf ("ax25_parse_addr in: %s\n", in_addr);
+	// printf ("ax25_parse_addr in: %s\n", in_addr);
 
 	maxlen = strict ? 6 : (AX25_MAX_ADDR_LEN-1);
 	p = in_addr;
 	i = 0;
 	for (p = in_addr; *p != '\0' && *p != '-' && *p != '*'; p++) {
 	  if (i >= maxlen) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("%sAddress is too long. \"%s\" has more than %d characters.\n", position_name[position], in_addr, maxlen);
+	    
+	    printf ("%sAddress is too long. \"%s\" has more than %d characters.\n", position_name[position], in_addr, maxlen);
 	    return 0;
 	  }
 	  if ( ! isalnum(*p)) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("%sAddress, \"%s\" contains character other than letter or digit in character position %d.\n", position_name[position], in_addr, (int)(long)(p-in_addr)+1);
+	    
+	    printf ("%sAddress, \"%s\" contains character other than letter or digit in character position %d.\n", position_name[position], in_addr, (int)(long)(p-in_addr)+1);
 	    return 0;
 	  }
 
@@ -813,13 +812,13 @@ int ax25_parse_addr (int position, char *in_addr, int strict, char *out_addr, in
 		// Exempt the "qA..." case because it was already mentioned.
 
 	  if (strict && islower(*p) && strncmp(in_addr, "qA", 2) != 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("%sAddress has lower case letters. \"%s\" must be all upper case.\n", position_name[position], in_addr);
+	    
+	    printf ("%sAddress has lower case letters. \"%s\" must be all upper case.\n", position_name[position], in_addr);
 	  }
 #else
 	  if (strict && islower(*p)) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("%sAddress has lower case letters. \"%s\" must be all upper case.\n", position_name[position], in_addr);
+	    
+	    printf ("%sAddress has lower case letters. \"%s\" must be all upper case.\n", position_name[position], in_addr);
 	    return 0;
 	  }
 #endif
@@ -830,22 +829,22 @@ int ax25_parse_addr (int position, char *in_addr, int strict, char *out_addr, in
 	if (*p == '-') {
 	  for (p++; isalnum(*p); p++) {
 	    if (j >= 2) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("%sSSID is too long. SSID part of \"%s\" has more than 2 characters.\n", position_name[position], in_addr);
+	      
+	      printf ("%sSSID is too long. SSID part of \"%s\" has more than 2 characters.\n", position_name[position], in_addr);
 	      return 0;
 	    }
 	    sstr[j++] = *p;
 	    sstr[j] = '\0';
 	    if (strict && ! isdigit(*p)) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("%sSSID must be digits. \"%s\" has letters in SSID.\n", position_name[position], in_addr);
+	      
+	      printf ("%sSSID must be digits. \"%s\" has letters in SSID.\n", position_name[position], in_addr);
 	      return 0;
 	    }
 	  }
 	  k = atoi(sstr);
 	  if (k < 0 || k > 15) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("%sSSID out of range. SSID of \"%s\" not in range of 0 to 15.\n", position_name[position], in_addr);
+	    
+	    printf ("%sSSID out of range. SSID of \"%s\" not in range of 0 to 15.\n", position_name[position], in_addr);
 	    return 0;
 	  }
 	  *out_ssid = k;
@@ -855,19 +854,19 @@ int ax25_parse_addr (int position, char *in_addr, int strict, char *out_addr, in
 	  *out_heard = 1;
 	  p++;
 	  if (strict == 2) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("\"*\" is not allowed at end of address \"%s\" here.\n", in_addr);
+	    
+	    printf ("\"*\" is not allowed at end of address \"%s\" here.\n", in_addr);
 	    return 0;
 	  }
 	}
 
 	if (*p != '\0') {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Invalid character \"%c\" found in %saddress \"%s\".\n", *p, position_name[position], in_addr);
+	  
+	  printf ("Invalid character \"%c\" found in %saddress \"%s\".\n", *p, position_name[position], in_addr);
 	  return 0;
 	}
 
-	// dw_printf ("ax25_parse_addr out: '%s' %d %d\n", out_addr, *out_ssid, *out_heard);
+	// printf ("ax25_parse_addr out: '%s' %d %d\n", out_addr, *out_ssid, *out_heard);
 
 	return (1);
 
@@ -931,10 +930,10 @@ int ax25_check_addresses (packet_t pp)
 	}
 
 	if (! all_ok) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("\n");
-	  dw_printf ("*** The origin and journey of this packet should receive some scrutiny. ***\n");
-	  dw_printf ("\n");
+	  
+	  printf ("\n");
+	  printf ("*** The origin and journey of this packet should receive some scrutiny. ***\n");
+	  printf ("\n");
 	}
 
 	return (all_ok);
@@ -962,8 +961,8 @@ packet_t ax25_unwrap_third_party (packet_t from_pp)
 	packet_t result_pp;
 
 	if (ax25_get_dti(from_pp) != '}') {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error: ax25_unwrap_third_party: wrong data type.\n");
+	  
+	  printf ("Internal error: ax25_unwrap_third_party: wrong data type.\n");
 	  return (NULL);
 	}
 
@@ -1011,16 +1010,16 @@ void ax25_set_addr (packet_t this_p, int n, char *ad)
 	assert (this_p->magic2 == MAGIC);
 	assert (n >= 0 && n < AX25_MAX_ADDRS);
 
-	//dw_printf ("ax25_set_addr (%d, %s) num_addr=%d\n", n, ad, this_p->num_addr);
+	//printf ("ax25_set_addr (%d, %s) num_addr=%d\n", n, ad, this_p->num_addr);
 
 	if (strlen(ad) == 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Set address error!  Station address for position %d is empty!\n", n);
+	  
+	  printf ("Set address error!  Station address for position %d is empty!\n", n);
 	}
 
 	if (n >= 0 && n < this_p->num_addr) {
 
-	  //dw_printf ("ax25_set_addr , existing case\n");
+	  //printf ("ax25_set_addr , existing case\n");
 /* 
  * Set existing address position. 
  */
@@ -1040,7 +1039,7 @@ void ax25_set_addr (packet_t this_p, int n, char *ad)
 	}
 	else if (n == this_p->num_addr) {		
 
-	  //dw_printf ("ax25_set_addr , appending case\n");
+	  //printf ("ax25_set_addr , appending case\n");
 /* 
  * One beyond last position, process as insert.
  */
@@ -1048,14 +1047,14 @@ void ax25_set_addr (packet_t this_p, int n, char *ad)
 	  ax25_insert_addr (this_p, n, ad);
 	}
 	else { 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error, ax25_set_addr, bad position %d for '%s'\n", n, ad);
+	  
+	  printf ("Internal error, ax25_set_addr, bad position %d for '%s'\n", n, ad);
 	}
 
-	//dw_printf ("------\n");
-	//dw_printf ("dump after ax25_set_addr (%d, %s)\n", n, ad);
+	//printf ("------\n");
+	//printf ("dump after ax25_set_addr (%d, %s)\n", n, ad);
 	//ax25_hex_dump (this_p);
-	//dw_printf ("------\n");
+	//printf ("------\n");
 }
 
 
@@ -1097,11 +1096,11 @@ void ax25_insert_addr (packet_t this_p, int n, char *ad)
 	assert (this_p->magic2 == MAGIC);
 	assert (n >= AX25_REPEATER_1 && n < AX25_MAX_ADDRS);
 
-	//dw_printf ("ax25_insert_addr (%d, %s)\n", n, ad);
+	//printf ("ax25_insert_addr (%d, %s)\n", n, ad);
 
 	if (strlen(ad) == 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Set address error!  Station address for position %d is empty!\n", n);
+	  
+	  printf ("Set address error!  Station address for position %d is empty!\n", n);
 	}
 
 	/* Don't do it if we already have the maximum number. */
@@ -1139,8 +1138,8 @@ void ax25_insert_addr (packet_t this_p, int n, char *ad)
 	expect = this_p->num_addr;
 	this_p->num_addr = (-1);
 	if (expect != ax25_get_num_addr (this_p)) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error ax25_remove_addr expect %d, actual %d\n", expect, this_p->num_addr);
+	  
+	  printf ("Internal error ax25_remove_addr expect %d, actual %d\n", expect, this_p->num_addr);
 	}
 }
 
@@ -1187,8 +1186,8 @@ void ax25_remove_addr (packet_t this_p, int n)
 	expect = this_p->num_addr;
 	this_p->num_addr = (-1);
 	if (expect != ax25_get_num_addr (this_p)) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error ax25_remove_addr expect %d, actual %d\n", expect, this_p->num_addr);
+	  
+	  printf ("Internal error ax25_remove_addr expect %d, actual %d\n", expect, this_p->num_addr);
 	}
 
 }
@@ -1307,17 +1306,17 @@ void ax25_get_addr_with_ssid (packet_t this_p, int n, char *station)
 
 
 	if (n < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error detected in ax25_get_addr_with_ssid, %s, line %d.\n", __FILE__, __LINE__);
-	  dw_printf ("Address index, %d, is less than zero.\n", n);
+	  
+	  printf ("Internal error detected in ax25_get_addr_with_ssid, %s, line %d.\n", __FILE__, __LINE__);
+	  printf ("Address index, %d, is less than zero.\n", n);
 	  strlcpy (station, "??????", 10);
 	  return;
 	}
 
 	if (n >= this_p->num_addr) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error detected in ax25_get_addr_with_ssid, %s, line %d.\n", __FILE__, __LINE__);
-	  dw_printf ("Address index, %d, is too large for number of addresses, %d.\n", n, this_p->num_addr);
+	  
+	  printf ("Internal error detected in ax25_get_addr_with_ssid, %s, line %d.\n", __FILE__, __LINE__);
+	  printf ("Address index, %d, is too large for number of addresses, %d.\n", n, this_p->num_addr);
 	  strlcpy (station, "??????", 10);
 	  return;
 	}
@@ -1335,8 +1334,8 @@ void ax25_get_addr_with_ssid (packet_t this_p, int n, char *station)
 
 	for (i=5; i>=0; i--) {
 	  if (station[i] == '\0') {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Station address \"%s\" contains nul character.  AX.25 protocol requires trailing ASCII spaces when less than 6 characters.\n", station);
+	    
+	    printf ("Station address \"%s\" contains nul character.  AX.25 protocol requires trailing ASCII spaces when less than 6 characters.\n", station);
 	  }
 	  else if (station[i] == ' ')
 	    station[i] = '\0';
@@ -1345,8 +1344,8 @@ void ax25_get_addr_with_ssid (packet_t this_p, int n, char *station)
 	}
 
 	if (strlen(station) == 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Station address, in position %d, is empty!  This is not a valid AX.25 frame.\n", n);
+	  
+	  printf ("Station address, in position %d, is empty!  This is not a valid AX.25 frame.\n", n);
 	}
 
 	ssid = ax25_get_ssid (this_p, n);
@@ -1390,17 +1389,17 @@ void ax25_get_addr_no_ssid (packet_t this_p, int n, char *station)
 
 
 	if (n < 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error detected in ax25_get_addr_no_ssid, %s, line %d.\n", __FILE__, __LINE__);
-	  dw_printf ("Address index, %d, is less than zero.\n", n);
+	  
+	  printf ("Internal error detected in ax25_get_addr_no_ssid, %s, line %d.\n", __FILE__, __LINE__);
+	  printf ("Address index, %d, is less than zero.\n", n);
 	  strlcpy (station, "??????", 7);
 	  return;
 	}
 
 	if (n >= this_p->num_addr) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error detected in ax25_get_no_with_ssid, %s, line %d.\n", __FILE__, __LINE__);
-	  dw_printf ("Address index, %d, is too large for number of addresses, %d.\n", n, this_p->num_addr);
+	  
+	  printf ("Internal error detected in ax25_get_no_with_ssid, %s, line %d.\n", __FILE__, __LINE__);
+	  printf ("Address index, %d, is too large for number of addresses, %d.\n", n, this_p->num_addr);
 	  strlcpy (station, "??????", 7);
 	  return;
 	}
@@ -1424,8 +1423,8 @@ void ax25_get_addr_no_ssid (packet_t this_p, int n, char *station)
 	}
 
 	if (strlen(station) == 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Station address, in position %d, is empty!  This is not a valid AX.25 frame.\n", n);
+	  
+	  printf ("Station address, in position %d, is empty!  This is not a valid AX.25 frame.\n", n);
 	}
 
 } /* end ax25_get_addr_no_ssid */
@@ -1456,8 +1455,8 @@ int ax25_get_ssid (packet_t this_p, int n)
 	  return ((this_p->frame_data[n*7+6] & SSID_SSID_MASK) >> SSID_SSID_SHIFT);
 	}
 	else {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error: ax25_get_ssid(%d), num_addr=%d\n", n, this_p->num_addr);
+	  
+	  printf ("Internal error: ax25_get_ssid(%d), num_addr=%d\n", n, this_p->num_addr);
 	  return (0);
 	}
 }
@@ -1492,8 +1491,8 @@ void ax25_set_ssid (packet_t this_p, int n, int ssid)
 		((ssid << SSID_SSID_SHIFT) & SSID_SSID_MASK) ;
 	}
 	else {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error: ax25_set_ssid(%d,%d), num_addr=%d\n", n, ssid, this_p->num_addr);
+	  
+	  printf ("Internal error: ax25_set_ssid(%d,%d), num_addr=%d\n", n, ssid, this_p->num_addr);
 	}
 }
 
@@ -1526,8 +1525,8 @@ int ax25_get_h (packet_t this_p, int n)
 	  return ((this_p->frame_data[n*7+6] & SSID_H_MASK) >> SSID_H_SHIFT);
 	}
 	else {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error: ax25_get_h(%d), num_addr=%d\n", n, this_p->num_addr);
+	  
+	  printf ("Internal error: ax25_get_h(%d), num_addr=%d\n", n, this_p->num_addr);
 	  return (0);
 	}
 }
@@ -1560,8 +1559,8 @@ void ax25_set_h (packet_t this_p, int n)
 	  this_p->frame_data[n*7+6] |= SSID_H_MASK;
 	}
 	else {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error: ax25_set_hd(%d), num_addr=%d\n", n, this_p->num_addr);
+	  
+	  printf ("Internal error: ax25_set_hd(%d), num_addr=%d\n", n, this_p->num_addr);
 	}
 }
 
@@ -1662,8 +1661,8 @@ int ax25_get_rr (packet_t this_p, int n)
 	  return ((this_p->frame_data[n*7+6] & SSID_RR_MASK) >> SSID_RR_SHIFT);
 	}
 	else {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Internal error: ax25_get_rr(%d), num_addr=%d\n", n, this_p->num_addr);
+	  
+	  printf ("Internal error: ax25_get_rr(%d), num_addr=%d\n", n, this_p->num_addr);
 	  return (0);
 	}
 }
@@ -1732,55 +1731,6 @@ void ax25_set_info (packet_t this_p, unsigned char *new_info_ptr, int new_info_l
 	if (new_info_len > AX25_MAX_INFO_LEN) new_info_len = AX25_MAX_INFO_LEN;
 	memcpy (old_info_ptr, new_info_ptr, new_info_len);
 	this_p->frame_len += new_info_len;
-}
-
-
-/*------------------------------------------------------------------------------
- *
- * Name:	ax25_cut_at_crlf
- *
- * Purpose:	Truncate the information part at the first CR or LF.
- *		This is used for the RF>IS IGate function.
- *		CR/LF is used as record separator so we must remove it
- *		before packaging up packet to sending to server.
- *
- * Inputs:	this_p	- Packet object pointer.
- *
- * Outputs:	Packet is modified in place.
- *
- * Returns:	Number of characters removed from the end.
- *		0 if not changed.
- *
- * Assumption:	ax25_from_text or ax25_from_frame was called first.
- *
- *------------------------------------------------------------------------------*/
-
-int ax25_cut_at_crlf (packet_t this_p)
-{
-	unsigned char *info_ptr;
-	int info_len;
-	int j;
-
-
-	assert (this_p->magic1 == MAGIC);
-	assert (this_p->magic2 == MAGIC);
-
-	info_len = ax25_get_info (this_p, &info_ptr);
-
-	// Can't use strchr because there is potential of nul character.
-
-	for (j = 0; j < info_len; j++) {
-
-	  if (info_ptr[j] == '\r' || info_ptr[j] == '\n') {
-
-	    int chop = info_len - j;
-
-	    this_p->frame_len -= chop;
-	    return (chop);
-	  }
-	}
-
-	return (0);
 }
 
 
@@ -2001,7 +1951,7 @@ void ax25_format_addrs (packet_t this_p, char *result)
 	
 	strcat (result, ":");
 
-	// dw_printf ("DEBUG ax25_format_addrs, num_addr = %d, result = '%s'\n", this_p->num_addr, result);
+	// printf ("DEBUG ax25_format_addrs, num_addr = %d, result = '%s'\n", this_p->num_addr, result);
 }
 
 
@@ -2355,7 +2305,7 @@ void ax25_hex_dump (packet_t this_p)
 	  snprintf (l_text, sizeof(l_text), ", length = %d", flen);
 	  strlcat (cp_text, l_text, sizeof(cp_text));
 
-	  dw_printf ("%s\n", cp_text);
+	  printf ("%s\n", cp_text);
 	}
 
 	// Address fields must be only upper case letters and digits.
@@ -2363,7 +2313,7 @@ void ax25_hex_dump (packet_t this_p)
 	// Using all zero bits in one of these 6 positions is wrong.
 	// Any non printable characters will be printed as "." here.
 
-	dw_printf (" dest    %c%c%c%c%c%c %2d c/r=%d res=%d last=%d\n",
+	printf (" dest    %c%c%c%c%c%c %2d c/r=%d res=%d last=%d\n",
 				isprint(fptr[0]>>1) ? fptr[0]>>1 : '.',
 				isprint(fptr[1]>>1) ? fptr[1]>>1 : '.',
 				isprint(fptr[2]>>1) ? fptr[2]>>1 : '.',
@@ -2375,7 +2325,7 @@ void ax25_hex_dump (packet_t this_p)
 				(fptr[6]&SSID_RR_MASK)>>SSID_RR_SHIFT,
 				fptr[6]&SSID_LAST_MASK);
 
-	dw_printf (" source  %c%c%c%c%c%c %2d c/r=%d res=%d last=%d\n", 
+	printf (" source  %c%c%c%c%c%c %2d c/r=%d res=%d last=%d\n", 
 				isprint(fptr[7]>>1) ? fptr[7]>>1 : '.',
 				isprint(fptr[8]>>1) ? fptr[8]>>1 : '.',
 				isprint(fptr[9]>>1) ? fptr[9]>>1 : '.',
@@ -2389,7 +2339,7 @@ void ax25_hex_dump (packet_t this_p)
 
 	for (n=2; n<this_p->num_addr; n++) {	
 
-	  dw_printf (" digi %d  %c%c%c%c%c%c %2d   h=%d res=%d last=%d\n", 
+	  printf (" digi %d  %c%c%c%c%c%c %2d   h=%d res=%d last=%d\n", 
 				n - 1,
 				isprint(fptr[n*7+0]>>1) ? fptr[n*7+0]>>1 : '.',
 				isprint(fptr[n*7+1]>>1) ? fptr[n*7+1]>>1 : '.',
@@ -2443,8 +2393,8 @@ int ax25_is_aprs (packet_t this_p)
 	is_aprs = this_p->num_addr >= 2 && ctrl == AX25_UI_FRAME && pid == AX25_PID_NO_LAYER_3;
 
 #if 0 
-        text_color_set(DW_COLOR_ERROR);
-        dw_printf ("ax25_is_aprs(): ctrl=%02x, pid=%02x, is_aprs=%d\n", ctrl, pid, is_aprs);
+        
+        printf ("ax25_is_aprs(): ctrl=%02x, pid=%02x, is_aprs=%d\n", ctrl, pid, is_aprs);
 #endif
 	return (is_aprs);
 }
@@ -2477,8 +2427,8 @@ int ax25_is_null_frame (packet_t this_p)
 	is_null = this_p->frame_len == 0;
 
 #if 0
-        text_color_set(DW_COLOR_ERROR);
-        dw_printf ("ax25_is_null_frame(): is_null=%d\n", is_null);
+        
+        printf ("ax25_is_null_frame(): is_null=%d\n", is_null);
 #endif
 	return (is_null);
 }
@@ -2672,8 +2622,8 @@ unsigned short ax25_dedupe_crc (packet_t pp)
 	// Temporary for debugging!
 
 	//  if (pinfo[info_len-1] == ' ') {
-	//    text_color_set(DW_COLOR_ERROR);
-	//    dw_printf ("DEBUG:  ax25_dedupe_crc ignoring trailing space.\n");
+	//    
+	//    printf ("DEBUG:  ax25_dedupe_crc ignoring trailing space.\n");
 	//  }
 
 	  info_len--;
@@ -2821,7 +2771,7 @@ void ax25_safe_print (char *pstr, int len, int ascii_only)
 
 // TODO1.2: should return string rather printing to remove a race condition.
 
-	dw_printf ("%s", safe_str);
+	printf ("%s", safe_str);
 
 } /* end ax25_safe_print */
 

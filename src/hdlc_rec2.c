@@ -96,11 +96,9 @@
 #define RRBB_C 1
 #include "hdlc_rec2.h"
 #include "fcs_calc.h"
-#include "textcolor.h"
 #include "ax25_pad.h"
 #include "rrbb.h"
 #include "multi_modem.h"
-#include "dtime_now.h"
 #include "audio.h"		/* for struct audio_s */
 
 //#define DEBUG 1
@@ -239,8 +237,8 @@ void hdlc_rec2_block (rrbb_t block)
 	int ok;
 
 #if DEBUGx
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("\n--- try to decode ---\n");
+	
+	printf ("\n--- try to decode ---\n");
 #endif
 
 	/* Create an empty retry configuration */
@@ -262,8 +260,8 @@ void hdlc_rec2_block (rrbb_t block)
 	ok = try_decode (block, chan, subchan, slice, alevel, retry_cfg, passall & (fix_bits == RETRY_NONE));
 	if (ok) {
 #if DEBUG
-	  text_color_set(DW_COLOR_INFO);
-	  dw_printf ("Got it the first time.\n");
+	  
+	  printf ("Got it the first time.\n");
 #endif
 	 rrbb_delete (block);
 	 return;
@@ -366,8 +364,8 @@ static int try_to_fix_quick_now (rrbb_t block, int chan, int subchan, int slice,
 	  ok = try_decode (block, chan, subchan, slice, alevel, retry_cfg, 0);
 	  if (ok) {
 #if DEBUG
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("*** Success by flipping SINGLE bit %d of %d ***\n", i, len);
+	    
+	    printf ("*** Success by flipping SINGLE bit %d of %d ***\n", i, len);
 #endif
 	    return 1;
 	  }
@@ -389,8 +387,8 @@ static int try_to_fix_quick_now (rrbb_t block, int chan, int subchan, int slice,
 	  ok = try_decode (block, chan, subchan, slice, alevel, retry_cfg, 0);
 	  if (ok) {
 #if DEBUG
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("*** Success by flipping DOUBLE bit %d of %d ***\n", i, len);
+	    
+	    printf ("*** Success by flipping DOUBLE bit %d of %d ***\n", i, len);
 #endif
 	    return 1;
 	  }
@@ -411,8 +409,8 @@ static int try_to_fix_quick_now (rrbb_t block, int chan, int subchan, int slice,
 	  ok = try_decode (block, chan, subchan, slice, alevel, retry_cfg, 0);
 	  if (ok) {
 #if DEBUG
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("*** Success by flipping TRIPLE bit %d of %d ***\n", i, len);
+	    
+	    printf ("*** Success by flipping TRIPLE bit %d of %d ***\n", i, len);
 #endif
 	    return 1;
 	  }
@@ -436,7 +434,7 @@ static int try_to_fix_quick_now (rrbb_t block, int chan, int subchan, int slice,
 
 #ifdef DEBUG_LATER
 	tstart = dtime_now();
-	dw_printf ("*** Try flipping TWO SEPARATED BITS %d bits\n", len);
+	printf ("*** Try flipping TWO SEPARATED BITS %d bits\n", len);
 #endif
 	len = rrbb_get_len(block);
 	for (i=0; i<len-2; i++) {
@@ -454,8 +452,8 @@ static int try_to_fix_quick_now (rrbb_t block, int chan, int subchan, int slice,
 	  }	  
 	  if (ok) {
 #if DEBUG
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("*** Success by flipping TWO SEPARATED bits %d and %d of %d \n", i, j, len);
+	    
+	    printf ("*** Success by flipping TWO SEPARATED bits %d and %d of %d \n", i, j, len);
 #endif
 	    return (1);
 	  }
@@ -621,9 +619,9 @@ static int try_decode (rrbb_t block, int chan, int subchan, int slice, alevel_t 
 	blen = rrbb_get_len(block);
 
 #if DEBUGx
-	text_color_set(DW_COLOR_DEBUG);
+	
         if (retry_conf.type == RETRY_TYPE_NONE) 
-        	dw_printf ("try_decode: blen=%d\n", blen);
+        	printf ("try_decode: blen=%d\n", blen);
 #endif
 	for (i=1; i<blen; i++) {
 	  /* Get the value for the current bit */
@@ -668,8 +666,8 @@ static int try_decode (rrbb_t block, int chan, int subchan, int slice, alevel_t 
 	      /* Valid data will never have 7 one bits in a row: exit. */
 	      if (H2.pat_det == 0xfe) {
 #if DEBUGx
-	        text_color_set(DW_COLOR_DEBUG);
-	        dw_printf ("try_decode: found abort, i=%d\n", i);
+	        
+	        printf ("try_decode: found abort, i=%d\n", i);
 #endif
 	        return 0;
 	      }
@@ -680,8 +678,8 @@ static int try_decode (rrbb_t block, int chan, int subchan, int slice, alevel_t 
 	      /* The special pattern 01111110 indicates beginning and ending of a frame: exit. */
 	      if (H2.pat_det == 0x7e) {
 #if DEBUGx
-	        text_color_set(DW_COLOR_DEBUG);
-	        dw_printf ("try_decode: found flag, i=%d\n", i);
+	        
+	        printf ("try_decode: found flag, i=%d\n", i);
 #endif
 	      return 0;
 /*
@@ -721,8 +719,8 @@ static int try_decode (rrbb_t block, int chan, int subchan, int slice, alevel_t 
  */
 
 #if DEBUGx
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("try_decode: olen=%d, frame_len=%d\n", H2.olen, H2.frame_len);
+	
+	printf ("try_decode: olen=%d, frame_len=%d\n", H2.olen, H2.frame_len);
 #endif
 
 	if (H2.olen == 0 && H2.frame_len >= MIN_FRAME_LEN) {
@@ -732,12 +730,12 @@ static int try_decode (rrbb_t block, int chan, int subchan, int slice, alevel_t 
 #if DEBUGx 
         if (retry_conf.type == RETRY_TYPE_NONE) {
 	  int j;
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("NEW WAY: frame len = %d\n", H2.frame_len);
+	  
+	  printf ("NEW WAY: frame len = %d\n", H2.frame_len);
 	  for (j=0; j<H2.frame_len; j++) {
-	    dw_printf ("  %02x", H2.frame_buf[j]);
+	    printf ("  %02x", H2.frame_buf[j]);
 	  }
-	  dw_printf ("\n");
+	  printf ("\n");
 
         }
 #endif
@@ -769,15 +767,15 @@ static int try_decode (rrbb_t block, int chan, int subchan, int slice, alevel_t 
 	  } else if (passall) {
 	    if (retry_conf_retry == RETRY_NONE && retry_conf_type == RETRY_TYPE_NONE) {
 
-	      //text_color_set(DW_COLOR_ERROR);
-	      //dw_printf ("ATTEMPTING PASSALL PROCESSING\n");
+	      //
+	      //printf ("ATTEMPTING PASSALL PROCESSING\n");
   
 	      multi_modem_process_rec_frame (chan, subchan, slice, H2.frame_buf, H2.frame_len - 2, alevel, RETRY_MAX, 0);   /* len-2 to remove FCS. */
 	      return 1;		/* success */
 	    }
 	    else {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("try_decode: internal error passall = %d, retry_conf_retry = %d, retry_conf_type = %d\n", 
+	      
+	      printf ("try_decode: internal error passall = %d, retry_conf_retry = %d, retry_conf_type = %d\n", 
 				passall, retry_conf_retry, retry_conf_type);
 	    }
 	  } else {
@@ -794,30 +792,30 @@ failure:
 #if DEBUGx
         if (retry_conf.type == RETRY_TYPE_NONE ) {
               int j;
-	      text_color_set(DW_COLOR_ERROR);
+	      
               if (crc_failed)
-	            dw_printf ("CRC failed\n");
+	            printf ("CRC failed\n");
 	      if (H2.olen != 0)
-		      dw_printf ("Bad olen: %d \n", H2.olen);
+		      printf ("Bad olen: %d \n", H2.olen);
 	      else if (H2.frame_len < MIN_FRAME_LEN) {
-		      dw_printf ("Frame too small\n");
+		      printf ("Frame too small\n");
                       goto end;
 	      }
 
-	      dw_printf ("FAILURE with frame: frame len = %d\n", H2.frame_len);
-	      dw_printf ("\n");
+	      printf ("FAILURE with frame: frame len = %d\n", H2.frame_len);
+	      printf ("\n");
 	      for (j=0; j<H2.frame_len; j++) {
-                      dw_printf (" %02x", H2.frame_buf[j]);
+                      printf (" %02x", H2.frame_buf[j]);
 	      }
-	  dw_printf ("\nDEC\n");
+	  printf ("\nDEC\n");
 	  for (j=0; j<H2.frame_len; j++) {
-	    dw_printf ("%c", H2.frame_buf[j]>>1);
+	    printf ("%c", H2.frame_buf[j]>>1);
 	  }
-	  dw_printf ("\nORIG\n");
+	  printf ("\nORIG\n");
           for (j=0; j<H2.frame_len; j++) {
-	    dw_printf ("%c", H2.frame_buf[j]);
+	    printf ("%c", H2.frame_buf[j]);
 	  }
-	  dw_printf ("\n");
+	  printf ("\n");
         }
 end:
 #endif
@@ -894,8 +892,8 @@ static int sanity_check (unsigned char *buf, int blen, retry_t bits_flipped, enu
 
 	if (alen % 7 != 0) {
 #if DEBUGx
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("sanity_check: FAILED.  Address part length %d not multiple of 7.\n", alen);
+	  
+	  printf ("sanity_check: FAILED.  Address part length %d not multiple of 7.\n", alen);
 #endif
 	  return 0;
 	}
@@ -906,8 +904,8 @@ static int sanity_check (unsigned char *buf, int blen, retry_t bits_flipped, enu
 
 	if (alen/7 < 2 || alen/7 > 10) {
 #if DEBUGx
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("sanity_check: FAILED.  Too few or many addresses.\n");
+	  
+	  printf ("sanity_check: FAILED.  Too few or many addresses.\n");
 #endif
 	  return 0;
 	}
@@ -936,8 +934,8 @@ static int sanity_check (unsigned char *buf, int blen, retry_t bits_flipped, enu
 	       (! isupper(addr[4]) && ! isdigit(addr[4]) && addr[4] != ' ') ||
 	       (! isupper(addr[5]) && ! isdigit(addr[5]) && addr[5] != ' ')) {
 #if DEBUGx	  
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("sanity_check: FAILED.  Invalid characters in addresses \"%s\"\n", addr);
+	    
+	    printf ("sanity_check: FAILED.  Invalid characters in addresses \"%s\"\n", addr);
 #endif
 	    return 0;
 	  }
@@ -999,8 +997,8 @@ static int sanity_check (unsigned char *buf, int blen, retry_t bits_flipped, enu
 			|| ch == 0xb0
 			|| ch == 0xf8) ) {
 #if DEBUGx
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("sanity_check: FAILED.  Probably bogus info char 0x%02x\n", ch);
+	    
+	    printf ("sanity_check: FAILED.  Probably bogus info char 0x%02x\n", ch);
 #endif
 	    return 0;
 	  }

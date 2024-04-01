@@ -65,7 +65,6 @@
 #include <string.h>
 #include <time.h>
 
-#include "textcolor.h"
 #include "dwsock.h"
 
 static void shuffle (struct addrinfo *host[], int nhosts);
@@ -105,14 +104,14 @@ int dwsock_init(void)
 
 	err = WSAStartup (MAKEWORD(2,2), &wsadata);
 	if (err != 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf("WSAStartup failed, error: %d\n", err);
+	  
+	  printf("WSAStartup failed, error: %d\n", err);
 	  return (-1);
 	}
 
 	if (LOBYTE(wsadata.wVersion) != 2 || HIBYTE(wsadata.wVersion) != 2) {
-	  text_color_set(DW_COLOR_ERROR);
-          dw_printf("Could not find a usable version of Winsock.dll\n");
+	  
+          printf("Could not find a usable version of Winsock.dll\n");
           WSACleanup();
           return (-1);
 	}
@@ -190,12 +189,12 @@ int dwsock_connect (char *hostname, char *port, char *description, int allow_ipv
 	ai_head = NULL;
 	err = getaddrinfo(hostname, port, &hints, &ai_head);
 	if (err != 0) {
-	  text_color_set(DW_COLOR_ERROR);
+	  
 #if __WIN32__
-	  dw_printf ("Can't get address for %s, %s, err=%d\n", 
+	  printf ("Can't get address for %s, %s, err=%d\n", 
 					description, hostname, WSAGetLastError());
 #else 
-	  dw_printf ("Can't get address for %s, %s, %s\n", 
+	  printf ("Can't get address for %s, %s, %s\n", 
 					description, hostname, gai_strerror(err));
 #endif
 	  freeaddrinfo(ai_head);
@@ -203,17 +202,17 @@ int dwsock_connect (char *hostname, char *port, char *description, int allow_ipv
 	}
 
 	if (debug) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("getaddrinfo returns:\n");
+	  
+	  printf ("getaddrinfo returns:\n");
 	}
 
 	num_hosts = 0;
 	for (ai = ai_head; ai != NULL; ai = ai->ai_next) {
 
 	  if (debug) {
-	    text_color_set(DW_COLOR_DEBUG);
+	    
 	    dwsock_ia_to_text (ai->ai_family, ai->ai_addr, ipaddr_str, DWSOCK_IPADDR_LEN);
-	    dw_printf ("    %s\n", ipaddr_str);
+	    printf ("    %s\n", ipaddr_str);
 	  }
 
 	  hosts[num_hosts] = ai;
@@ -223,11 +222,11 @@ int dwsock_connect (char *hostname, char *port, char *description, int allow_ipv
 	shuffle (hosts, num_hosts);
 
 	if (debug) {
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("addresses for hostname:\n");
+	  
+	  printf ("addresses for hostname:\n");
 	  for (n=0; n<num_hosts; n++) {
 	    dwsock_ia_to_text (hosts[n]->ai_family, hosts[n]->ai_addr, ipaddr_str, DWSOCK_IPADDR_LEN);
-	    dw_printf ("    %s\n", ipaddr_str);
+	    printf ("    %s\n", ipaddr_str);
 	  }
 	}
 
@@ -306,8 +305,8 @@ int dwsock_connect (char *hostname, char *port, char *description, int allow_ipv
 // function should be generally be silent unless debug option.
 
 	if (server_sock == -1) {
-	  text_color_set(DW_COLOR_ERROR);
- 	  dw_printf("Unable to connect to %s at %s (%s), port %s\n", 
+	  
+ 	  printf("Unable to connect to %s at %s (%s), port %s\n", 
 			description, hostname, ipaddr_str, port );
 	}
 

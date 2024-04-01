@@ -94,7 +94,6 @@
 #include <unistd.h>
 
 #include "ax25_pad.h"
-#include "textcolor.h"
 #include "multi_modem.h"
 #include "demod.h"
 #include "hdlc_rec.h"
@@ -174,8 +173,8 @@ void multi_modem_init (struct audio_s *pa)
 	for (chan=0; chan<MAX_CHANS; chan++) {
 	  if (save_audio_config_p->chan_medium[chan] == MEDIUM_RADIO) {
 	    if (save_audio_config_p->achan[chan].baud <= 0) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf("Internal error, chan=%d, %s, %d\n", chan, __FILE__, __LINE__);
+	      
+	      printf("Internal error, chan=%d, %s, %d\n", chan, __FILE__, __LINE__);
 	      save_audio_config_p->achan[chan].baud = DEFAULT_BAUD;
 	    }
 	    int real_baud = save_audio_config_p->achan[chan].baud;
@@ -248,12 +247,12 @@ void multi_modem_process_sample (int chan, int audio_sample)
 	if (save_audio_config_p->achan[chan].num_subchan <= 0 || save_audio_config_p->achan[chan].num_subchan > MAX_SUBCHANS ||
 	    save_audio_config_p->achan[chan].num_slicers <= 0 || save_audio_config_p->achan[chan].num_slicers > MAX_SLICERS) {
 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("ERROR!  Something is seriously wrong in %s %s.\n", __FILE__, __func__);
-	  dw_printf ("chan = %d, num_subchan = %d [max %d], num_slicers = %d [max %d]\n", chan,
+	  
+	  printf ("ERROR!  Something is seriously wrong in %s %s.\n", __FILE__, __func__);
+	  printf ("chan = %d, num_subchan = %d [max %d], num_slicers = %d [max %d]\n", chan,
 									save_audio_config_p->achan[chan].num_subchan, MAX_SUBCHANS,
 									save_audio_config_p->achan[chan].num_slicers, MAX_SLICERS);
-	  dw_printf ("Please report this message and include a copy of your configuration file.\n");
+	  printf ("Please report this message and include a copy of your configuration file.\n");
 	  exit (EXIT_FAILURE);
 	}
 
@@ -330,8 +329,8 @@ void multi_modem_process_rec_frame (int chan, int subchan, int slice, unsigned c
 void multi_modem_process_rec_packet (int chan, int subchan, int slice, packet_t pp, alevel_t alevel, retry_t retries, fec_type_t fec_type)
 {
 	if (pp == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Unexpected internal problem, %s %d\n", __FILE__, __LINE__);
+	  
+	  printf ("Unexpected internal problem, %s %d\n", __FILE__, __LINE__);
 	  return;	/* oops!  why would it fail? */
 	}
 
@@ -348,13 +347,13 @@ void multi_modem_process_rec_packet (int chan, int subchan, int slice, packet_t 
 	  if (save_audio_config_p->recv_error_rate != 0) {
 	    float r = (float)(rand()) / (float)RAND_MAX;		// Random, 0.0 to 1.0
 
-	    //text_color_set(DW_COLOR_INFO);
-	    //dw_printf ("TEMP DEBUG.  recv error rate = %d\n", save_audio_config_p->recv_error_rate);
+	    //
+	    //printf ("TEMP DEBUG.  recv error rate = %d\n", save_audio_config_p->recv_error_rate);
 
 	    if (save_audio_config_p->recv_error_rate / 100.0 > r) {
 	      drop_it = 1;
-	      text_color_set(DW_COLOR_INFO);
-	      dw_printf ("Intentionally dropping incoming frame.  Recv Error rate = %d per cent.\n", save_audio_config_p->recv_error_rate);
+	      
+	      printf ("Intentionally dropping incoming frame.  Recv Error rate = %d per cent.\n", save_audio_config_p->recv_error_rate);
 	    }
 	  }
 
@@ -516,19 +515,19 @@ static void pick_best_candidate (int chan)
 	}
 
 #if DEBUG	
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("\n%s\n", spectrum);
+	
+	printf ("\n%s\n", spectrum);
 
 	for (n = 0; n < num_bars; n++) {
 	  j = subchan_from_n(n);
 	  k = slice_from_n(n);
 
 	  if (candidate[chan][j][k].packet_p == NULL) {
-	    dw_printf ("%d.%d.%d: ptr=%p\n", chan, j, k,
+	    printf ("%d.%d.%d: ptr=%p\n", chan, j, k,
 		candidate[chan][j][k].packet_p);
 	  }
 	  else {
-	    dw_printf ("%d.%d.%d: ptr=%p, fec_type=%d, retry=%d, age=%3d, crc=%04x, score=%d  %s\n", chan, j, k,
+	    printf ("%d.%d.%d: ptr=%p, fec_type=%d, retry=%d, age=%3d, crc=%04x, score=%d  %s\n", chan, j, k,
 		candidate[chan][j][k].packet_p,
 		(int)(candidate[chan][j][k].fec_type),
 		(int)(candidate[chan][j][k].retries),
@@ -541,8 +540,8 @@ static void pick_best_candidate (int chan)
 #endif
 
 	if (best_score == 0) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Unexpected internal problem, %s %d.  How can best score be zero?\n", __FILE__, __LINE__);
+	  
+	  printf ("Unexpected internal problem, %s %d.  How can best score be zero?\n", __FILE__, __LINE__);
 	}
 
 /*
@@ -570,13 +569,13 @@ static void pick_best_candidate (int chan)
 	if (save_audio_config_p->recv_error_rate != 0) {
 	  float r = (float)(rand()) / (float)RAND_MAX;		// Random, 0.0 to 1.0
 
-	  //text_color_set(DW_COLOR_INFO);
-	  //dw_printf ("TEMP DEBUG.  recv error rate = %d\n", save_audio_config_p->recv_error_rate);
+	  //
+	  //printf ("TEMP DEBUG.  recv error rate = %d\n", save_audio_config_p->recv_error_rate);
 
 	  if (save_audio_config_p->recv_error_rate / 100.0 > r) {
 	    drop_it = 1;
-	    text_color_set(DW_COLOR_INFO);
-	    dw_printf ("Intentionally dropping incoming frame.  Recv Error rate = %d per cent.\n", save_audio_config_p->recv_error_rate);
+	    
+	    printf ("Intentionally dropping incoming frame.  Recv Error rate = %d per cent.\n", save_audio_config_p->recv_error_rate);
 	  }
 	}
 

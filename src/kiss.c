@@ -120,7 +120,6 @@ void kisspt_send_rec_packet (int chan, int kiss_cmd, unsigned char *fbuf,  int f
 
 #include "tq.h"
 #include "ax25_pad.h"
-#include "textcolor.h"
 #include "kiss.h"
 #include "kiss_frame.h"
 #include "xmit.h"
@@ -203,21 +202,21 @@ void kisspt_init (struct misc_config_s *mc)
 	  if (pt_master_fd != -1) {
 	    e = pthread_create (&kiss_pterm_listen_tid, (pthread_attr_t*)NULL, kisspt_listen_thread, NULL);
 	    if (e != 0) {
-	      text_color_set(DW_COLOR_ERROR);
+	      
 	      perror("Could not create kiss listening thread for Linux pseudo terminal");
 	    }
 	  }
 	}
 	else {
-	  //text_color_set(DW_COLOR_INFO);
-	  //dw_printf ("Use -p command line option to enable KISS pseudo terminal.\n");
+	  //
+	  //printf ("Use -p command line option to enable KISS pseudo terminal.\n");
 	}
 
 
 #if DEBUG
-	text_color_set (DW_COLOR_DEBUG);
+	
 
-	dw_printf ("end of kisspt_init: pt_master_fd = %d\n", pt_master_fd);
+	printf ("end of kisspt_init: pt_master_fd = %d\n", pt_master_fd);
 #endif
 
 }
@@ -236,8 +235,8 @@ static int kisspt_open_pt (void)
 
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("kisspt_open_pt (  )\n");
+	
+	printf ("kisspt_open_pt (  )\n");
 #endif
 
 	fd = posix_openpt(O_RDWR|O_NOCTTY);
@@ -246,8 +245,8 @@ static int kisspt_open_pt (void)
 	    || grantpt (fd) == -1
 	    || unlockpt (fd) == -1
 	    || (pts = ptsname (fd)) == NULL) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("ERROR - Could not create pseudo terminal for KISS TNC.\n");
+	  
+	  printf ("ERROR - Could not create pseudo terminal for KISS TNC.\n");
 	  return (-1);
 	}
 
@@ -255,8 +254,8 @@ static int kisspt_open_pt (void)
 
 	e = tcgetattr (fd, &ts);
 	if (e != 0) { 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Can't get pseudo terminal attributes, err=%d\n", e);
+	  
+	  printf ("Can't get pseudo terminal attributes, err=%d\n", e);
 	  perror ("pt tcgetattr"); 
 	}
 
@@ -268,8 +267,8 @@ static int kisspt_open_pt (void)
 
 	e = tcsetattr (fd, TCSANOW, &ts);
 	if (e != 0) { 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Can't set pseudo terminal attributes, err=%d\n", e);
+	  
+	  printf ("Can't set pseudo terminal attributes, err=%d\n", e);
 	  perror ("pt tcsetattr"); 
 	}
 
@@ -286,19 +285,19 @@ static int kisspt_open_pt (void)
  * condition here.
  */
 
-	// text_color_set(DW_COLOR_DEBUG);
-	// dw_printf("Debug: Try using non-blocking mode for pseudo terminal.\n");
+	// 
+	// printf("Debug: Try using non-blocking mode for pseudo terminal.\n");
 
 	int flags = fcntl(fd, F_GETFL, 0);
 	e = fcntl (fd, F_SETFL, flags | O_NONBLOCK);
 	if (e != 0) { 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Can't set pseudo terminal to nonblocking, fcntl returns %d, errno = %d\n", e, errno);
+	  
+	  printf ("Can't set pseudo terminal to nonblocking, fcntl returns %d, errno = %d\n", e, errno);
 	  perror ("pt fcntl"); 
 	}
 
-	text_color_set(DW_COLOR_INFO);
-	dw_printf("Virtual KISS TNC is available on %s\n", pt_slave_name);
+	
+	printf("Virtual KISS TNC is available on %s\n", pt_slave_name);
 	
 
 #if 1
@@ -313,8 +312,8 @@ static int kisspt_open_pt (void)
 	pt_slave_fd = open(pt_slave_name, O_RDWR|O_NOCTTY);
 
 	if (pt_slave_fd < 0) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Can't open %s\n", pt_slave_name);	
+	    
+	    printf ("Can't open %s\n", pt_slave_name);	
 	    perror ("");
 	    return -1;
 	}
@@ -334,11 +333,11 @@ static int kisspt_open_pt (void)
 // TODO: Is this removed when application exits?
 
 	if (symlink (pt_slave_name, TMP_KISSTNC_SYMLINK) == 0) {
-	    dw_printf ("Created symlink %s -> %s\n", TMP_KISSTNC_SYMLINK, pt_slave_name);
+	    printf ("Created symlink %s -> %s\n", TMP_KISSTNC_SYMLINK, pt_slave_name);
 	}
 	else {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Failed to create symlink %s\n", TMP_KISSTNC_SYMLINK);	
+	    
+	    printf ("Failed to create symlink %s\n", TMP_KISSTNC_SYMLINK);	
 	    perror ("");
 	}
 
@@ -402,8 +401,8 @@ void kisspt_send_rec_packet (int chan, int kiss_cmd, unsigned char *fbuf,  int f
 	  unsigned char stemp[AX25_MAX_PACKET_LEN + 1];
 	 
 	  if (flen > (int)(sizeof(stemp)) - 1) {
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("\nPseudo Terminal KISS buffer too small.  Truncated.\n\n");
+	    
+	    printf ("\nPseudo Terminal KISS buffer too small.  Truncated.\n\n");
 	    flen = (int)(sizeof(stemp)) - 1;
 	  }
 
@@ -423,14 +422,14 @@ void kisspt_send_rec_packet (int chan, int kiss_cmd, unsigned char *fbuf,  int f
         err = write (pt_master_fd, kiss_buff, (size_t)kiss_len);
 
 	if (err == -1 && errno == EWOULDBLOCK) {
-	  text_color_set (DW_COLOR_INFO);
-	  dw_printf ("KISS SEND - Discarding message because no one is listening.\n");
-	  dw_printf ("This happens when you use the -p option and don't read from the pseudo terminal.\n");
+	  
+	  printf ("KISS SEND - Discarding message because no one is listening.\n");
+	  printf ("This happens when you use the -p option and don't read from the pseudo terminal.\n");
 	}
 	else if (err != kiss_len)
 	{
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("\nError sending KISS message to client application on pseudo terminal.  fd=%d, len=%d, write returned %d, errno = %d\n\n",
+	  
+	  printf ("\nError sending KISS message to client application on pseudo terminal.  fd=%d, len=%d, write returned %d, errno = %d\n\n",
 		pt_master_fd, kiss_len, err, errno);
 	  perror ("pt write"); 
 	}
@@ -517,8 +516,8 @@ static int kisspt_get (void)
 	  rc = select(pt_master_fd + 1, &fd_in, NULL, &fd_ex, NULL);
 
 #if 0
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("select returns %d, errno=%d, fd=%d, fd_in=%08x, fd_ex=%08x\n", rc, errno, pt_master_fd, *((int*)(&fd_in)), *((int*)(&fd_in)));
+	  
+	  printf ("select returns %d, errno=%d, fd=%d, fd_in=%08x, fd_ex=%08x\n", rc, errno, pt_master_fd, *((int*)(&fd_in)), *((int*)(&fd_in)));
 #endif
 
 	  if (rc == 0)
@@ -530,8 +529,8 @@ static int kisspt_get (void)
 	      || (n = read(pt_master_fd, &ch, (size_t)1)) != 1)
 	  {
 
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("\nError receiving KISS message from client application.  Closing %s.\n\n", pt_slave_name);
+	    
+	    printf ("\nError receiving KISS message from client application.  Closing %s.\n\n", pt_slave_name);
 	    perror ("");
 
 	    close (pt_master_fd);
@@ -543,8 +542,8 @@ static int kisspt_get (void)
 	}
 
 #if DEBUGx
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("kisspt_get(%d) returns 0x%02x\n", fd, ch);
+	
+	printf ("kisspt_get(%d) returns 0x%02x\n", fd, ch);
 #endif
 
 	return (ch);
@@ -569,8 +568,8 @@ static void * kisspt_listen_thread (void *arg)
 	unsigned char ch;
 			
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("kisspt_listen_thread ( %d )\n", fd);
+	
+	printf ("kisspt_listen_thread ( %d )\n", fd);
 #endif
 
 

@@ -64,14 +64,12 @@
 
 #include "direwolf.h"
 #include "ax25_pad.h"
-#include "textcolor.h"
 #include "audio.h"
 #include "tq.h"
 #include "xmit.h"
 #include "hdlc_send.h"
 #include "hdlc_rec.h"
 #include "ptt.h"
-#include "dtime_now.h"
 #include "dlq.h"
 
 
@@ -108,45 +106,9 @@ static int xmit_bits_per_sec[MAX_CHANS];	/* Data transmission rate. */
 
 static int g_debug_xmit_packet;		/* print packet in hexadecimal form for debugging. */
 
-
-// TODO: When this was first written, bits/sec was same as baud.
-// Need to revisit this for PSK modes where they are not the same.
-
-#if 0		// Added during 1.5 beta test
-
-static int BITS_TO_MS (int b, int ch) {
-
-	int bits_per_symbol;
-
-	switch (save_audio_config_p->achan[ch].modem_type) {
-	  case MODEM_QPSK:	bits_per_symbol = 2; break;
-	  case MODEM_8PSK:	bits_per_symbol = 3; break;
-	  case default:		bits_per_symbol = 1; break;
-	}
-
-	return ( (b * 1000) / (xmit_bits_per_sec[(ch)] * bits_per_symbol) );
-}
-
-static int MS_TO_BITS (int ms, int ch) {
-
-	int bits_per_symbol;
-
-	switch (save_audio_config_p->achan[ch].modem_type) {
-	  case MODEM_QPSK:	bits_per_symbol = 2; break;
-	  case MODEM_8PSK:	bits_per_symbol = 3; break;
-	  case default:		bits_per_symbol = 1; break;
-	}
-
-	return ( (ms * xmit_bits_per_sec[(ch)] * bits_per_symbol) / 1000 );  TODO...
-}
-
-#else		// OK for 1200, 9600 but wrong for PSK
-
 #define BITS_TO_MS(b,ch) (((b)*1000)/xmit_bits_per_sec[(ch)])
 
 #define MS_TO_BITS(ms,ch) (((ms)*xmit_bits_per_sec[(ch)])/1000)
-
-#endif
 
 #define MAXX(a,b) (((a)>(b)) ? (a) : (b))
 
@@ -212,8 +174,8 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 	//int e;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_init ( ... )\n");
+	
+	printf ("xmit_init ( ... )\n");
 #endif
 
 	save_audio_config_p = p_modem;
@@ -224,14 +186,14 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
  * Push to Talk (PTT) control.
  */
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_init: about to call ptt_init \n");
+	
+	printf ("xmit_init: about to call ptt_init \n");
 #endif
 	ptt_init (p_modem);
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_init: back from ptt_init \n");
+	
+	printf ("xmit_init: back from ptt_init \n");
 #endif
 
 /* 
@@ -249,8 +211,8 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 	}
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_init: about to call tq_init \n");
+	
+	printf ("xmit_init: about to call tq_init \n");
 #endif
 	tq_init (p_modem);
 
@@ -260,8 +222,8 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 	}
  
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_init: about to create threads \n");
+	
+	printf ("xmit_init: about to create threads \n");
 #endif
 
 //TODO:  xmit thread should be higher priority to avoid
@@ -274,8 +236,8 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 #if __WIN32__
 	    xmit_th[j] = (HANDLE)_beginthreadex (NULL, 0, xmit_thread, (void*)(ptrdiff_t)j, 0, NULL);
 	    if (xmit_th[j] == NULL) {
-	       text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Could not create xmit thread %d\n", j);
+	       
+	      printf ("Could not create xmit thread %d\n", j);
 	      return;
 	    }
 #else
@@ -286,12 +248,12 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 	    pthread_attr_init (&attr);
   	    e = pthread_attr_getschedparam (&attr, &sp);
 	    if (e != 0) {
-	      text_color_set(DW_COLOR_ERROR);
+	      
 	      perror("pthread_attr_getschedparam");
 	    }
 
-	    text_color_set(DW_COLOR_ERROR);
-	    dw_printf ("Default scheduling priority = %d, min=%d, max=%d\n", 
+	    
+	    printf ("Default scheduling priority = %d, min=%d, max=%d\n", 
 		sp.sched_priority, 
 		sched_get_priority_min(SCHED_OTHER),
 		sched_get_priority_max(SCHED_OTHER));
@@ -299,7 +261,7 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 
   	    e = pthread_attr_setschedparam (&attr, &sp);
 	    if (e != 0) {
-	      text_color_set(DW_COLOR_ERROR);
+	      
 	      perror("pthread_attr_setschedparam");
 	    }
 	
@@ -309,7 +271,7 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 	    e = pthread_create (&(xmit_tid[j]), NULL, xmit_thread, (void *)(ptrdiff_t)j);
 #endif
 	    if (e != 0) {
-	      text_color_set(DW_COLOR_ERROR);
+	      
 	      perror("Could not create xmit thread for audio device");
 	      return;
 	    }
@@ -318,8 +280,8 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 	}
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_init: finished \n");
+	
+	printf ("xmit_init: finished \n");
 #endif
 
 
@@ -498,8 +460,8 @@ static void * xmit_thread (void *arg)
 
 	  tq_wait_while_empty (chan);
 #if DEBUG
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("xmit_thread, channel %d: woke up\n", chan);
+	  
+	  printf ("xmit_thread, channel %d: woke up\n", chan);
 #endif
 
 	  // Does this extra loop offer any benefit?
@@ -522,8 +484,8 @@ static void * xmit_thread (void *arg)
 	    }
 
 #if DEBUG
-	    text_color_set(DW_COLOR_DEBUG);
-	    dw_printf ("xmit_thread: tq_remove(chan=%d, prio=%d) returned %p\n", chan, prio, pp);
+	    
+	    printf ("xmit_thread: tq_remove(chan=%d, prio=%d) returned %p\n", chan, prio, pp);
 #endif
 	    // Shouldn't have NULL here but be careful.
 
@@ -567,19 +529,19 @@ static void * xmit_thread (void *arg)
 		unsigned char *pinfo;
 
 
-	        text_color_set(DW_COLOR_ERROR);
-		dw_printf ("Waited too long for clear channel.  Discarding packet below.\n");
+	        
+		printf ("Waited too long for clear channel.  Discarding packet below.\n");
 
 	        ax25_format_addrs (pp, stemp);
 
 	        info_len = ax25_get_info (pp, &pinfo);
 
-	        text_color_set(DW_COLOR_INFO);
-	        dw_printf ("[%d%c] ", chan, (prio==TQ_PRIO_0_HI) ? 'H' : 'L');
+	        
+	        printf ("[%d%c] ", chan, (prio==TQ_PRIO_0_HI) ? 'H' : 'L');
 
-	        dw_printf ("%s", stemp);			/* stations followed by : */
+	        printf ("%s", stemp);			/* stations followed by : */
 	        ax25_safe_print ((char *)pinfo, info_len, ! ax25_is_aprs(pp));
-	        dw_printf ("\n");
+	        printf ("\n");
 		ax25_delete (pp);
 
 	      } /* wait for clear channel error. */
@@ -671,18 +633,9 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
 	int num_bits;		/* Total number of bits in transmission */
 				/* including all flags and bit stuffing. */
 	int duration;		/* Transmission time in milliseconds. */
-	int already;
 	int wait_more;
 
 	int numframe = 0;	/* Number of frames sent during this transmission. */
-
-/*
- * These are for timing of a transmission.
- * All are in usual unix time (seconds since 1/1/1970) but higher resolution
- */
-	double time_ptt;	/* Time when PTT is turned on. */
-	double time_now;	/* Current time. */
-
 
 	int nb;
 
@@ -690,30 +643,29 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
  * Turn on transmitter.
  * Start sending leading flag bytes.
  */
-	time_ptt = dtime_now ();
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_thread: t=%.3f, Turn on PTT now for channel %d. speed = %d\n", dtime_now()-time_ptt, chan, xmit_bits_per_sec[chan]);
+	
+	printf ("xmit_thread: t=%.3f, Turn on PTT now for channel %d. speed = %d\n", dtime_now()-time_ptt, chan, xmit_bits_per_sec[chan]);
 #endif
 	ptt_set (OCTYPE_PTT, chan, 1);
 
 	pre_flags = MS_TO_BITS(xmit_txdelay[chan] * 10, chan) / 8;
 	num_bits =  layer2_preamble_postamble (chan, pre_flags, 0, save_audio_config_p);
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_thread: t=%.3f, txdelay=%d [*10], pre_flags=%d, num_bits=%d\n", dtime_now()-time_ptt, xmit_txdelay[chan], pre_flags, num_bits);
+	
+	printf ("xmit_thread: t=%.3f, txdelay=%d [*10], pre_flags=%d, num_bits=%d\n", dtime_now()-time_ptt, xmit_txdelay[chan], pre_flags, num_bits);
 	double presleep = dtime_now();
 #endif
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
+	
 	// How long did sleep last?
-	dw_printf ("xmit_thread: t=%.3f, Should be 0.010 second after the above.\n", dtime_now()-time_ptt);
+	printf ("xmit_thread: t=%.3f, Should be 0.010 second after the above.\n", dtime_now()-time_ptt);
 	double naptime = dtime_now() - presleep;
 	if (naptime > 0.015) {
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Sleep for 10 ms actually took %.3f second!\n", naptime);
+	  
+	  printf ("Sleep for 10 ms actually took %.3f second!\n", naptime);
 	}
 #endif
 
@@ -726,8 +678,8 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
 	num_bits += nb;
 	if (nb > 0) numframe++;
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_thread: t=%.3f, nb=%d, num_bits=%d, numframe=%d\n", dtime_now()-time_ptt, nb, num_bits, numframe);
+	
+	printf ("xmit_thread: t=%.3f, nb=%d, num_bits=%d, numframe=%d\n", dtime_now()-time_ptt, nb, num_bits, numframe);
 #endif
 	ax25_delete (pp);
 
@@ -765,8 +717,8 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
 
 	        pp = tq_remove (chan, prio);
 #if DEBUG
-	        text_color_set(DW_COLOR_DEBUG);
-	        dw_printf ("xmit_thread: t=%.3f, tq_remove(chan=%d, prio=%d) returned %p\n", dtime_now()-time_ptt, chan, prio, pp);
+	        
+	        printf ("xmit_thread: t=%.3f, tq_remove(chan=%d, prio=%d) returned %p\n", dtime_now()-time_ptt, chan, prio, pp);
 #endif
 
 	        nb = send_one_frame (chan, prio, pp);
@@ -774,8 +726,8 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
 	        num_bits += nb;
 	        if (nb > 0) numframe++;
 #if DEBUG
-	        text_color_set(DW_COLOR_DEBUG);
-	        dw_printf ("xmit_thread: t=%.3f, nb=%d, num_bits=%d, numframe=%d\n", dtime_now()-time_ptt, nb, num_bits, numframe);
+	        
+	        printf ("xmit_thread: t=%.3f, nb=%d, num_bits=%d, numframe=%d\n", dtime_now()-time_ptt, nb, num_bits, numframe);
 #endif
 	        ax25_delete (pp);
 
@@ -795,17 +747,9 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
 	nb = layer2_preamble_postamble (chan, post_flags, 1, save_audio_config_p);
 	num_bits += nb;
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_thread: t=%.3f, txtail=%d [*10], post_flags=%d, nb=%d, num_bits=%d\n", dtime_now()-time_ptt, xmit_txtail[chan], post_flags, nb, num_bits);
+	
+	printf ("xmit_thread: t=%.3f, txtail=%d [*10], post_flags=%d, nb=%d, num_bits=%d\n", dtime_now()-time_ptt, xmit_txtail[chan], post_flags, nb, num_bits);
 #endif
-
-
-/* 
- * While demodulating is CPU intensive, generating the tones is not.
- * Example: on the RPi model 1, with 50% of the CPU taken with two receive
- * channels, a transmission of more than a second is generated in
- * about 40 mS of elapsed real time.
- */
 
 	audio_wait(ACHAN2ADEV(chan));		
 
@@ -823,39 +767,24 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
  * Wait additional time if necessary.
  */
 
-	time_now = dtime_now();
-	already = (int) ((time_now - time_ptt) * 1000.);
-	wait_more = duration - already;
+	wait_more = duration;
 
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
-	dw_printf ("xmit_thread: t=%.3f, xmit duration=%d, %d already elapsed since PTT, wait %d more\n", dtime_now()-time_ptt, duration, already, wait_more );
+	
+	printf ("xmit_thread: t=%.3f, xmit duration=%d, %d already elapsed since PTT, wait %d more\n", dtime_now()-time_ptt, duration, already, wait_more );
 #endif
 
 	if (wait_more > 0) {
 	  SLEEP_MS(wait_more);
-	}
-	else if (wait_more < -100) {
-
-	  /* If we run over by 10 mSec or so, it's nothing to worry about. */
-	  /* However, if PTT is still on about 1/10 sec after audio */
-	  /* should be done, something is wrong. */
-
-	  /* Looks like a bug with the RPi audio system. Never an issue with Ubuntu.  */
-	  /* This runs over randomly sometimes. TODO:  investigate more fully sometime. */
-#ifndef __arm__
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Transmit timing error: PTT is on %d mSec too long.\n", -wait_more);
-#endif
 	}
 
 /*
  * Turn off transmitter.
  */
 #if DEBUG
-	text_color_set(DW_COLOR_DEBUG);
+	
 	time_now = dtime_now();
-	dw_printf ("xmit_thread: t=%.3f, Turn off PTT now. Actual time on was %d mS, vs. %d desired\n", dtime_now()-time_ptt, (int) ((time_now - time_ptt) * 1000.), duration);
+	printf ("xmit_thread: t=%.3f, Turn off PTT now. Actual time on was %d mS, vs. %d desired\n", dtime_now()-time_ptt, (int) ((time_now - time_ptt) * 1000.), duration);
 #endif
 		
 	ptt_set (OCTYPE_PTT, chan, 0);
@@ -907,32 +836,20 @@ static int send_one_frame (int c, int p, packet_t pp)
 	  return(0);
 	}
 
-	char ts[100];		// optional time stamp.
-
-	if (strlen(save_audio_config_p->timestamp_format) > 0) {
-	  char tstmp[100];
-	  timestamp_user_format (tstmp, sizeof(tstmp), save_audio_config_p->timestamp_format);
-	  strlcpy (ts, " ", sizeof(ts));	// space after channel.
-	  strlcat (ts, tstmp, sizeof(ts));
-	}
-	else {
-	  strlcpy (ts, "", sizeof(ts));
-	}
-
 	ax25_format_addrs (pp, stemp);
 	info_len = ax25_get_info (pp, &pinfo);
-	text_color_set(DW_COLOR_XMIT);
+	
 #if 0						// FIXME - enable this?
-	dw_printf ("[%d%c%s%s] ", c,
+	printf ("[%d%c%s%s] ", c,
 			p==TQ_PRIO_0_HI ? 'H' : 'L',
 			save_audio_config_p->achan[c].fx25_strength ? "F" : "",
 			ts);
 #else
-	dw_printf ("[%d%c%s] ", c, p==TQ_PRIO_0_HI ? 'H' : 'L', ts);
+	printf ("[%d%c] ", c, p==TQ_PRIO_0_HI ? 'H' : 'L');
 #endif
-	dw_printf ("%s", stemp);			/* stations followed by : */
+	printf ("%s", stemp);			/* stations followed by : */
 	ax25_safe_print ((char *)pinfo, info_len, ! ax25_is_aprs(pp));
-	  dw_printf ("\n");
+	  printf ("\n");
 
 	(void)ax25_check_addresses (pp);
 
@@ -940,10 +857,10 @@ static int send_one_frame (int c, int p, packet_t pp)
 
 	if (g_debug_xmit_packet) {
 
-	  text_color_set(DW_COLOR_DEBUG);
-	  dw_printf ("------\n");
+	  
+	  printf ("------\n");
 	  ax25_hex_dump (pp);
-	  dw_printf ("------\n");
+	  printf ("------\n");
 	}
 
 
@@ -957,8 +874,8 @@ static int send_one_frame (int c, int p, packet_t pp)
 
 	  if (save_audio_config_p->xmit_error_rate / 100.0 > r) {
 	    send_invalid_fcs2 = 1;
-	    text_color_set(DW_COLOR_INFO);
-	    dw_printf ("Intentionally sending invalid CRC for frame above.  Xmit Error rate = %d per cent.\n", save_audio_config_p->xmit_error_rate);
+	    
+	    printf ("Intentionally sending invalid CRC for frame above.  Xmit Error rate = %d per cent.\n", save_audio_config_p->xmit_error_rate);
 	  }
 	}
 
@@ -993,8 +910,8 @@ int xmit_speak_it (char *script, int c, char *orig_msg)
 	snprintf (cmd, sizeof(cmd), "%s %d \"%s\"", script, c, msg);
 #endif
 
-	//text_color_set(DW_COLOR_DEBUG);
-	//dw_printf ("cmd=%s\n", cmd);
+	//
+	//printf ("cmd=%s\n", cmd);
 
 	err = system (cmd);
 
@@ -1003,15 +920,15 @@ int xmit_speak_it (char *script, int c, char *orig_msg)
 	  char path[3000];
 	  char *ignore;
 
-	  text_color_set(DW_COLOR_ERROR);
-	  dw_printf ("Failed to run text-to-speech script, %s\n", script);
+	  
+	  printf ("Failed to run text-to-speech script, %s\n", script);
 
 	  ignore = getcwd (cwd, sizeof(cwd));
 	  (void)ignore;
 	  strlcpy (path, getenv("PATH"), sizeof(path));
 
-	  dw_printf ("CWD = %s\n", cwd);
-	  dw_printf ("PATH = %s\n", path);
+	  printf ("CWD = %s\n", cwd);
+	  printf ("PATH = %s\n", path);
 	
 	}
 	return (err);

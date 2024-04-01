@@ -56,7 +56,6 @@
 #endif
 
 #include "ax25_pad.h"
-#include "textcolor.h"
 #include "log.h"
 
 
@@ -152,9 +151,9 @@ void log_init (int daily_names, char *path)
 	      strlcpy (g_log_path, path, sizeof(g_log_path));
 	    }
 	    else {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Log file location \"%s\" is not a directory.\n", path);
-	      dw_printf ("Using current working directory \".\" instead.\n");
+	      
+	      printf ("Log file location \"%s\" is not a directory.\n", path);
+	      printf ("Using current working directory \".\" instead.\n");
 	      strlcpy (g_log_path, ".", sizeof(g_log_path));
 	    }
 	  }
@@ -168,15 +167,15 @@ void log_init (int daily_names, char *path)
 	    if (mkdir (path, 0777) == 0) {
 #endif
 	      // Success.
-	      text_color_set(DW_COLOR_INFO);
-	      dw_printf ("Log file location \"%s\" has been created.\n", path);
+	      
+	      printf ("Log file location \"%s\" has been created.\n", path);
 	      strlcpy (g_log_path, path, sizeof(g_log_path));
 	    }
 	    else {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf ("Failed to create log file location \"%s\".\n", path);
-	      dw_printf ("%s\n", strerror(errno));
-	      dw_printf ("Using current working directory \".\" instead.\n");
+	      
+	      printf ("Failed to create log file location \"%s\".\n", path);
+	      printf ("%s\n", strerror(errno));
+	      printf ("Using current working directory \".\" instead.\n");
 	      strlcpy (g_log_path, ".", sizeof(g_log_path));
 	    }
 	  }
@@ -186,8 +185,8 @@ void log_init (int daily_names, char *path)
 // Added in version 1.5.  Single file.
 // Typically logrotate would be used to keep size under control.
 
-	  text_color_set(DW_COLOR_INFO);
-	  dw_printf ("Log file is \"%s\"\n", path);
+	  
+	  printf ("Log file is \"%s\"\n", path);
 	  strlcpy (g_log_path, path, sizeof(g_log_path));
 	}
 
@@ -263,8 +262,8 @@ void log_write (int chan, packet_t pp, alevel_t alevel, retry_t retries)
 
 	    already_there = (stat(full_path,&st) == 0) && (st.st_size > 0);
 
-	    text_color_set(DW_COLOR_INFO);
-	    dw_printf("Opening log file \"%s\".\n", fname);
+	    
+	    printf("Opening log file \"%s\".\n", fname);
 
 	    g_log_fp = fopen (full_path, "a");
 
@@ -272,9 +271,9 @@ void log_write (int chan, packet_t pp, alevel_t alevel, retry_t retries)
 	      strlcpy (g_open_fname, fname, sizeof(g_open_fname));
 	    }
 	    else {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf("Can't open log file \"%s\" for write.\n", full_path);
-	      dw_printf ("%s\n", strerror(errno));
+	      
+	      printf("Can't open log file \"%s\" for write.\n", full_path);
+	      printf ("%s\n", strerror(errno));
 	      strlcpy (g_open_fname, "", sizeof(g_open_fname));
 	      return;
 	    }
@@ -302,15 +301,15 @@ void log_write (int chan, packet_t pp, alevel_t alevel, retry_t retries)
 
 	    already_there = (stat(g_log_path,&st) == 0) && (st.st_size > 0);
 
-	    text_color_set(DW_COLOR_INFO);
-	    dw_printf("Opening log file \"%s\"\n", g_log_path);
+	    
+	    printf("Opening log file \"%s\"\n", g_log_path);
 
 	    g_log_fp = fopen (g_log_path, "a");
 
 	    if (g_log_fp == NULL) {
-	      text_color_set(DW_COLOR_ERROR);
-	      dw_printf("Can't open log file \"%s\" for write.\n", g_log_path);
-	      dw_printf ("%s\n", strerror(errno));
+	      
+	      printf("Can't open log file \"%s\" for write.\n", g_log_path);
+	      printf ("%s\n", strerror(errno));
 	      strlcpy (g_log_path, "", sizeof(g_log_path));
 	      return;
 	    }
@@ -443,9 +442,9 @@ void log_rr_bits (packet_t pp)
 	    // system type
 	    // station heard
 
-	    text_color_set(DW_COLOR_INFO);
+	    
 
-	    dw_printf ("%d %d%d  %d %d%d,%s,%s\n",
+	    printf ("%d %d%d  %d %d%d,%s,%s\n",
 			src_c, (src_rr >> 1) & 1, src_rr & 1,
 			dst_c, (dst_rr >> 1) & 1, dst_rr & 1,
 			smfr, heard);
@@ -471,13 +470,13 @@ void log_term (void)
 {
 	if (g_log_fp != NULL) {
 
-	  text_color_set(DW_COLOR_INFO);
+	  
 
 	  if (g_daily_names) {
-	    dw_printf("Closing log file \"%s\".\n", g_open_fname);
+	    printf("Closing log file \"%s\".\n", g_open_fname);
 	  }
 	  else {
-	    dw_printf("Closing log file \"%s\".\n", g_log_path);
+	    printf("Closing log file \"%s\".\n", g_log_path);
 	  }
 
 	  fclose (g_log_fp);

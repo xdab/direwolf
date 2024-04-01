@@ -20,18 +20,13 @@
  * This wasn't thought out.  It just happened.
  */
 
-enum beacon_type_e { BEACON_IGNORE, BEACON_POSITION, BEACON_OBJECT, BEACON_TRACKER, BEACON_CUSTOM, BEACON_IGATE };
-
-enum sendto_type_e { SENDTO_XMIT, SENDTO_IGATE, SENDTO_RECV };
+enum sendto_type_e { SENDTO_XMIT, SENDTO_RECV };
 
 
 #define MAX_BEACONS 30
 #define MAX_KISS_TCP_PORTS (MAX_CHANS+1)
 
 struct misc_config_s {
-
-	int agwpe_port;		/* TCP Port number for the "AGW TCPIP Socket Interface" */
-
 	// Previously we allowed only a single TCP port for KISS.
 	// An increasing number of people want to run multiple radios.
 	// Unfortunately, most applications don't know how to deal with multi-radio TNCs.
@@ -73,18 +68,13 @@ struct misc_config_s {
 	int log_daily_names;	/* True to generate new log file each day. */
 
 	char log_path[80];	/* Either directory or full file name depending on above. */
-
-	int dns_sd_enabled;	/* DNS Service Discovery announcement enabled. */
-	char dns_sd_name[64];	/* Name announced on dns-sd; defaults to "Dire Wolf on <hostname>" */
 };
 
 
 #define MIN_IP_PORT_NUMBER 1024
 #define MAX_IP_PORT_NUMBER 49151
 
-#define DEFAULT_AGWPE_PORT 8000		/* Like everyone else. */
 #define DEFAULT_KISS_PORT 8001		/* Above plus 1. */
-
 
 #define DEFAULT_NULLMODEM "COM3"  	/* should be equiv. to /dev/ttyS2 on Cygwin */
 

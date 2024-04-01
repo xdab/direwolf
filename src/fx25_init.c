@@ -59,7 +59,6 @@
 #include <assert.h>
 
 #include "fx25.h"
-#include "textcolor.h"
 
 
 #define NTAB 3
@@ -192,8 +191,8 @@ void fx25_init ( int debug_level )
 	for (int i = 0 ; i < NTAB ; i++) {
 	  Tab[i].rs = INIT_RS(Tab[i].symsize, Tab[i].genpoly, Tab[i].fcs,  Tab[i].prim, Tab[i].nroots);
 	  if (Tab[i].rs == NULL) {
-	        text_color_set(DW_COLOR_ERROR);
-		dw_printf("FX.25 internal error: init_rs_char failed!\n");
+	        
+		printf("FX.25 internal error: init_rs_char failed!\n");
 		exit(EXIT_FAILURE);
 	  }
 	}
@@ -412,8 +411,8 @@ struct rs *INIT_RS(unsigned int symsize,unsigned int gfpoly,unsigned fcr,unsigne
 
   rs = (struct rs *)calloc(1,sizeof(struct rs));
   if (rs == NULL) {
-    text_color_set(DW_COLOR_ERROR);
-    dw_printf ("FATAL ERROR: Out of memory.\n");
+    
+    printf ("FATAL ERROR: Out of memory.\n");
     exit (EXIT_FAILURE);
   }
   rs->mm = symsize;
@@ -421,14 +420,14 @@ struct rs *INIT_RS(unsigned int symsize,unsigned int gfpoly,unsigned fcr,unsigne
 
   rs->alpha_to = (DTYPE *)calloc((rs->nn+1),sizeof(DTYPE));
   if(rs->alpha_to == NULL){
-    text_color_set(DW_COLOR_ERROR);
-    dw_printf ("FATAL ERROR: Out of memory.\n");
+    
+    printf ("FATAL ERROR: Out of memory.\n");
     exit (EXIT_FAILURE);
   }
   rs->index_of = (DTYPE *)calloc((rs->nn+1),sizeof(DTYPE));
   if(rs->index_of == NULL){
-    text_color_set(DW_COLOR_ERROR);
-    dw_printf ("FATAL ERROR: Out of memory.\n");
+    
+    printf ("FATAL ERROR: Out of memory.\n");
     exit (EXIT_FAILURE);
   }
 
@@ -455,8 +454,8 @@ struct rs *INIT_RS(unsigned int symsize,unsigned int gfpoly,unsigned fcr,unsigne
   /* Form RS code generator polynomial from its roots */
   rs->genpoly = (DTYPE *)calloc((nroots+1),sizeof(DTYPE));
   if(rs->genpoly == NULL){
-    text_color_set(DW_COLOR_ERROR);
-    dw_printf ("FATAL ERROR: Out of memory.\n");
+    
+    printf ("FATAL ERROR: Out of memory.\n");
     exit (EXIT_FAILURE);
   }
  rs->fcr = fcr;
@@ -519,18 +518,18 @@ void fx_hex_dump (unsigned char *p, int len)
 	offset = 0;
 	while (len > 0) {
 	  n = len < 16 ? len : 16; 
-	  dw_printf ("  %03x: ", offset);
+	  printf ("  %03x: ", offset);
 	  for (i=0; i<n; i++) {
-	    dw_printf (" %02x", p[i]);
+	    printf (" %02x", p[i]);
 	  }
 	  for (i=n; i<16; i++) {
-	    dw_printf ("   ");
+	    printf ("   ");
 	  }
-	  dw_printf ("  ");
+	  printf ("  ");
 	  for (i=0; i<n; i++) {
-	    dw_printf ("%c", isprint(p[i]) ? p[i] : '.');
+	    printf ("%c", isprint(p[i]) ? p[i] : '.');
 	  }
-	  dw_printf ("\n");
+	  printf ("\n");
 	  p += 16;
 	  offset += 16;
 	  len -= 16;
