@@ -4,7 +4,7 @@
 // TODO:   include this file first before anything else in each .c file.
 
 #ifdef NDEBUG
-#undef NDEBUG		// Because it would disable assert().
+#undef NDEBUG // Because it would disable assert().
 #endif
 
 #ifndef DIREWOLF_H
@@ -21,14 +21,14 @@
 #if __WIN32__
 
 #ifdef _WIN32_WINNT
-#error	Include "direwolf.h" before any windows system files.
+#error Include "direwolf.h" before any windows system files.
 #endif
 #ifdef WINVER
-#error	Include "direwolf.h" before any windows system files.
+#error Include "direwolf.h" before any windows system files.
 #endif
 
-#define _WIN32_WINNT 0x0501     /* Minimum OS version is XP. */
-#define WINVER       0x0501     /* Minimum OS version is XP. */
+#define _WIN32_WINNT 0x0501 /* Minimum OS version is XP. */
+#define WINVER 0x0501		/* Minimum OS version is XP. */
 
 #include <winsock2.h>
 #include <windows.h>
@@ -43,9 +43,8 @@
  * For example, if you wanted to use 4 audio devices at once, change this to 4.
  */
 
-#define MAX_ADEVS 3			
+#define MAX_ADEVS 3
 
-	
 /*
  * Maximum number of radio channels.
  * Note that there could be gaps.
@@ -62,13 +61,13 @@
 
 #define MAX_RADIO_CHANS ((MAX_ADEVS) * 2)
 
-#define MAX_CHANS MAX_RADIO_CHANS	// TODO: Replace all former  with latter to avoid confusion with following.
+#define MAX_CHANS MAX_RADIO_CHANS // TODO: Replace all former  with latter to avoid confusion with following.
 
-#define MAX_TOTAL_CHANS 16		// v1.7 allows additional virtual channels which are connected
-					// to something other than radio modems.
-					// Total maximum channels is based on the 4 bit KISS field.
-					// Someone with very unusual requirements could increase this and
-					// use only the AGW network protocol.
+#define MAX_TOTAL_CHANS 16 // v1.7 allows additional virtual channels which are connected
+						   // to something other than radio modems.
+						   // Total maximum channels is based on the 4 bit KISS field.
+						   // Someone with very unusual requirements could increase this and
+						   // use only the AGW network protocol.
 
 /*
  * Maximum number of rigs.
@@ -83,12 +82,12 @@
  * and first channel for given device.
  */
 
-#define ACHAN2ADEV(n) ((n)>>1)
+#define ACHAN2ADEV(n) ((n) >> 1)
 #define ADEVFIRSTCHAN(n) ((n) * 2)
 
 /*
  * Maximum number of modems per channel.
- * I called them "subchannels" (in the code) because 
+ * I called them "subchannels" (in the code) because
  * it is short and unambiguous.
  * Nothing magic about the number.  Could be larger
  * but CPU demands might be overwhelming.
@@ -107,28 +106,26 @@
 
 #define MAX_SLICERS 9
 
-
 #if __WIN32__
-#define SLEEP_SEC(n) Sleep((n)*1000)
+#define SLEEP_SEC(n) Sleep((n) * 1000)
 #define SLEEP_MS(n) Sleep(n)
 #else
 #define SLEEP_SEC(n) sleep(n)
-#define SLEEP_MS(n) usleep((n)*1000)
+#define SLEEP_MS(n) usleep((n) * 1000)
 #endif
 
 #if __WIN32__
 
 #define PTW32_STATIC_LIB
-//#include "pthreads/pthread.h"
+// #include "pthreads/pthread.h"
 
 // This enables definitions of localtime_r and gmtime_r in system time.h.
-//#define _POSIX_THREAD_SAFE_FUNCTIONS 1
+// #define _POSIX_THREAD_SAFE_FUNCTIONS 1
 #define _POSIX_C_SOURCE 1
 
 #else
- #include <pthread.h>
+#include <pthread.h>
 #endif
-
 
 #ifdef __APPLE__
 
@@ -162,7 +159,7 @@
 #undef __DARWIN_C_LEVEL
 #endif
 
-#define __DARWIN_C_LEVEL  __DARWIN_C_FULL
+#define __DARWIN_C_LEVEL __DARWIN_C_FULL
 
 #endif
 
@@ -171,82 +168,80 @@
 typedef CRITICAL_SECTION dw_mutex_t;
 
 #define dw_mutex_init(x) \
-	InitializeCriticalSection (x)
+	InitializeCriticalSection(x)
 
 /* This one waits for lock. */
 
 #define dw_mutex_lock(x) \
-	EnterCriticalSection (x) 
+	EnterCriticalSection(x)
 
 /* Returns non-zero if lock was obtained. */
 
 #define dw_mutex_try_lock(x) \
-	TryEnterCriticalSection (x)
+	TryEnterCriticalSection(x)
 
 #define dw_mutex_unlock(x) \
-	LeaveCriticalSection (x)
-
+	LeaveCriticalSection(x)
 
 #else
 
 typedef pthread_mutex_t dw_mutex_t;
 
-#define dw_mutex_init(x) pthread_mutex_init (x, NULL)
+#define dw_mutex_init(x) pthread_mutex_init(x, NULL)
 
 /* this one will wait. */
 
-#define dw_mutex_lock(x) \
-	{	\
-	  int err; \
-	  err = pthread_mutex_lock (x); \
-	  if (err != 0) { \
-	    printf ("INTERNAL ERROR %s %d pthread_mutex_lock returned %d", __FILE__, __LINE__, err); \
-	    exit (1); \
-	  } \
+#define dw_mutex_lock(x)                                                                            \
+	{                                                                                               \
+		int err;                                                                                    \
+		err = pthread_mutex_lock(x);                                                                \
+		if (err != 0)                                                                               \
+		{                                                                                           \
+			printf("INTERNAL ERROR %s %d pthread_mutex_lock returned %d", __FILE__, __LINE__, err); \
+			exit(1);                                                                                \
+		}                                                                                           \
 	}
 
 /* This one returns true if lock successful, false if not. */
 /* pthread_mutex_trylock returns 0 for success. */
 
-#define dw_mutex_try_lock(x) \
-	({	\
-	  int err; \
-	  err = pthread_mutex_trylock (x); \
-	  if (err != 0 && err != EBUSY) { \
-	    printf ("INTERNAL ERROR %s %d pthread_mutex_trylock returned %d", __FILE__, __LINE__, err); \
-	    exit (1); \
-	  } ; \
-	  ! err; \
+#define dw_mutex_try_lock(x)                                                                           \
+	({                                                                                                 \
+		int err;                                                                                       \
+		err = pthread_mutex_trylock(x);                                                                \
+		if (err != 0 && err != EBUSY)                                                                  \
+		{                                                                                              \
+			printf("INTERNAL ERROR %s %d pthread_mutex_trylock returned %d", __FILE__, __LINE__, err); \
+			exit(1);                                                                                   \
+		};                                                                                             \
+		!err;                                                                                          \
 	})
 
-#define dw_mutex_unlock(x) \
-	{	\
-	  int err; \
-	  err = pthread_mutex_unlock (x); \
-	  if (err != 0) { \
-	    printf ("INTERNAL ERROR %s %d pthread_mutex_unlock returned %d", __FILE__, __LINE__, err); \
-	    exit (1); \
-	  } \
+#define dw_mutex_unlock(x)                                                                            \
+	{                                                                                                 \
+		int err;                                                                                      \
+		err = pthread_mutex_unlock(x);                                                                \
+		if (err != 0)                                                                                 \
+		{                                                                                             \
+			printf("INTERNAL ERROR %s %d pthread_mutex_unlock returned %d", __FILE__, __LINE__, err); \
+			exit(1);                                                                                  \
+		}                                                                                             \
 	}
 
 #endif
-
-
 
 // Formerly used write/read on Linux, for some forgotten reason,
 // but always using send/recv makes more sense.
 // Need option to prevent a SIGPIPE signal on Linux.  (added for 1.5 beta 2)
 
 #if __WIN32__ || __APPLE__
-#define SOCK_SEND(s,data,size) send(s,data,size,0)
+#define SOCK_SEND(s, data, size) send(s, data, size, 0)
 #else
-#define SOCK_SEND(s,data,size) send(s,data,size, MSG_NOSIGNAL)
+#define SOCK_SEND(s, data, size) send(s, data, size, MSG_NOSIGNAL)
 #endif
-#define SOCK_RECV(s,data,size) recv(s,data,size,0)
-
+#define SOCK_RECV(s, data, size) recv(s, data, size, 0)
 
 /* Platform differences for string functions. */
-
 
 // Windows is missing a few which are available on Unix/Linux platforms.
 // We provide our own copies when building on Windows.
@@ -259,7 +254,6 @@ char *strtok_r(char *str, const char *delim, char **saveptr);
 // Don't recall why I added this for everyone rather than only for Windows.
 // Potential problem if some C library declares it a little differently.
 char *strcasestr(const char *S, const char *FIND);
-
 
 // cmake tries to determine whether strlcpy and strlcat are provided by the C runtime library.
 //
@@ -282,7 +276,7 @@ char *strcasestr(const char *S, const char *FIND);
 // using does not.
 // So, our work around is to assume these functions are available for glibc >= 2.38.
 //
-// In theory, cmake should be able to find the version of the C runtime library, 
+// In theory, cmake should be able to find the version of the C runtime library,
 // but I could not get it to work.  So we have the test here.  We will still build
 // own library with the strl... functions but this does not cause a problem
 // because they have special debug names which will not cause a conflict.
@@ -290,36 +284,35 @@ char *strcasestr(const char *S, const char *FIND);
 #ifdef __GLIBC__
 #if (__GLIBC__ > 2) || ((__GLIBC__ == 2) && (__GLIBC_MINOR__ >= 38))
 // These functions first added in 2.38.
-//#warning "DEBUG - glibc >= 2.38"
+// #warning "DEBUG - glibc >= 2.38"
 #define HAVE_STRLCPY 1
 #define HAVE_STRLCAT 1
 #else
-//#warning "DEBUG - glibc < 2.38"
+// #warning "DEBUG - glibc < 2.38"
 #endif
 #endif
 
-#define DEBUG_STRL 1	// Extra Debug version when using our own strlcpy, strlcat.
-			// Should be ignored if not supplying our own.
+#define DEBUG_STRL 1 // Extra Debug version when using our own strlcpy, strlcat.
+					 // Should be ignored if not supplying our own.
 
-#ifndef HAVE_STRLCPY	// Need to supply our own.
+#ifndef HAVE_STRLCPY // Need to supply our own.
 #if DEBUG_STRL
-#define strlcpy(dst,src,siz) strlcpy_debug(dst,src,siz,__FILE__,__func__,__LINE__)
+#define strlcpy(dst, src, siz) strlcpy_debug(dst, src, siz, __FILE__, __func__, __LINE__)
 size_t strlcpy_debug(char *__restrict__ dst, const char *__restrict__ src, size_t siz, const char *file, const char *func, int line);
 #else
-#define strlcpy(dst,src,siz) strlcpy_debug(dst,src,siz)
+#define strlcpy(dst, src, siz) strlcpy_debug(dst, src, siz)
 size_t strlcpy_debug(char *__restrict__ dst, const char *__restrict__ src, size_t siz);
-#endif  /* DEBUG_STRL */
+#endif /* DEBUG_STRL */
 #endif
 
-#ifndef HAVE_STRLCAT	// Need to supply our own.
+#ifndef HAVE_STRLCAT // Need to supply our own.
 #if DEBUG_STRL
-#define strlcat(dst,src,siz) strlcat_debug(dst,src,siz,__FILE__,__func__,__LINE__)
+#define strlcat(dst, src, siz) strlcat_debug(dst, src, siz, __FILE__, __func__, __LINE__)
 size_t strlcat_debug(char *__restrict__ dst, const char *__restrict__ src, size_t siz, const char *file, const char *func, int line);
 #else
-#define strlcat(dst,src,siz) strlcat_debug(dst,src,siz)
+#define strlcat(dst, src, siz) strlcat_debug(dst, src, siz)
 size_t strlcat_debug(char *__restrict__ dst, const char *__restrict__ src, size_t siz);
-#endif  /* DEBUG_STRL */
+#endif /* DEBUG_STRL */
 #endif
 
-
-#endif   /* ifndef DIREWOLF_H */
+#endif /* ifndef DIREWOLF_H */

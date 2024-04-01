@@ -18,13 +18,12 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-
 /*------------------------------------------------------------------
  *
  * Module:      xmit.c
  *
  * Purpose:   	Transmit queued up packets when channel is clear.
- *		
+ *
  * Description:	Producers of packets to be transmitted call tq_append and then
  *		go merrily on their way, unconcerned about when the packet might
  *		actually get transmitted.
@@ -41,7 +40,7 @@
  *
  *		(2) The application queues up packets by calling tq_append.
  *
- *			Packets that are being digipeated should go in the 
+ *			Packets that are being digipeated should go in the
  *			high priority queue so they will go out first.
  *
  *			Other packets should go into the lower priority queue.
@@ -72,7 +71,6 @@
 #include "ptt.h"
 #include "dlq.h"
 
-
 /*
  * Parameters for transmission.
  * Each channel can have different timing values.
@@ -81,58 +79,53 @@
  * and some can be changed later by commands from connected applications.
  */
 
+static int xmit_slottime[MAX_CHANS]; /* Slot time in 10 mS units for persistence algorithm. */
 
-static int xmit_slottime[MAX_CHANS];	/* Slot time in 10 mS units for persistence algorithm. */
+static int xmit_persist[MAX_CHANS]; /* Sets probability for transmitting after each */
+									/* slot time delay.  Transmit if a random number */
+									/* in range of 0 - 255 <= persist value.  */
+									/* Otherwise wait another slot time and try again. */
 
-static int xmit_persist[MAX_CHANS];	/* Sets probability for transmitting after each */
-					/* slot time delay.  Transmit if a random number */
-					/* in range of 0 - 255 <= persist value.  */
-					/* Otherwise wait another slot time and try again. */
+static int xmit_txdelay[MAX_CHANS]; /* After turning on the transmitter, */
+									/* send "flags" for txdelay * 10 mS. */
 
-static int xmit_txdelay[MAX_CHANS];	/* After turning on the transmitter, */
-					/* send "flags" for txdelay * 10 mS. */
+static int xmit_txtail[MAX_CHANS]; /* Amount of time to keep transmitting after we */
+								   /* are done sending the data.  This is to avoid */
+								   /* dropping PTT too soon and chopping off the end */
+								   /* of the frame.  Again 10 mS units. */
 
-static int xmit_txtail[MAX_CHANS];	/* Amount of time to keep transmitting after we */
-					/* are done sending the data.  This is to avoid */
-					/* dropping PTT too soon and chopping off the end */
-					/* of the frame.  Again 10 mS units. */
+static int xmit_fulldup[MAX_CHANS]; /* Full duplex if non-zero. */
 
-static int xmit_fulldup[MAX_CHANS];	/* Full duplex if non-zero. */
+static int xmit_bits_per_sec[MAX_CHANS]; /* Data transmission rate. */
+										 /* Often called baud rate which is equivalent for */
+										 /* 1200 & 9600 cases but could be different with other */
+										 /* modulation techniques. */
 
-static int xmit_bits_per_sec[MAX_CHANS];	/* Data transmission rate. */
-					/* Often called baud rate which is equivalent for */
-					/* 1200 & 9600 cases but could be different with other */
-					/* modulation techniques. */
+static int g_debug_xmit_packet; /* print packet in hexadecimal form for debugging. */
 
-static int g_debug_xmit_packet;		/* print packet in hexadecimal form for debugging. */
+#define BITS_TO_MS(b, ch) (((b) * 1000) / xmit_bits_per_sec[(ch)])
 
-#define BITS_TO_MS(b,ch) (((b)*1000)/xmit_bits_per_sec[(ch)])
+#define MS_TO_BITS(ms, ch) (((ms) * xmit_bits_per_sec[(ch)]) / 1000)
 
-#define MS_TO_BITS(ms,ch) (((ms)*xmit_bits_per_sec[(ch)])/1000)
-
-#define MAXX(a,b) (((a)>(b)) ? (a) : (b))
-
+#define MAXX(a, b) (((a) > (b)) ? (a) : (b))
 
 #if __WIN32__
-static unsigned __stdcall xmit_thread (void *arg);
+static unsigned __stdcall xmit_thread(void *arg);
 #else
-static void * xmit_thread (void *arg);
+static void *xmit_thread(void *arg);
 #endif
 
-
 /*
- * When an audio device is in stereo mode, we can have two 
+ * When an audio device is in stereo mode, we can have two
  * different channels that want to transmit at the same time.
  * We are not clever enough to multiplex them so use this
  * so only one is activte at the same time.
  */
 static dw_mutex_t audio_out_dev_mutex[MAX_ADEVS];
 
-
-static int wait_for_clear_channel (int channel, int slotttime, int persist, int fulldup);
-static void xmit_ax25_frames (int c, int p, packet_t pp, int max_bundle);
-static int send_one_frame (int c, int p, packet_t pp);
-
+static int wait_for_clear_channel(int channel, int slotttime, int persist, int fulldup);
+static void xmit_ax25_frames(int c, int p, packet_t pp, int max_bundle);
+static int send_one_frame(int c, int p, packet_t pp);
 
 /*-------------------------------------------------------------------
  *
@@ -158,8 +151,7 @@ static int send_one_frame (int c, int p, packet_t pp);
 
 static struct audio_s *save_audio_config_p;
 
-
-void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
+void xmit_init(struct audio_s *p_modem, int debug_xmit_packet)
 {
 	int j;
 	int ad;
@@ -167,15 +159,15 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 #if __WIN32__
 	HANDLE xmit_th[MAX_CHANS];
 #else
-	//pthread_attr_t attr;
-	//struct sched_param sp;
+	// pthread_attr_t attr;
+	// struct sched_param sp;
 	pthread_t xmit_tid[MAX_CHANS];
 #endif
-	//int e;
+	// int e;
 
 #if DEBUG
-	
-	printf ("xmit_init ( ... )\n");
+
+	printf("xmit_init ( ... )\n");
 #endif
 
 	save_audio_config_p = p_modem;
@@ -186,62 +178,65 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
  * Push to Talk (PTT) control.
  */
 #if DEBUG
-	
-	printf ("xmit_init: about to call ptt_init \n");
+
+	printf("xmit_init: about to call ptt_init \n");
 #endif
-	ptt_init (p_modem);
+	ptt_init(p_modem);
 
 #if DEBUG
-	
-	printf ("xmit_init: back from ptt_init \n");
+
+	printf("xmit_init: back from ptt_init \n");
 #endif
 
-/* 
- * Save parameters for later use.
- * TODO1.2:  Any reason to use global config rather than making a copy?
- */
+	/*
+	 * Save parameters for later use.
+	 * TODO1.2:  Any reason to use global config rather than making a copy?
+	 */
 
-	for (j=0; j<MAX_CHANS; j++) {
-	  xmit_bits_per_sec[j] = p_modem->achan[j].baud;
-	  xmit_slottime[j] = p_modem->achan[j].slottime;
-	  xmit_persist[j] = p_modem->achan[j].persist;
-	  xmit_txdelay[j] = p_modem->achan[j].txdelay;
-	  xmit_txtail[j] = p_modem->achan[j].txtail;
-	  xmit_fulldup[j] = p_modem->achan[j].fulldup;
+	for (j = 0; j < MAX_CHANS; j++)
+	{
+		xmit_bits_per_sec[j] = p_modem->achan[j].baud;
+		xmit_slottime[j] = p_modem->achan[j].slottime;
+		xmit_persist[j] = p_modem->achan[j].persist;
+		xmit_txdelay[j] = p_modem->achan[j].txdelay;
+		xmit_txtail[j] = p_modem->achan[j].txtail;
+		xmit_fulldup[j] = p_modem->achan[j].fulldup;
 	}
 
 #if DEBUG
-	
-	printf ("xmit_init: about to call tq_init \n");
+
+	printf("xmit_init: about to call tq_init \n");
 #endif
-	tq_init (p_modem);
+	tq_init(p_modem);
 
-
-	for (ad = 0; ad < MAX_ADEVS; ad++) {
-	  dw_mutex_init (&(audio_out_dev_mutex[ad]));
+	for (ad = 0; ad < MAX_ADEVS; ad++)
+	{
+		dw_mutex_init(&(audio_out_dev_mutex[ad]));
 	}
- 
+
 #if DEBUG
-	
-	printf ("xmit_init: about to create threads \n");
+
+	printf("xmit_init: about to create threads \n");
 #endif
 
-//TODO:  xmit thread should be higher priority to avoid
-// underrun on the audio output device.
+	// TODO:  xmit thread should be higher priority to avoid
+	//  underrun on the audio output device.
 
+	for (j = 0; j < MAX_CHANS; j++)
+	{
 
-	for (j=0; j<MAX_CHANS; j++) {
-
-	  if (p_modem->chan_medium[j] == MEDIUM_RADIO) {
+		if (p_modem->chan_medium[j] == MEDIUM_RADIO)
+		{
 #if __WIN32__
-	    xmit_th[j] = (HANDLE)_beginthreadex (NULL, 0, xmit_thread, (void*)(ptrdiff_t)j, 0, NULL);
-	    if (xmit_th[j] == NULL) {
-	       
-	      printf ("Could not create xmit thread %d\n", j);
-	      return;
-	    }
+			xmit_th[j] = (HANDLE)_beginthreadex(NULL, 0, xmit_thread, (void *)(ptrdiff_t)j, 0, NULL);
+			if (xmit_th[j] == NULL)
+			{
+
+				printf("Could not create xmit thread %d\n", j);
+				return;
+			}
 #else
-	    int e;
+			int e;
 #if 0
 
 //TODO: not this simple.  probably need FIFO policy.
@@ -268,26 +263,24 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
 	    e = pthread_create (&(xmit_tid[j]), &attr, xmit_thread, (void *)(ptrdiff_t)j);
 	    pthread_attr_destroy (&attr);
 #else
-	    e = pthread_create (&(xmit_tid[j]), NULL, xmit_thread, (void *)(ptrdiff_t)j);
+			e = pthread_create(&(xmit_tid[j]), NULL, xmit_thread, (void *)(ptrdiff_t)j);
 #endif
-	    if (e != 0) {
-	      
-	      perror("Could not create xmit thread for audio device");
-	      return;
-	    }
+			if (e != 0)
+			{
+
+				perror("Could not create xmit thread for audio device");
+				return;
+			}
 #endif
-	  }
+		}
 	}
 
 #if DEBUG
-	
-	printf ("xmit_init: finished \n");
+
+	printf("xmit_init: finished \n");
 #endif
 
-
 } /* end tq_init */
-
-
 
 /*-------------------------------------------------------------------
  *
@@ -296,7 +289,7 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
  *		xmit_set_slottime
  *		xmit_set_txtail
  *		xmit_set_fulldup
- *				
+ *
  *
  * Purpose:     The KISS protocol, and maybe others, can specify
  *		transmit timing parameters.  If the application
@@ -317,41 +310,45 @@ void xmit_init (struct audio_s *p_modem, int debug_xmit_packet)
  *
  *--------------------------------------------------------------------*/
 
-void xmit_set_txdelay (int channel, int value)
+void xmit_set_txdelay(int channel, int value)
 {
-	if (channel >= 0 && channel < MAX_CHANS) {
-	  xmit_txdelay[channel] = value;
+	if (channel >= 0 && channel < MAX_CHANS)
+	{
+		xmit_txdelay[channel] = value;
 	}
 }
 
-void xmit_set_persist (int channel, int value)
+void xmit_set_persist(int channel, int value)
 {
-	if (channel >= 0 && channel < MAX_CHANS) {
-	  xmit_persist[channel] = value;
+	if (channel >= 0 && channel < MAX_CHANS)
+	{
+		xmit_persist[channel] = value;
 	}
 }
 
-void xmit_set_slottime (int channel, int value)
+void xmit_set_slottime(int channel, int value)
 {
-	if (channel >= 0 && channel < MAX_CHANS) {
-	  xmit_slottime[channel] = value;
+	if (channel >= 0 && channel < MAX_CHANS)
+	{
+		xmit_slottime[channel] = value;
 	}
 }
 
-void xmit_set_txtail (int channel, int value)
+void xmit_set_txtail(int channel, int value)
 {
-	if (channel >= 0 && channel < MAX_CHANS) {
-	  xmit_txtail[channel] = value;
+	if (channel >= 0 && channel < MAX_CHANS)
+	{
+		xmit_txtail[channel] = value;
 	}
 }
 
-void xmit_set_fulldup (int channel, int value)
+void xmit_set_fulldup(int channel, int value)
 {
-	if (channel >= 0 && channel < MAX_CHANS) {
-	  xmit_fulldup[channel] = value;
+	if (channel >= 0 && channel < MAX_CHANS)
+	{
+		xmit_fulldup[channel] = value;
 	}
 }
-
 
 /*-------------------------------------------------------------------
  *
@@ -371,42 +368,48 @@ void xmit_set_fulldup (int channel, int value)
  *
  *--------------------------------------------------------------------*/
 
-typedef enum flavor_e { FLAVOR_APRS_NEW, FLAVOR_APRS_DIGI, FLAVOR_OTHER } flavor_t;
+typedef enum flavor_e
+{
+	FLAVOR_APRS_NEW,
+	FLAVOR_APRS_DIGI,
+	FLAVOR_OTHER
+} flavor_t;
 
-static flavor_t frame_flavor (packet_t pp)
+static flavor_t frame_flavor(packet_t pp)
 {
 
-	if (ax25_is_aprs (pp)) { 	// UI frame, PID 0xF0.
-					// It's unfortunate APRS did not use its own special PID.
+	if (ax25_is_aprs(pp))
+	{	// UI frame, PID 0xF0.
+		// It's unfortunate APRS did not use its own special PID.
 
-	  char dest[AX25_MAX_ADDR_LEN];
+		char dest[AX25_MAX_ADDR_LEN];
 
-	  ax25_get_addr_no_ssid(pp, AX25_DESTINATION, dest);
+		ax25_get_addr_no_ssid(pp, AX25_DESTINATION, dest);
 
-	  /* Is there at least one digipeater AND has first one been used? */
-	  /* I could be the first in the list or later.  Doesn't matter. */
+		/* Is there at least one digipeater AND has first one been used? */
+		/* I could be the first in the list or later.  Doesn't matter. */
 
-	  if (ax25_get_num_repeaters(pp) >= 1 && ax25_get_h(pp,AX25_REPEATER_1)) {
-	    return (FLAVOR_APRS_DIGI);
-	  }
+		if (ax25_get_num_repeaters(pp) >= 1 && ax25_get_h(pp, AX25_REPEATER_1))
+		{
+			return (FLAVOR_APRS_DIGI);
+		}
 
-	  return (FLAVOR_APRS_NEW);
+		return (FLAVOR_APRS_NEW);
 	}
 
 	return (FLAVOR_OTHER);
 
 } /* end frame_flavor */
 
-  
 /*-------------------------------------------------------------------
  *
  * Name:        xmit_thread
  *
  * Purpose:     Process transmit queue for one channel.
  *
- * Inputs:	transmit packet queue.	
+ * Inputs:	transmit packet queue.
  *
- * Outputs:	
+ * Outputs:
  *
  * Description:	We have different timing rules for different types of
  *		packets so they are put into different queues.
@@ -422,17 +425,17 @@ static flavor_t frame_flavor (packet_t pp)
  *			AX.25 connected mode also has a couple cases
  *			where "expedited" frames are sent.
  *
- *		Low Priority - 
+ *		Low Priority -
  *
  *			Other packets are sent after a random wait time
  *			(determined by PERSIST & SLOTTIME) to help avoid
- *			collisions.	
+ *			collisions.
  *
  *		If more than one audio channel is being used, a separate
  *		pair of transmit queues is used for each channel.
  *
  *
- * 
+ *
  * Version 1.2:	Allow more than one audio device.
  * 		each channel has its own thread.
  *		Add speech capability.
@@ -445,9 +448,9 @@ static flavor_t frame_flavor (packet_t pp)
  *--------------------------------------------------------------------*/
 
 #if __WIN32__
-static unsigned __stdcall xmit_thread (void *arg)
+static unsigned __stdcall xmit_thread(void *arg)
 #else
-static void * xmit_thread (void *arg)
+static void *xmit_thread(void *arg)
 #endif
 {
 	int chan = (int)(ptrdiff_t)arg; // channel number.
@@ -455,105 +458,106 @@ static void * xmit_thread (void *arg)
 	int prio;
 	int ok;
 
+	while (1)
+	{
 
-	while (1) {
-
-	  tq_wait_while_empty (chan);
+		tq_wait_while_empty(chan);
 #if DEBUG
-	  
-	  printf ("xmit_thread, channel %d: woke up\n", chan);
+
+		printf("xmit_thread, channel %d: woke up\n", chan);
 #endif
 
-	  // Does this extra loop offer any benefit?
-	  while (tq_peek(chan, TQ_PRIO_0_HI) != NULL || tq_peek(chan, TQ_PRIO_1_LO) != NULL) {
+		// Does this extra loop offer any benefit?
+		while (tq_peek(chan, TQ_PRIO_0_HI) != NULL || tq_peek(chan, TQ_PRIO_1_LO) != NULL)
+		{
 
-/* 
- * Wait for the channel to be clear.
- * If there is something in the high priority queue, begin transmitting immediately.
- * Otherwise, wait a random amount of time, in hopes of minimizing collisions.
- */
-	    ok = wait_for_clear_channel (chan, xmit_slottime[chan], xmit_persist[chan], xmit_fulldup[chan]);
+			/*
+			 * Wait for the channel to be clear.
+			 * If there is something in the high priority queue, begin transmitting immediately.
+			 * Otherwise, wait a random amount of time, in hopes of minimizing collisions.
+			 */
+			ok = wait_for_clear_channel(chan, xmit_slottime[chan], xmit_persist[chan], xmit_fulldup[chan]);
 
-	    prio = TQ_PRIO_1_LO;
-	    pp = tq_remove (chan, TQ_PRIO_0_HI);
-	    if (pp != NULL) {
-	      prio = TQ_PRIO_0_HI;
-	    }
-	    else {
-	      pp = tq_remove (chan, TQ_PRIO_1_LO);
-	    }
+			prio = TQ_PRIO_1_LO;
+			pp = tq_remove(chan, TQ_PRIO_0_HI);
+			if (pp != NULL)
+			{
+				prio = TQ_PRIO_0_HI;
+			}
+			else
+			{
+				pp = tq_remove(chan, TQ_PRIO_1_LO);
+			}
 
 #if DEBUG
-	    
-	    printf ("xmit_thread: tq_remove(chan=%d, prio=%d) returned %p\n", chan, prio, pp);
+
+			printf("xmit_thread: tq_remove(chan=%d, prio=%d) returned %p\n", chan, prio, pp);
 #endif
-	    // Shouldn't have NULL here but be careful.
+			// Shouldn't have NULL here but be careful.
 
-	    if (pp != NULL) {
+			if (pp != NULL)
+			{
 
+				if (ok)
+				{
+					/*
+					 * Channel is clear and we have lock on output device.
+					 */
 
-	      if (ok) {
-/*
- * Channel is clear and we have lock on output device. 
- */
+					switch (frame_flavor(pp))
+					{
+					case FLAVOR_APRS_DIGI:
+						xmit_ax25_frames(chan, prio, pp, 1); /* 1 means don't bundle */
+															 // I don't know if this in some official specification
+															 // somewhere, but it is generally agreed that APRS digipeaters
+															 // should send only one frame at a time rather than
+															 // bundling multiple frames into a single transmission.
+															 // Discussion here:  http://lists.tapr.org/pipermail/aprssig_lists.tapr.org/2021-September/049034.html
+						break;
 
-	        switch (frame_flavor(pp)) {
-	          case FLAVOR_APRS_DIGI:
-	            xmit_ax25_frames (chan, prio, pp, 1);	/* 1 means don't bundle */
-					// I don't know if this in some official specification
-					// somewhere, but it is generally agreed that APRS digipeaters
-					// should send only one frame at a time rather than
-					// bundling multiple frames into a single transmission.
-					// Discussion here:  http://lists.tapr.org/pipermail/aprssig_lists.tapr.org/2021-September/049034.html
-	            break;
+					case FLAVOR_APRS_NEW:
+					case FLAVOR_OTHER:
+					default:
+						xmit_ax25_frames(chan, prio, pp, 256);
+						break;
+					}
 
-	          case FLAVOR_APRS_NEW:
-	          case FLAVOR_OTHER:
-	          default:
-	            xmit_ax25_frames (chan, prio, pp, 256);
-	            break;
-	        }
+					// Corresponding lock is in wait_for_clear_channel.
 
-	        // Corresponding lock is in wait_for_clear_channel.
+					dw_mutex_unlock(&(audio_out_dev_mutex[ACHAN2ADEV(chan)]));
+				}
+				else
+				{
+					/*
+					 * Timeout waiting for clear channel.
+					 * Discard the packet.
+					 * Display with ERROR color rather than XMIT color.
+					 */
+					char stemp[1024]; /* max size needed? */
+					int info_len;
+					unsigned char *pinfo;
 
-	        dw_mutex_unlock (&(audio_out_dev_mutex[ACHAN2ADEV(chan)]));
-	      }
-	      else {
-/*
- * Timeout waiting for clear channel.
- * Discard the packet.
- * Display with ERROR color rather than XMIT color.
- */
-		char stemp[1024];	/* max size needed? */
-		int info_len;
-		unsigned char *pinfo;
+					printf("Waited too long for clear channel.  Discarding packet below.\n");
 
+					ax25_format_addrs(pp, stemp);
 
-	        
-		printf ("Waited too long for clear channel.  Discarding packet below.\n");
+					info_len = ax25_get_info(pp, &pinfo);
 
-	        ax25_format_addrs (pp, stemp);
+					printf("[%d%c] ", chan, (prio == TQ_PRIO_0_HI) ? 'H' : 'L');
 
-	        info_len = ax25_get_info (pp, &pinfo);
+					printf("%s", stemp); /* stations followed by : */
+					ax25_safe_print((char *)pinfo, info_len, !ax25_is_aprs(pp));
+					printf("\n");
+					ax25_delete(pp);
 
-	        
-	        printf ("[%d%c] ", chan, (prio==TQ_PRIO_0_HI) ? 'H' : 'L');
+				} /* wait for clear channel error. */
+			}	  /* Have pp */
+		}		  /* while queue not empty */
+	}			  /* while 1 */
 
-	        printf ("%s", stemp);			/* stations followed by : */
-	        ax25_safe_print ((char *)pinfo, info_len, ! ax25_is_aprs(pp));
-	        printf ("\n");
-		ax25_delete (pp);
-
-	      } /* wait for clear channel error. */
-	    } /* Have pp */
-	  } /* while queue not empty */
-	} /* while 1 */
-
-	return 0;	/* unreachable but quiet the warning. */
+	return 0; /* unreachable but quiet the warning. */
 
 } /* end xmit_thread */
-
-
 
 /*-------------------------------------------------------------------
  *
@@ -563,13 +567,13 @@ static void * xmit_thread (void *arg)
  *		we transmit one or more frames.
  *
  * Inputs:	chan	- Channel number.
- *	
+ *
  *		prio	- Priority of the first frame.
  *			  Subsequent frames could be different.
  *
  *		pp	- Packet object pointer.
  *			  It will be deleted so caller should not try
- *			  to reference it after this.	
+ *			  to reference it after this.
  *
  *		max_bundle - Max number of frames to bundle into one transmission.
  *
@@ -583,13 +587,13 @@ static void * xmit_thread (void *arg)
  *
  * How many frames in one transmission?  (for APRS)
  *
- *		Should we send multiple frames in one transmission if we 
+ *		Should we send multiple frames in one transmission if we
  *		have more than one sitting in the queue?  At first I was thinking
  *		this would help reduce channel congestion.  I don't recall seeing
  *		anything in the APRS specifications allowing or disallowing multiple
- *		frames in one transmission.  I can think of some scenarios 
- *		where it might help.  I can think of some where it would 
- *		definitely be counter productive.  
+ *		frames in one transmission.  I can think of some scenarios
+ *		where it might help.  I can think of some where it would
+ *		definitely be counter productive.
  *
  * What to others have to say about this topic?
  *
@@ -599,9 +603,9 @@ static void * xmit_thread (void *arg)
  *	on APRS. Sometimes the digi begins digipeating the first packet in the
  *	bundle and steps all over the remainder of them. So best to make sure each
  *	packet is isolated in time from others..."
- *	
+ *
  *		Bob, WB4APR
- *	
+ *
  *
  * Version 0.9:	Earlier versions always sent one frame per transmission.
  *		This was fine for APRS but more and more people are now
@@ -625,173 +629,180 @@ static void * xmit_thread (void *arg)
  *
  *--------------------------------------------------------------------*/
 
-
-static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
+static void xmit_ax25_frames(int chan, int prio, packet_t pp, int max_bundle)
 {
 
 	int pre_flags, post_flags;
-	int num_bits;		/* Total number of bits in transmission */
-				/* including all flags and bit stuffing. */
-	int duration;		/* Transmission time in milliseconds. */
+	int num_bits; /* Total number of bits in transmission */
+				  /* including all flags and bit stuffing. */
+	int duration; /* Transmission time in milliseconds. */
 	int wait_more;
 
-	int numframe = 0;	/* Number of frames sent during this transmission. */
+	int numframe = 0; /* Number of frames sent during this transmission. */
 
 	int nb;
 
-/* 
- * Turn on transmitter.
- * Start sending leading flag bytes.
- */
+	/*
+	 * Turn on transmitter.
+	 * Start sending leading flag bytes.
+	 */
 
 #if DEBUG
-	
-	printf ("xmit_thread: t=%.3f, Turn on PTT now for channel %d. speed = %d\n", dtime_now()-time_ptt, chan, xmit_bits_per_sec[chan]);
+
+	printf("xmit_thread: t=%.3f, Turn on PTT now for channel %d. speed = %d\n", dtime_now() - time_ptt, chan, xmit_bits_per_sec[chan]);
 #endif
-	ptt_set (OCTYPE_PTT, chan, 1);
+	ptt_set(OCTYPE_PTT, chan, 1);
 
 	pre_flags = MS_TO_BITS(xmit_txdelay[chan] * 10, chan) / 8;
-	num_bits =  layer2_preamble_postamble (chan, pre_flags, 0, save_audio_config_p);
+	num_bits = layer2_preamble_postamble(chan, pre_flags, 0, save_audio_config_p);
 #if DEBUG
-	
-	printf ("xmit_thread: t=%.3f, txdelay=%d [*10], pre_flags=%d, num_bits=%d\n", dtime_now()-time_ptt, xmit_txdelay[chan], pre_flags, num_bits);
+
+	printf("xmit_thread: t=%.3f, txdelay=%d [*10], pre_flags=%d, num_bits=%d\n", dtime_now() - time_ptt, xmit_txdelay[chan], pre_flags, num_bits);
 	double presleep = dtime_now();
 #endif
 
 #if DEBUG
-	
+
 	// How long did sleep last?
-	printf ("xmit_thread: t=%.3f, Should be 0.010 second after the above.\n", dtime_now()-time_ptt);
+	printf("xmit_thread: t=%.3f, Should be 0.010 second after the above.\n", dtime_now() - time_ptt);
 	double naptime = dtime_now() - presleep;
-	if (naptime > 0.015) {
-	  
-	  printf ("Sleep for 10 ms actually took %.3f second!\n", naptime);
+	if (naptime > 0.015)
+	{
+
+		printf("Sleep for 10 ms actually took %.3f second!\n", naptime);
 	}
 #endif
 
-/*
- * Transmit the frame.
- */
+	/*
+	 * Transmit the frame.
+	 */
 
-	nb = send_one_frame (chan, prio, pp);
+	nb = send_one_frame(chan, prio, pp);
 
 	num_bits += nb;
-	if (nb > 0) numframe++;
+	if (nb > 0)
+		numframe++;
 #if DEBUG
-	
-	printf ("xmit_thread: t=%.3f, nb=%d, num_bits=%d, numframe=%d\n", dtime_now()-time_ptt, nb, num_bits, numframe);
-#endif
-	ax25_delete (pp);
 
-/*
- * See if we can bundle additional frames into this transmission.
- */
+	printf("xmit_thread: t=%.3f, nb=%d, num_bits=%d, numframe=%d\n", dtime_now() - time_ptt, nb, num_bits, numframe);
+#endif
+	ax25_delete(pp);
+
+	/*
+	 * See if we can bundle additional frames into this transmission.
+	 */
 
 	int done = 0;
-	while (numframe < max_bundle && ! done) {
+	while (numframe < max_bundle && !done)
+	{
 
-/*
- * Peek at what is available.
- * Don't remove from queue yet because it might not be eligible.
- */
-	  prio = TQ_PRIO_1_LO;
-	  pp = tq_peek (chan, TQ_PRIO_0_HI);
-	  if (pp != NULL) {
-	    prio = TQ_PRIO_0_HI;
-	  }
-	  else {
-	    pp = tq_peek (chan, TQ_PRIO_1_LO);
-	  }
+		/*
+		 * Peek at what is available.
+		 * Don't remove from queue yet because it might not be eligible.
+		 */
+		prio = TQ_PRIO_1_LO;
+		pp = tq_peek(chan, TQ_PRIO_0_HI);
+		if (pp != NULL)
+		{
+			prio = TQ_PRIO_0_HI;
+		}
+		else
+		{
+			pp = tq_peek(chan, TQ_PRIO_1_LO);
+		}
 
-	  if (pp != NULL) {
+		if (pp != NULL)
+		{
 
-	    switch (frame_flavor(pp)) {
+			switch (frame_flavor(pp))
+			{
 
-	      case FLAVOR_APRS_DIGI:
-	      default:
-		done = 1;		// not eligible for bundling.
-	        break;
+			case FLAVOR_APRS_DIGI:
+			default:
+				done = 1; // not eligible for bundling.
+				break;
 
-	      case FLAVOR_APRS_NEW:
-	      case FLAVOR_OTHER:
+			case FLAVOR_APRS_NEW:
+			case FLAVOR_OTHER:
 
-	        pp = tq_remove (chan, prio);
+				pp = tq_remove(chan, prio);
 #if DEBUG
-	        
-	        printf ("xmit_thread: t=%.3f, tq_remove(chan=%d, prio=%d) returned %p\n", dtime_now()-time_ptt, chan, prio, pp);
+
+				printf("xmit_thread: t=%.3f, tq_remove(chan=%d, prio=%d) returned %p\n", dtime_now() - time_ptt, chan, prio, pp);
 #endif
 
-	        nb = send_one_frame (chan, prio, pp);
+				nb = send_one_frame(chan, prio, pp);
 
-	        num_bits += nb;
-	        if (nb > 0) numframe++;
+				num_bits += nb;
+				if (nb > 0)
+					numframe++;
 #if DEBUG
-	        
-	        printf ("xmit_thread: t=%.3f, nb=%d, num_bits=%d, numframe=%d\n", dtime_now()-time_ptt, nb, num_bits, numframe);
-#endif
-	        ax25_delete (pp);
 
-	        break;
-	    }
-	  }
-	  else {
-	    done = 1;
-	  }
+				printf("xmit_thread: t=%.3f, nb=%d, num_bits=%d, numframe=%d\n", dtime_now() - time_ptt, nb, num_bits, numframe);
+#endif
+				ax25_delete(pp);
+
+				break;
+			}
+		}
+		else
+		{
+			done = 1;
+		}
 	}
 
-/* 
- * Need TXTAIL because we don't know exactly when the sound is done.
- */
+	/*
+	 * Need TXTAIL because we don't know exactly when the sound is done.
+	 */
 
 	post_flags = MS_TO_BITS(xmit_txtail[chan] * 10, chan) / 8;
-	nb = layer2_preamble_postamble (chan, post_flags, 1, save_audio_config_p);
+	nb = layer2_preamble_postamble(chan, post_flags, 1, save_audio_config_p);
 	num_bits += nb;
 #if DEBUG
-	
-	printf ("xmit_thread: t=%.3f, txtail=%d [*10], post_flags=%d, nb=%d, num_bits=%d\n", dtime_now()-time_ptt, xmit_txtail[chan], post_flags, nb, num_bits);
+
+	printf("xmit_thread: t=%.3f, txtail=%d [*10], post_flags=%d, nb=%d, num_bits=%d\n", dtime_now() - time_ptt, xmit_txtail[chan], post_flags, nb, num_bits);
 #endif
 
-	audio_wait(ACHAN2ADEV(chan));		
+	audio_wait(ACHAN2ADEV(chan));
 
-/* 
- * Ideally we should be here just about the time when the audio is ending.
- * However, the innards of "audio_wait" are not satisfactory in all cases.
- *
- * Calculate how long the frame(s) should take in milliseconds.
- */
+	/*
+	 * Ideally we should be here just about the time when the audio is ending.
+	 * However, the innards of "audio_wait" are not satisfactory in all cases.
+	 *
+	 * Calculate how long the frame(s) should take in milliseconds.
+	 */
 
 	duration = BITS_TO_MS(num_bits, chan);
 
-/*
- * See how long it has been since PTT was turned on.
- * Wait additional time if necessary.
- */
+	/*
+	 * See how long it has been since PTT was turned on.
+	 * Wait additional time if necessary.
+	 */
 
 	wait_more = duration;
 
 #if DEBUG
-	
-	printf ("xmit_thread: t=%.3f, xmit duration=%d, %d already elapsed since PTT, wait %d more\n", dtime_now()-time_ptt, duration, already, wait_more );
+
+	printf("xmit_thread: t=%.3f, xmit duration=%d, %d already elapsed since PTT, wait %d more\n", dtime_now() - time_ptt, duration, already, wait_more);
 #endif
 
-	if (wait_more > 0) {
-	  SLEEP_MS(wait_more);
+	if (wait_more > 0)
+	{
+		SLEEP_MS(wait_more);
 	}
 
 /*
  * Turn off transmitter.
  */
 #if DEBUG
-	
+
 	time_now = dtime_now();
-	printf ("xmit_thread: t=%.3f, Turn off PTT now. Actual time on was %d mS, vs. %d desired\n", dtime_now()-time_ptt, (int) ((time_now - time_ptt) * 1000.), duration);
+	printf("xmit_thread: t=%.3f, Turn off PTT now. Actual time on was %d mS, vs. %d desired\n", dtime_now() - time_ptt, (int)((time_now - time_ptt) * 1000.), duration);
 #endif
-		
-	ptt_set (OCTYPE_PTT, chan, 0);
+
+	ptt_set(OCTYPE_PTT, chan, 0);
 
 } /* end xmit_ax25_frames */
-
-
 
 /*-------------------------------------------------------------------
  *
@@ -813,127 +824,125 @@ static void xmit_ax25_frames (int chan, int prio, packet_t pp, int max_bundle)
  *
  *--------------------------------------------------------------------*/
 
-
-static int send_one_frame (int c, int p, packet_t pp)
+static int send_one_frame(int c, int p, packet_t pp)
 {
-	char stemp[1024];	/* max size needed? */
+	char stemp[1024]; /* max size needed? */
 	int info_len;
 	unsigned char *pinfo;
 	int nb;
 
+	if (ax25_is_null_frame(pp))
+	{
 
-	if (ax25_is_null_frame(pp)) {
+		// Issue 132 - We could end up in a situation where:
+		// Transmitter is already on.
+		// Application wants to send a frame.
+		// dl_seize_request turns into this null frame.
+		// It was being ignored here so the data got stuck in the queue.
+		// I think the solution is to send back a seize confirm here.
+		// It shouldn't hurt if we send it redundantly.
+		// Added for 1.5 beta test 4.
 
-	  // Issue 132 - We could end up in a situation where:
-	  // Transmitter is already on.
-	  // Application wants to send a frame.
-	  // dl_seize_request turns into this null frame.
-	  // It was being ignored here so the data got stuck in the queue.
-	  // I think the solution is to send back a seize confirm here.
-	  // It shouldn't hurt if we send it redundantly.
-	  // Added for 1.5 beta test 4.
-
-	  return(0);
+		return (0);
 	}
 
-	ax25_format_addrs (pp, stemp);
-	info_len = ax25_get_info (pp, &pinfo);
-	
-#if 0						// FIXME - enable this?
+	ax25_format_addrs(pp, stemp);
+	info_len = ax25_get_info(pp, &pinfo);
+
+#if 0 // FIXME - enable this?
 	printf ("[%d%c%s%s] ", c,
 			p==TQ_PRIO_0_HI ? 'H' : 'L',
 			save_audio_config_p->achan[c].fx25_strength ? "F" : "",
 			ts);
 #else
-	printf ("[%d%c] ", c, p==TQ_PRIO_0_HI ? 'H' : 'L');
+	printf("[%d%c] ", c, p == TQ_PRIO_0_HI ? 'H' : 'L');
 #endif
-	printf ("%s", stemp);			/* stations followed by : */
-	ax25_safe_print ((char *)pinfo, info_len, ! ax25_is_aprs(pp));
-	  printf ("\n");
+	printf("%s", stemp); /* stations followed by : */
+	ax25_safe_print((char *)pinfo, info_len, !ax25_is_aprs(pp));
+	printf("\n");
 
-	(void)ax25_check_addresses (pp);
+	(void)ax25_check_addresses(pp);
 
-/* Optional hex dump of packet. */
+	/* Optional hex dump of packet. */
 
-	if (g_debug_xmit_packet) {
+	if (g_debug_xmit_packet)
+	{
 
-	  
-	  printf ("------\n");
-	  ax25_hex_dump (pp);
-	  printf ("------\n");
+		printf("------\n");
+		ax25_hex_dump(pp);
+		printf("------\n");
 	}
 
-
-/*
- * Transmit the frame.
- */
+	/*
+	 * Transmit the frame.
+	 */
 	int send_invalid_fcs2 = 0;
 
-	if (save_audio_config_p->xmit_error_rate != 0) {
-	  float r = (float)(rand()) / (float)RAND_MAX;		// Random, 0.0 to 1.0
+	if (save_audio_config_p->xmit_error_rate != 0)
+	{
+		float r = (float)(rand()) / (float)RAND_MAX; // Random, 0.0 to 1.0
 
-	  if (save_audio_config_p->xmit_error_rate / 100.0 > r) {
-	    send_invalid_fcs2 = 1;
-	    
-	    printf ("Intentionally sending invalid CRC for frame above.  Xmit Error rate = %d per cent.\n", save_audio_config_p->xmit_error_rate);
-	  }
+		if (save_audio_config_p->xmit_error_rate / 100.0 > r)
+		{
+			send_invalid_fcs2 = 1;
+
+			printf("Intentionally sending invalid CRC for frame above.  Xmit Error rate = %d per cent.\n", save_audio_config_p->xmit_error_rate);
+		}
 	}
 
-	nb = layer2_send_frame (c, pp, send_invalid_fcs2, save_audio_config_p);
+	nb = layer2_send_frame(c, pp, send_invalid_fcs2, save_audio_config_p);
 	return (nb);
 
 } /* end send_one_frame */
 
-
-
 /* Broken out into separate function so configuration can validate it. */
 /* Returns 0 for success. */
 
-int xmit_speak_it (char *script, int c, char *orig_msg)
+int xmit_speak_it(char *script, int c, char *orig_msg)
 {
 	int err;
 	char msg[2000];
 	char cmd[sizeof(msg) + 16];
 	char *p;
 
-/* Remove any quotes because it will mess up command line argument parsing. */
+	/* Remove any quotes because it will mess up command line argument parsing. */
 
-	strlcpy (msg, orig_msg, sizeof(msg));
+	strlcpy(msg, orig_msg, sizeof(msg));
 
-	for (p=msg; *p!='\0'; p++) {
-	  if (*p == '"') *p = ' ';
+	for (p = msg; *p != '\0'; p++)
+	{
+		if (*p == '"')
+			*p = ' ';
 	}
 
 #if __WIN32__
-	snprintf (cmd, sizeof(cmd), "%s %d \"%s\" >nul", script, c, msg);
+	snprintf(cmd, sizeof(cmd), "%s %d \"%s\" >nul", script, c, msg);
 #else
-	snprintf (cmd, sizeof(cmd), "%s %d \"%s\"", script, c, msg);
+	snprintf(cmd, sizeof(cmd), "%s %d \"%s\"", script, c, msg);
 #endif
 
 	//
-	//printf ("cmd=%s\n", cmd);
+	// printf ("cmd=%s\n", cmd);
 
-	err = system (cmd);
+	err = system(cmd);
 
-	if (err != 0) {
-	  char cwd[1000];
-	  char path[3000];
-	  char *ignore;
+	if (err != 0)
+	{
+		char cwd[1000];
+		char path[3000];
+		char *ignore;
 
-	  
-	  printf ("Failed to run text-to-speech script, %s\n", script);
+		printf("Failed to run text-to-speech script, %s\n", script);
 
-	  ignore = getcwd (cwd, sizeof(cwd));
-	  (void)ignore;
-	  strlcpy (path, getenv("PATH"), sizeof(path));
+		ignore = getcwd(cwd, sizeof(cwd));
+		(void)ignore;
+		strlcpy(path, getenv("PATH"), sizeof(path));
 
-	  printf ("CWD = %s\n", cwd);
-	  printf ("PATH = %s\n", path);
-	
+		printf("CWD = %s\n", cwd);
+		printf("PATH = %s\n", path);
 	}
 	return (err);
 }
-
 
 /*-------------------------------------------------------------------
  *
@@ -991,90 +1000,96 @@ int xmit_speak_it (char *script, int c, char *orig_msg)
 /* That's a long time to wait for APRS. */
 /* Might need to revisit some day for connected mode file transfers. */
 
-#define WAIT_TIMEOUT_MS (60 * 1000)	
+#define WAIT_TIMEOUT_MS (60 * 1000)
 #define WAIT_CHECK_EVERY_MS 10
 
-static int wait_for_clear_channel (int chan, int slottime, int persist, int fulldup)
+static int wait_for_clear_channel(int chan, int slottime, int persist, int fulldup)
 {
 	int n = 0;
 
-/*
- * For dull duplex we skip the channel busy check and random wait.
- * We still need to wait if operating in stereo and the other audio
- * half is busy.
- */
-	if ( ! fulldup) {
+	/*
+	 * For dull duplex we skip the channel busy check and random wait.
+	 * We still need to wait if operating in stereo and the other audio
+	 * half is busy.
+	 */
+	if (!fulldup)
+	{
 
-start_over_again:
+	start_over_again:
 
-	while (hdlc_rec_data_detect_any(chan)) {
-	  SLEEP_MS(WAIT_CHECK_EVERY_MS);
-	  n++;
-	  if (n > (WAIT_TIMEOUT_MS / WAIT_CHECK_EVERY_MS)) {
-	    return 0;
-	  }
+		while (hdlc_rec_data_detect_any(chan))
+		{
+			SLEEP_MS(WAIT_CHECK_EVERY_MS);
+			n++;
+			if (n > (WAIT_TIMEOUT_MS / WAIT_CHECK_EVERY_MS))
+			{
+				return 0;
+			}
+		}
+
+		// TODO:  rethink dwait.
+
+		/*
+		 * Added in version 1.2 - for transceivers that can't
+		 * turn around fast enough when using squelch and VOX.
+		 */
+
+		if (save_audio_config_p->achan[chan].dwait > 0)
+		{
+			SLEEP_MS(save_audio_config_p->achan[chan].dwait * 10);
+		}
+
+		if (hdlc_rec_data_detect_any(chan))
+		{
+			goto start_over_again;
+		}
+
+		/*
+		 * Wait random time.
+		 * Proceed to transmit sooner if anything shows up in high priority queue.
+		 */
+		while (tq_peek(chan, TQ_PRIO_0_HI) == NULL)
+		{
+			int r;
+
+			SLEEP_MS(slottime * 10);
+
+			if (hdlc_rec_data_detect_any(chan))
+			{
+				goto start_over_again;
+			}
+
+			r = rand() & 0xff;
+			if (r <= persist)
+			{
+				break;
+			}
+		}
 	}
 
-//TODO:  rethink dwait.
+	/*
+	 * This is to prevent two channels from transmitting at the same time
+	 * thru a stereo audio device.
+	 * We are not clever enough to combine two audio streams.
+	 * They must go out one at a time.
+	 * Documentation recommends using separate audio device for each channel rather than stereo.
+	 * That also allows better use of multiple cores for receiving.
+	 */
 
-/*
- * Added in version 1.2 - for transceivers that can't
- * turn around fast enough when using squelch and VOX.
- */
+	// TODO: review this.
 
-	if (save_audio_config_p->achan[chan].dwait > 0) {
-	  SLEEP_MS (save_audio_config_p->achan[chan].dwait * 10);
-	}
-
-	if (hdlc_rec_data_detect_any(chan)) {
-	  goto start_over_again;
-	}
-
-/*
- * Wait random time.
- * Proceed to transmit sooner if anything shows up in high priority queue.
- */
-	while (tq_peek(chan, TQ_PRIO_0_HI) == NULL) {
-	  int r;
-
-	  SLEEP_MS (slottime * 10);
-
-	  if (hdlc_rec_data_detect_any(chan)) {
-	    goto start_over_again;
-	  }
-
-	  r = rand() & 0xff;
-	  if (r <= persist) {
-	    break;
- 	  }	
-	}
-	}
-
-/*
- * This is to prevent two channels from transmitting at the same time
- * thru a stereo audio device.
- * We are not clever enough to combine two audio streams.
- * They must go out one at a time.
- * Documentation recommends using separate audio device for each channel rather than stereo.
- * That also allows better use of multiple cores for receiving.
- */
-
-// TODO: review this.
-
-	while ( ! dw_mutex_try_lock(&(audio_out_dev_mutex[ACHAN2ADEV(chan)]))) {
-	  SLEEP_MS(WAIT_CHECK_EVERY_MS);
-	  n++;
-	  if (n > (WAIT_TIMEOUT_MS / WAIT_CHECK_EVERY_MS)) {
-	    return 0;
-	  }
+	while (!dw_mutex_try_lock(&(audio_out_dev_mutex[ACHAN2ADEV(chan)])))
+	{
+		SLEEP_MS(WAIT_CHECK_EVERY_MS);
+		n++;
+		if (n > (WAIT_TIMEOUT_MS / WAIT_CHECK_EVERY_MS))
+		{
+			return 0;
+		}
 	}
 
 	return 1;
 
 } /* end wait_for_clear_channel */
 
-
 /* end xmit.c */
-
-
-

@@ -17,13 +17,12 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-
 /*------------------------------------------------------------------
  *
  * Module:      tq.c
  *
  * Purpose:   	Transmit queue - hold packets for transmission until the channel is clear.
- *		
+ *
  * Description:	Producers of packets to be transmitted call tq_append and then
  *		go merrily on their way, unconcerned about when the packet might
  *		actually get transmitted.
@@ -49,30 +48,26 @@
 #include "audio.h"
 #include "tq.h"
 
+static packet_t queue_head[MAX_CHANS][TQ_NUM_PRIO]; /* Head of linked list for each queue. */
 
-
-static packet_t queue_head[MAX_CHANS][TQ_NUM_PRIO];	/* Head of linked list for each queue. */
-
-
-static dw_mutex_t tq_mutex;				/* Critical section for updating queues. */
+static dw_mutex_t tq_mutex; /* Critical section for updating queues. */
 							/* Just one for all queues. */
 
 #if __WIN32__
 
-static HANDLE wake_up_event[MAX_CHANS];			/* Notify transmit thread when queue not empty. */
+static HANDLE wake_up_event[MAX_CHANS]; /* Notify transmit thread when queue not empty. */
 
 #else
 
-static pthread_cond_t wake_up_cond[MAX_CHANS];		/* Notify transmit thread when queue not empty. */
+static pthread_cond_t wake_up_cond[MAX_CHANS]; /* Notify transmit thread when queue not empty. */
 
-static pthread_mutex_t wake_up_mutex[MAX_CHANS];	/* Required by cond_wait. */
+static pthread_mutex_t wake_up_mutex[MAX_CHANS]; /* Required by cond_wait. */
 
 static int xmit_thread_is_waiting[MAX_CHANS];
 
 #endif
 
-static int tq_is_empty (int chan);
-
+static int tq_is_empty(int chan);
 
 /*-------------------------------------------------------------------
  *
@@ -82,7 +77,7 @@ static int tq_is_empty (int chan);
  *
  * Inputs:	audio_config_p	- Audio device configuration.
  *
- * Outputs:	
+ * Outputs:
  *
  * Description:	Initialize the queue to be empty and set up other
  *		mechanisms for sharing it between different threads.
@@ -98,89 +93,93 @@ static int tq_is_empty (int chan);
  *			rather than waiting random times to avoid collisions.
  *			The KPC-3 configuration option for this is "UIDWAIT OFF".
  *
- *		Low Priority - 
+ *		Low Priority -
  *
  *			Other packets are sent after a random wait time
  *			(determined by PERSIST & SLOTTIME) to help avoid
- *			collisions.	
+ *			collisions.
  *
  *		Each audio channel has its own queue.
- *	
+ *
  *--------------------------------------------------------------------*/
-
 
 static struct audio_s *save_audio_config_p;
 
-
-
-void tq_init (struct audio_s *audio_config_p)
+void tq_init(struct audio_s *audio_config_p)
 {
 	int c, p;
 
 #if DEBUG
-	
-	printf ("tq_init (  )\n");
+
+	printf("tq_init (  )\n");
 #endif
 
 	save_audio_config_p = audio_config_p;
 
-	for (c=0; c<MAX_CHANS; c++) {
-	  for (p=0; p<TQ_NUM_PRIO; p++) {
-	    queue_head[c][p] = NULL;
-	  }
+	for (c = 0; c < MAX_CHANS; c++)
+	{
+		for (p = 0; p < TQ_NUM_PRIO; p++)
+		{
+			queue_head[c][p] = NULL;
+		}
 	}
 
-/*
- * Mutex to coordinate access to the queue.
- */
+	/*
+	 * Mutex to coordinate access to the queue.
+	 */
 
 	dw_mutex_init(&tq_mutex);
 
-/*
- * Windows and Linux have different wake up methods.
- * Put a wrapper around this someday to hide the details.
- */
+	/*
+	 * Windows and Linux have different wake up methods.
+	 * Put a wrapper around this someday to hide the details.
+	 */
 
 #if __WIN32__
 
-	for (c = 0; c < MAX_CHANS; c++) {
+	for (c = 0; c < MAX_CHANS; c++)
+	{
 
-	  if (audio_config_p->chan_medium[c] == MEDIUM_RADIO) {
+		if (audio_config_p->chan_medium[c] == MEDIUM_RADIO)
+		{
 
-	    wake_up_event[c] = CreateEvent (NULL, 0, 0, NULL);
+			wake_up_event[c] = CreateEvent(NULL, 0, 0, NULL);
 
-	    if (wake_up_event[c] == NULL) {
-	      
-	      printf ("tq_init: CreateEvent: can't create transmit wake up event, c=%d", c);
-	      exit (1);
-	    }	
-	  }
+			if (wake_up_event[c] == NULL)
+			{
+
+				printf("tq_init: CreateEvent: can't create transmit wake up event, c=%d", c);
+				exit(1);
+			}
+		}
 	}
 
 #else
 	int err;
 
-	for (c = 0; c < MAX_CHANS; c++) {
+	for (c = 0; c < MAX_CHANS; c++)
+	{
 
-	  xmit_thread_is_waiting[c] = 0;
+		xmit_thread_is_waiting[c] = 0;
 
-	  if (audio_config_p->chan_medium[c] == MEDIUM_RADIO) {
-	    err = pthread_cond_init (&(wake_up_cond[c]), NULL);
-	    if (err != 0) {
-	      
-	      printf ("tq_init: pthread_cond_init c=%d err=%d", c, err);
-	      perror ("");
-	      exit (1);
-	    }
+		if (audio_config_p->chan_medium[c] == MEDIUM_RADIO)
+		{
+			err = pthread_cond_init(&(wake_up_cond[c]), NULL);
+			if (err != 0)
+			{
 
-	    dw_mutex_init(&(wake_up_mutex[c]));
-	  }
+				printf("tq_init: pthread_cond_init c=%d err=%d", c, err);
+				perror("");
+				exit(1);
+			}
+
+			dw_mutex_init(&(wake_up_mutex[c]));
+		}
 	}
 
 #endif
 
 } /* end tq_init */
-
 
 /*-------------------------------------------------------------------
  *
@@ -203,7 +202,7 @@ void tq_init (struct audio_s *audio_config_p)
  *				it after this point because it could
  *				be deleted at any time.
  *
- * Outputs:	
+ * Outputs:
  *
  * Description:	Add packet to end of linked list.
  *		Signal the transmit thread if the queue was formerly empty.
@@ -216,134 +215,139 @@ void tq_init (struct audio_s *audio_config_p)
  *
  *--------------------------------------------------------------------*/
 
-void tq_append (int chan, int prio, packet_t pp)
+void tq_append(int chan, int prio, packet_t pp)
 {
 	packet_t plast;
 	packet_t pnext;
 
-
 #if DEBUG
 	unsigned char *pinfo;
-	int info_len = ax25_get_info (pp, &pinfo);
-	if (info_len > 10) info_len = 10;
-	
-	printf ("tq_append (chan=%d, prio=%d, pp=%p) \"%*s\"\n", chan, prio, pp, info_len, (char*)pinfo);
+	int info_len = ax25_get_info(pp, &pinfo);
+	if (info_len > 10)
+		info_len = 10;
+
+	printf("tq_append (chan=%d, prio=%d, pp=%p) \"%*s\"\n", chan, prio, pp, info_len, (char *)pinfo);
 #endif
 
+	assert(prio >= 0 && prio < TQ_NUM_PRIO);
 
-	assert (prio >= 0 && prio < TQ_NUM_PRIO);
+	if (pp == NULL)
+	{
 
-	if (pp == NULL) {
-	  
-	  printf ("INTERNAL ERROR:  tq_append NULL packet pointer. Please report this!\n");
-	  return;
+		printf("INTERNAL ERROR:  tq_append NULL packet pointer. Please report this!\n");
+		return;
 	}
 
 #if AX25MEMDEBUG
 
-	if (ax25memdebug_get()) {
-	  
-	  printf ("tq_append (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
+	if (ax25memdebug_get())
+	{
+
+		printf("tq_append (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
 	}
 #endif
 
-// Normal case - put in queue for radio transmission.
-// Error if trying to transmit to a radio channel which was not configured.
+	// Normal case - put in queue for radio transmission.
+	// Error if trying to transmit to a radio channel which was not configured.
 
-	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] == MEDIUM_NONE) {
-	  
-	  printf ("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
-	  printf ("This is probably a client application error, not a problem with direwolf.\n");
-	  printf ("Are you using AX.25 for Linux?  It might be trying to use a modified\n");
-	  printf ("version of KISS which uses the port field differently than the\n");
-	  printf ("original KISS protocol specification.  The solution might be to use\n");
-	  printf ("a command like \"kissparms -c 1 -p radio\" to set CRC none mode.\n");
-	  printf ("\n");
-	  ax25_delete(pp);
-	  return;
+	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] == MEDIUM_NONE)
+	{
+
+		printf("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
+		printf("This is probably a client application error, not a problem with direwolf.\n");
+		printf("Are you using AX.25 for Linux?  It might be trying to use a modified\n");
+		printf("version of KISS which uses the port field differently than the\n");
+		printf("original KISS protocol specification.  The solution might be to use\n");
+		printf("a command like \"kissparms -c 1 -p radio\" to set CRC none mode.\n");
+		printf("\n");
+		ax25_delete(pp);
+		return;
 	}
 
-/*
- * Is transmit queue out of control?
- *
- * There is no technical reason to limit the transmit packet queue length, it just seemed like a good 
- * warning that something wasn't right.
- * When this was written, I was mostly concerned about APRS where packets would only be sent 
- * occasionally and they can be discarded if they can't be sent out in a reasonable amount of time.
- *
- * If a large file is being sent, with TCP/IP, it is perfectly reasonable to have a large number 
- * of packets waiting for transmission.
- *
- * Ideally, the application should be able to throttle the transmissions so the queue doesn't get too long.
- * If using the KISS interface, there is no way to get this information from the TNC back to the client app.
- * The AGW network interface does have a command 'y' to query about the number of frames waiting for transmission.
- * This was implemented in version 1.2.
- *
- * I'd rather not take out the queue length check because it is a useful sanity check for something going wrong.
- * Maybe the check should be performed only for APRS packets.  
- * The check would allow an unlimited number of other types.
- *
- * Limit was 20.  Changed to 100 in version 1.2 as a workaround.
- */
+	/*
+	 * Is transmit queue out of control?
+	 *
+	 * There is no technical reason to limit the transmit packet queue length, it just seemed like a good
+	 * warning that something wasn't right.
+	 * When this was written, I was mostly concerned about APRS where packets would only be sent
+	 * occasionally and they can be discarded if they can't be sent out in a reasonable amount of time.
+	 *
+	 * If a large file is being sent, with TCP/IP, it is perfectly reasonable to have a large number
+	 * of packets waiting for transmission.
+	 *
+	 * Ideally, the application should be able to throttle the transmissions so the queue doesn't get too long.
+	 * If using the KISS interface, there is no way to get this information from the TNC back to the client app.
+	 * The AGW network interface does have a command 'y' to query about the number of frames waiting for transmission.
+	 * This was implemented in version 1.2.
+	 *
+	 * I'd rather not take out the queue length check because it is a useful sanity check for something going wrong.
+	 * Maybe the check should be performed only for APRS packets.
+	 * The check would allow an unlimited number of other types.
+	 *
+	 * Limit was 20.  Changed to 100 in version 1.2 as a workaround.
+	 */
 
-	if (ax25_is_aprs(pp) && tq_count(chan,prio,"","",0) > 100) {
-	  
-	  printf ("Transmit packet queue for channel %d is too long.  Discarding packet.\n", chan);
-	  printf ("Perhaps the channel is so busy there is no opportunity to send.\n");
-	  ax25_delete(pp);
-	  return;
+	if (ax25_is_aprs(pp) && tq_count(chan, prio, "", "", 0) > 100)
+	{
+
+		printf("Transmit packet queue for channel %d is too long.  Discarding packet.\n", chan);
+		printf("Perhaps the channel is so busy there is no opportunity to send.\n");
+		ax25_delete(pp);
+		return;
 	}
 
 #if DEBUG
-	
-	printf ("tq_append: enter critical section\n");
+
+	printf("tq_append: enter critical section\n");
 #endif
 
-	dw_mutex_lock (&tq_mutex);
+	dw_mutex_lock(&tq_mutex);
 
-	if (queue_head[chan][prio] == NULL) {
-	  queue_head[chan][prio] = pp;
+	if (queue_head[chan][prio] == NULL)
+	{
+		queue_head[chan][prio] = pp;
 	}
-	else {
-	  plast = queue_head[chan][prio];
-	  while ((pnext = ax25_get_nextp(plast)) != NULL) {
-	    plast = pnext;
-	  }
-	  ax25_set_nextp (plast, pp);
+	else
+	{
+		plast = queue_head[chan][prio];
+		while ((pnext = ax25_get_nextp(plast)) != NULL)
+		{
+			plast = pnext;
+		}
+		ax25_set_nextp(plast, pp);
 	}
 
-	dw_mutex_unlock (&tq_mutex);
-
+	dw_mutex_unlock(&tq_mutex);
 
 #if DEBUG
-	
-	printf ("tq_append: left critical section\n");
-	printf ("tq_append (): about to wake up xmit thread.\n");
+
+	printf("tq_append: left critical section\n");
+	printf("tq_append (): about to wake up xmit thread.\n");
 #endif
 
 #if __WIN32__
-	SetEvent (wake_up_event[chan]);
+	SetEvent(wake_up_event[chan]);
 #else
-	if (xmit_thread_is_waiting[chan]) {
-	  int err;
+	if (xmit_thread_is_waiting[chan])
+	{
+		int err;
 
-	  dw_mutex_lock (&(wake_up_mutex[chan]));
+		dw_mutex_lock(&(wake_up_mutex[chan]));
 
-	  err = pthread_cond_signal (&(wake_up_cond[chan]));
-	  if (err != 0) {
-	    
-	    printf ("tq_append: pthread_cond_signal err=%d", err);
-	    perror ("");
-	    exit (1);
-	  }
+		err = pthread_cond_signal(&(wake_up_cond[chan]));
+		if (err != 0)
+		{
 
-	  dw_mutex_unlock (&(wake_up_mutex[chan]));
+			printf("tq_append: pthread_cond_signal err=%d", err);
+			perror("");
+			exit(1);
+		}
+
+		dw_mutex_unlock(&(wake_up_mutex[chan]));
 	}
 #endif
 
 } /* end tq_append */
-
-
 
 /*-------------------------------------------------------------------
  *
@@ -417,128 +421,127 @@ void tq_append (int chan, int prio, packet_t pp)
  *
  *--------------------------------------------------------------------*/
 
-
 // TODO: FIXME:  this is a copy of tq_append.  Need to fine tune and explain why.
 
-
-void lm_data_request (int chan, int prio, packet_t pp)
+void lm_data_request(int chan, int prio, packet_t pp)
 {
 	packet_t plast;
 	packet_t pnext;
 
-
 #if DEBUG
 	unsigned char *pinfo;
-	int info_len = ax25_get_info (pp, &pinfo);
-	if (info_len > 10) info_len = 10;
-	
-	printf ("lm_data_request (chan=%d, prio=%d, pp=%p) \"%*s\"\n", chan, prio, pp, info_len, (char*)pinfo);
+	int info_len = ax25_get_info(pp, &pinfo);
+	if (info_len > 10)
+		info_len = 10;
+
+	printf("lm_data_request (chan=%d, prio=%d, pp=%p) \"%*s\"\n", chan, prio, pp, info_len, (char *)pinfo);
 #endif
 
+	assert(prio >= 0 && prio < TQ_NUM_PRIO);
 
-	assert (prio >= 0 && prio < TQ_NUM_PRIO);
+	if (pp == NULL)
+	{
 
-	if (pp == NULL) {
-	  
-	  printf ("INTERNAL ERROR:  lm_data_request NULL packet pointer. Please report this!\n");
-	  return;
+		printf("INTERNAL ERROR:  lm_data_request NULL packet pointer. Please report this!\n");
+		return;
 	}
 
 #if AX25MEMDEBUG
 
-	if (ax25memdebug_get()) {
-	  
-	  printf ("lm_data_request (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
+	if (ax25memdebug_get())
+	{
+
+		printf("lm_data_request (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
 	}
 #endif
 
-	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] != MEDIUM_RADIO) {
-	  // Connected mode is allowed only with internal modems.
-	  
-	  printf ("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
-	  printf ("Connected packet mode is allowed only with internal modems.\n");
-	  printf ("Why aren't external KISS modems allowed?  See\n");
-	  printf ("Why-is-9600-only-twice-as-fast-as-1200.pdf for explanation.\n");
-	  ax25_delete(pp);
-	  return;
+	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] != MEDIUM_RADIO)
+	{
+		// Connected mode is allowed only with internal modems.
+
+		printf("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
+		printf("Connected packet mode is allowed only with internal modems.\n");
+		printf("Why aren't external KISS modems allowed?  See\n");
+		printf("Why-is-9600-only-twice-as-fast-as-1200.pdf for explanation.\n");
+		ax25_delete(pp);
+		return;
 	}
 
-/* 
- * Is transmit queue out of control? 
- */
+	/*
+	 * Is transmit queue out of control?
+	 */
 
-	if (tq_count(chan,prio,"","",0) > 250) {
-	  
-	  printf ("Warning: Transmit packet queue for channel %d is extremely long.\n", chan);
-	  printf ("Perhaps the channel is so busy there is no opportunity to send.\n");
+	if (tq_count(chan, prio, "", "", 0) > 250)
+	{
+
+		printf("Warning: Transmit packet queue for channel %d is extremely long.\n", chan);
+		printf("Perhaps the channel is so busy there is no opportunity to send.\n");
 	}
 
 #if DEBUG
-	
-	printf ("lm_data_request: enter critical section\n");
+
+	printf("lm_data_request: enter critical section\n");
 #endif
 
-	dw_mutex_lock (&tq_mutex);
+	dw_mutex_lock(&tq_mutex);
 
-
-	if (queue_head[chan][prio] == NULL) {
-	  queue_head[chan][prio] = pp;
+	if (queue_head[chan][prio] == NULL)
+	{
+		queue_head[chan][prio] = pp;
 	}
-	else {
-	  plast = queue_head[chan][prio];
-	  while ((pnext = ax25_get_nextp(plast)) != NULL) {
-	    plast = pnext;
-	  }
-	  ax25_set_nextp (plast, pp);
+	else
+	{
+		plast = queue_head[chan][prio];
+		while ((pnext = ax25_get_nextp(plast)) != NULL)
+		{
+			plast = pnext;
+		}
+		ax25_set_nextp(plast, pp);
 	}
 
-	dw_mutex_unlock (&tq_mutex);
-
+	dw_mutex_unlock(&tq_mutex);
 
 #if DEBUG
-	
-	printf ("lm_data_request: left critical section\n");
+
+	printf("lm_data_request: left critical section\n");
 #endif
 
 	// Appendix C2a, from the Ax.25 protocol spec, says that a priority frame
 	// will start transmission.  If not already transmitting, normal frames
 	// will pile up until LM-SEIZE Request starts transmission.
 
+	// Erratum: It doesn't take long for that to fail.
+	// We send SABM(e) frames to the transmit queue and the transmitter doesn't get activated.
 
-// Erratum: It doesn't take long for that to fail.
-// We send SABM(e) frames to the transmit queue and the transmitter doesn't get activated.
-
-
-//NO!	if (prio == TQ_PRIO_0_HI) {
+	// NO!	if (prio == TQ_PRIO_0_HI) {
 
 #if DEBUG
-	  printf ("lm_data_request (): about to wake up xmit thread.\n");
+	printf("lm_data_request (): about to wake up xmit thread.\n");
 #endif
 #if __WIN32__
-	  SetEvent (wake_up_event[chan]);
+	SetEvent(wake_up_event[chan]);
 #else
-	  if (xmit_thread_is_waiting[chan]) {
-	    int err;
+	if (xmit_thread_is_waiting[chan])
+	{
+		int err;
 
-	    dw_mutex_lock (&(wake_up_mutex[chan]));
+		dw_mutex_lock(&(wake_up_mutex[chan]));
 
-	    err = pthread_cond_signal (&(wake_up_cond[chan]));
-	    if (err != 0) {
-	      
-	      printf ("lm_data_request: pthread_cond_signal err=%d", err);
-	      perror ("");
-	      exit (1);
-	    }
+		err = pthread_cond_signal(&(wake_up_cond[chan]));
+		if (err != 0)
+		{
 
-	    dw_mutex_unlock (&(wake_up_mutex[chan]));
-	  }
+			printf("lm_data_request: pthread_cond_signal err=%d", err);
+			perror("");
+			exit(1);
+		}
+
+		dw_mutex_unlock(&(wake_up_mutex[chan]));
+	}
 #endif
-//NO!	}
+	// NO!	}
 
 } /* end lm_data_request */
-
-
-
 
 /*-------------------------------------------------------------------
  *
@@ -593,8 +596,7 @@ void lm_data_request (int chan, int prio, packet_t pp)
  *
  *--------------------------------------------------------------------*/
 
-
-void lm_seize_request (int chan)
+void lm_seize_request(int chan)
 {
 	packet_t pp;
 	int prio = TQ_PRIO_1_LO;
@@ -602,89 +604,88 @@ void lm_seize_request (int chan)
 	packet_t plast;
 	packet_t pnext;
 
-
 #if DEBUG
 	unsigned char *pinfo;
-	
-	printf ("lm_seize_request (chan=%d)\n", chan);
+
+	printf("lm_seize_request (chan=%d)\n", chan);
 #endif
 
+	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] != MEDIUM_RADIO)
+	{
+		// Connected mode is allowed only with internal modems.
 
-	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] != MEDIUM_RADIO) {
-	  // Connected mode is allowed only with internal modems.
-	  
-	  printf ("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
-	  printf ("Connected packet mode is allowed only with internal modems.\n");
-	  printf ("Why aren't external KISS modems allowed?  See\n");
-	  printf ("Why-is-9600-only-twice-as-fast-as-1200.pdf for explanation.\n");
-	  return;
+		printf("ERROR - Request to transmit on invalid radio channel %d.\n", chan);
+		printf("Connected packet mode is allowed only with internal modems.\n");
+		printf("Why aren't external KISS modems allowed?  See\n");
+		printf("Why-is-9600-only-twice-as-fast-as-1200.pdf for explanation.\n");
+		return;
 	}
 
 	pp = ax25_new();
 
 #if AX25MEMDEBUG
 
-	if (ax25memdebug_get()) {
-	  
-	  printf ("lm_seize_request (chan=%d, seq=%d)\n", chan, ax25memdebug_seq(pp));
+	if (ax25memdebug_get())
+	{
+
+		printf("lm_seize_request (chan=%d, seq=%d)\n", chan, ax25memdebug_seq(pp));
 	}
 #endif
 
 #if DEBUG
-	
-	printf ("lm_seize_request: enter critical section\n");
+
+	printf("lm_seize_request: enter critical section\n");
 #endif
 
-	dw_mutex_lock (&tq_mutex);
+	dw_mutex_lock(&tq_mutex);
 
-
-	if (queue_head[chan][prio] == NULL) {
-	  queue_head[chan][prio] = pp;
+	if (queue_head[chan][prio] == NULL)
+	{
+		queue_head[chan][prio] = pp;
 	}
-	else {
-	  plast = queue_head[chan][prio];
-	  while ((pnext = ax25_get_nextp(plast)) != NULL) {
-	    plast = pnext;
-	  }
-	  ax25_set_nextp (plast, pp);
+	else
+	{
+		plast = queue_head[chan][prio];
+		while ((pnext = ax25_get_nextp(plast)) != NULL)
+		{
+			plast = pnext;
+		}
+		ax25_set_nextp(plast, pp);
 	}
 
-	dw_mutex_unlock (&tq_mutex);
-
+	dw_mutex_unlock(&tq_mutex);
 
 #if DEBUG
-	
-	printf ("lm_seize_request: left critical section\n");
+
+	printf("lm_seize_request: left critical section\n");
 #endif
 
-
 #if DEBUG
-	printf ("lm_seize_request (): about to wake up xmit thread.\n");
+	printf("lm_seize_request (): about to wake up xmit thread.\n");
 #endif
 #if __WIN32__
-	SetEvent (wake_up_event[chan]);
+	SetEvent(wake_up_event[chan]);
 #else
-	if (xmit_thread_is_waiting[chan]) {
-	  int err;
+	if (xmit_thread_is_waiting[chan])
+	{
+		int err;
 
-	  dw_mutex_lock (&(wake_up_mutex[chan]));
+		dw_mutex_lock(&(wake_up_mutex[chan]));
 
-	  err = pthread_cond_signal (&(wake_up_cond[chan]));
-	  if (err != 0) {
-	    
-	    printf ("lm_seize_request: pthread_cond_signal err=%d", err);
-	    perror ("");
-	    exit (1);
-	  }
+		err = pthread_cond_signal(&(wake_up_cond[chan]));
+		if (err != 0)
+		{
 
-	  dw_mutex_unlock (&(wake_up_mutex[chan]));
+			printf("lm_seize_request: pthread_cond_signal err=%d", err);
+			perror("");
+			exit(1);
+		}
+
+		dw_mutex_unlock(&(wake_up_mutex[chan]));
 	}
 #endif
 
 } /* end lm_seize_request */
-
-
-
 
 /*-------------------------------------------------------------------
  *
@@ -693,92 +694,88 @@ void lm_seize_request (int chan)
  * Purpose:     Sleep while the transmit queue is empty rather than
  *		polling periodically.
  *
- * Inputs:	chan	- Audio device number.  
+ * Inputs:	chan	- Audio device number.
  *
  * Description:	We have one transmit thread for each audio device.
  *		This handles 1 or 2 channels.
- *		
+ *
  *--------------------------------------------------------------------*/
 
-
-void tq_wait_while_empty (int chan)
+void tq_wait_while_empty(int chan)
 {
 	int is_empty;
 
-
 #if DEBUG
-	
-	printf ("tq_wait_while_empty (%d) : enter critical section\n", chan);
-#endif
-	assert (chan >= 0 && chan < MAX_CHANS);
 
-	dw_mutex_lock (&tq_mutex);
+	printf("tq_wait_while_empty (%d) : enter critical section\n", chan);
+#endif
+	assert(chan >= 0 && chan < MAX_CHANS);
+
+	dw_mutex_lock(&tq_mutex);
 
 #if DEBUG
 	//
-	//printf ("tq_wait_while_empty (%d): after pthread_mutex_lock\n", chan);
+	// printf ("tq_wait_while_empty (%d): after pthread_mutex_lock\n", chan);
 #endif
 	is_empty = tq_is_empty(chan);
 
-	dw_mutex_unlock (&tq_mutex);
+	dw_mutex_unlock(&tq_mutex);
 
 #if DEBUG
-	
-	printf ("tq_wait_while_empty (%d) : left critical section\n", chan);
+
+	printf("tq_wait_while_empty (%d) : left critical section\n", chan);
 #endif
 
 #if DEBUG
-	
-	printf ("tq_wait_while_empty (%d): is_empty = %d\n", chan, is_empty);
+
+	printf("tq_wait_while_empty (%d): is_empty = %d\n", chan, is_empty);
 #endif
 
-	if (is_empty) {
+	if (is_empty)
+	{
 #if DEBUG
-	  
-	  printf ("tq_wait_while_empty (%d): SLEEP - about to call cond wait\n", chan);
-#endif
 
+		printf("tq_wait_while_empty (%d): SLEEP - about to call cond wait\n", chan);
+#endif
 
 #if __WIN32__
-	  WaitForSingleObject (wake_up_event[chan], INFINITE);
+		WaitForSingleObject(wake_up_event[chan], INFINITE);
 
 #if DEBUG
-	  
-	  printf ("tq_wait_while_empty (): returned from wait\n");
+
+		printf("tq_wait_while_empty (): returned from wait\n");
 #endif
 
 #else
-	  dw_mutex_lock (&(wake_up_mutex[chan]));
+		dw_mutex_lock(&(wake_up_mutex[chan]));
 
-	  xmit_thread_is_waiting[chan] = 1;
-	  int err;
-	  err = pthread_cond_wait (&(wake_up_cond[chan]), &(wake_up_mutex[chan]));
-	  xmit_thread_is_waiting[chan] = 0;
+		xmit_thread_is_waiting[chan] = 1;
+		int err;
+		err = pthread_cond_wait(&(wake_up_cond[chan]), &(wake_up_mutex[chan]));
+		xmit_thread_is_waiting[chan] = 0;
 
 #if DEBUG
-	  
-	  printf ("tq_wait_while_empty (%d): WOKE UP - returned from cond wait, err = %d\n", chan, err);
+
+		printf("tq_wait_while_empty (%d): WOKE UP - returned from cond wait, err = %d\n", chan, err);
 #endif
 
-	  if (err != 0) {
-	    
-	    printf ("tq_wait_while_empty (%d): pthread_cond_wait err=%d", chan, err);
-	    perror ("");
-	    exit (1);
-	  }
+		if (err != 0)
+		{
 
-	  dw_mutex_unlock (&(wake_up_mutex[chan]));
+			printf("tq_wait_while_empty (%d): pthread_cond_wait err=%d", chan, err);
+			perror("");
+			exit(1);
+		}
+
+		dw_mutex_unlock(&(wake_up_mutex[chan]));
 #endif
 	}
 
-
 #if DEBUG
-	
-	printf ("tq_wait_while_empty (%d) returns\n", chan);
+
+	printf("tq_wait_while_empty (%d) returns\n", chan);
 #endif
-
 }
-
 
 /*-------------------------------------------------------------------
  *
@@ -791,52 +788,53 @@ void tq_wait_while_empty (int chan)
  *		prio	- Priority, use TQ_PRIO_0_HI or TQ_PRIO_1_LO.
  *
  * Returns:	Pointer to packet object.
- *		Caller should destroy it with ax25_delete when finished with it.	
+ *		Caller should destroy it with ax25_delete when finished with it.
  *
  *--------------------------------------------------------------------*/
 
-packet_t tq_remove (int chan, int prio)
+packet_t tq_remove(int chan, int prio)
 {
 
 	packet_t result_p;
 
 #if DEBUG
-	
-	printf ("tq_remove(%d,%d) enter critical section\n", chan, prio);
+
+	printf("tq_remove(%d,%d) enter critical section\n", chan, prio);
 #endif
 
-	dw_mutex_lock (&tq_mutex);
+	dw_mutex_lock(&tq_mutex);
 
-	if (queue_head[chan][prio] == NULL) {
+	if (queue_head[chan][prio] == NULL)
+	{
 
-	  result_p = NULL;
+		result_p = NULL;
 	}
-	else {
+	else
+	{
 
-	  result_p = queue_head[chan][prio];
-	  queue_head[chan][prio] = ax25_get_nextp(result_p);
-	  ax25_set_nextp (result_p, NULL);
+		result_p = queue_head[chan][prio];
+		queue_head[chan][prio] = ax25_get_nextp(result_p);
+		ax25_set_nextp(result_p, NULL);
 	}
-	 
-	dw_mutex_unlock (&tq_mutex);
+
+	dw_mutex_unlock(&tq_mutex);
 
 #if DEBUG
-	
-	printf ("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
+
+	printf("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
 #endif
 
 #if AX25MEMDEBUG
 
-	if (ax25memdebug_get() && result_p != NULL) {
-	  
-	  printf ("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
+	if (ax25memdebug_get() && result_p != NULL)
+	{
+
+		printf("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
 	}
 #endif
 	return (result_p);
 
 } /* end tq_remove */
-
-
 
 /*-------------------------------------------------------------------
  *
@@ -854,73 +852,71 @@ packet_t tq_remove (int chan, int prio)
  *
  *--------------------------------------------------------------------*/
 
-packet_t tq_peek (int chan, int prio)
+packet_t tq_peek(int chan, int prio)
 {
 
 	packet_t result_p;
 
 #if DEBUG
-	
-	printf ("tq_peek(%d,%d) enter critical section\n", chan, prio);
+
+	printf("tq_peek(%d,%d) enter critical section\n", chan, prio);
 #endif
 
 	// I don't think we need critical region here.
-	//dw_mutex_lock (&tq_mutex);
+	// dw_mutex_lock (&tq_mutex);
 
 	result_p = queue_head[chan][prio];
 	// Just take a peek at the head.  Don't remove it.
 
-	//dw_mutex_unlock (&tq_mutex);
+	// dw_mutex_unlock (&tq_mutex);
 
 #if DEBUG
-	
-	printf ("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
+
+	printf("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
 #endif
 
 #if AX25MEMDEBUG
 
-	if (ax25memdebug_get() && result_p != NULL) {
-	  
-	  printf ("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
+	if (ax25memdebug_get() && result_p != NULL)
+	{
+
+		printf("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
 	}
 #endif
 	return (result_p);
 
 } /* end tq_peek */
 
-
-
 /*-------------------------------------------------------------------
  *
  * Name:        tq_is_empty
  *
  * Purpose:     Test if queues for specified channel are empty.
- *		
- * Inputs:	chan		Channel 
  *
- * Returns:	True if nothing in the queue.	
+ * Inputs:	chan		Channel
+ *
+ * Returns:	True if nothing in the queue.
  *
  *--------------------------------------------------------------------*/
 
-static int tq_is_empty (int chan)
+static int tq_is_empty(int chan)
 {
 	int p;
-	
-	assert (chan >= 0 && chan < MAX_CHANS);
 
+	assert(chan >= 0 && chan < MAX_CHANS);
 
-	for (p=0; p<TQ_NUM_PRIO; p++) {
+	for (p = 0; p < TQ_NUM_PRIO; p++)
+	{
 
-	  assert (p >= 0 && p < TQ_NUM_PRIO);
+		assert(p >= 0 && p < TQ_NUM_PRIO);
 
-	  if (queue_head[chan][p] != NULL)
-	     return (0);
+		if (queue_head[chan][p] != NULL)
+			return (0);
 	}
 
 	return (1);
 
 } /* end tq_is_empty */
-
 
 /*-------------------------------------------------------------------
  *
@@ -940,94 +936,104 @@ static int tq_is_empty (int chan)
  *
  *		bytes	- If true, return number of bytes rather than packets.
  *
- * Returns:	Number of items in specified queue.	
+ * Returns:	Number of items in specified queue.
  *
  *--------------------------------------------------------------------*/
 
-//#define DEBUG2 1
+// #define DEBUG2 1
 
-
-int tq_count (int chan, int prio, char *source, char *dest, int bytes)
+int tq_count(int chan, int prio, char *source, char *dest, int bytes)
 {
 
-
 #if DEBUG2
-	
-	printf ("tq_count(chan=%d, prio=%d, source=\"%s\", dest=\"%s\", bytes=%d)\n", chan, prio, source, dest, bytes);
+
+	printf("tq_count(chan=%d, prio=%d, source=\"%s\", dest=\"%s\", bytes=%d)\n", chan, prio, source, dest, bytes);
 #endif
 
-	if (prio == -1) {
-	  return (tq_count(chan, TQ_PRIO_0_HI, source, dest, bytes)
-		+ tq_count(chan, TQ_PRIO_1_LO, source, dest, bytes));
+	if (prio == -1)
+	{
+		return (tq_count(chan, TQ_PRIO_0_HI, source, dest, bytes) + tq_count(chan, TQ_PRIO_1_LO, source, dest, bytes));
 	}
 
 	// Array bounds check.  FIXME: TODO:  should have internal error instead of dying.
 
-	if (chan < 0 || chan >= MAX_CHANS || prio < 0 || prio >= TQ_NUM_PRIO) {
-	  
-	  printf ("INTERNAL ERROR - tq_count(%d, %d, \"%s\", \"%s\", %d)\n", chan, prio, source, dest, bytes);
-	  return (0);
+	if (chan < 0 || chan >= MAX_CHANS || prio < 0 || prio >= TQ_NUM_PRIO)
+	{
+
+		printf("INTERNAL ERROR - tq_count(%d, %d, \"%s\", \"%s\", %d)\n", chan, prio, source, dest, bytes);
+		return (0);
 	}
 
-	if (queue_head[chan][prio] == 0) {
+	if (queue_head[chan][prio] == 0)
+	{
 #if DEBUG2
-	  
-	  printf ("tq_count: queue chan %d, prio %d is empty, returning 0.\n", chan, prio);
+
+		printf("tq_count: queue chan %d, prio %d is empty, returning 0.\n", chan, prio);
 #endif
-	  return (0);
+		return (0);
 	}
 
 	// Don't want lists being rearranged while we are traversing them.
 
-	dw_mutex_lock (&tq_mutex);
+	dw_mutex_lock(&tq_mutex);
 
-	int n = 0;		// Result.  Number of bytes or packets.
-	packet_t pp = queue_head[chan][prio];;
+	int n = 0; // Result.  Number of bytes or packets.
+	packet_t pp = queue_head[chan][prio];
+	;
 
-	while (pp != NULL) {
-	 if (ax25_get_num_addr(pp) >= AX25_MIN_ADDRS) {
-	  // Consider only real packets.
+	while (pp != NULL)
+	{
+		if (ax25_get_num_addr(pp) >= AX25_MIN_ADDRS)
+		{
+			// Consider only real packets.
 
-	  int count_it = 1;
+			int count_it = 1;
 
-	  if (source != NULL && *source != '\0') {
-	    char frame_source[AX25_MAX_ADDR_LEN];
-	    ax25_get_addr_with_ssid (pp, AX25_SOURCE, frame_source);
+			if (source != NULL && *source != '\0')
+			{
+				char frame_source[AX25_MAX_ADDR_LEN];
+				ax25_get_addr_with_ssid(pp, AX25_SOURCE, frame_source);
 #if DEBUG2
-	// I'm cringing at the thought of printing while in a critical region.  But it's only for temp debug.  :-(
-	    
-	    printf ("tq_count: compare to frame source %s\n", frame_source);
-#endif
-	    if (strcmp(source,frame_source) != 0) count_it = 0;
-	  }
-	  if (count_it && dest != NULL && *dest != '\0') {
-	    char frame_dest[AX25_MAX_ADDR_LEN];
-	    ax25_get_addr_with_ssid (pp, AX25_DESTINATION, frame_dest);
-#if DEBUG2
-	// I'm cringing at the thought of printing while in a critical region.  But it's only for debug debug.  :-(
-	    
-	    printf ("tq_count: compare to frame destination %s\n", frame_dest);
-#endif
-	    if (strcmp(dest,frame_dest) != 0) count_it = 0;
-	  }
+				// I'm cringing at the thought of printing while in a critical region.  But it's only for temp debug.  :-(
 
-	  if (count_it) {
-	    if (bytes) {
-	      n += ax25_get_frame_len(pp);
-	    }
-	    else {
-	      n++;
-	    }
-	  }
-	 }
-	 pp = ax25_get_nextp(pp);
+				printf("tq_count: compare to frame source %s\n", frame_source);
+#endif
+				if (strcmp(source, frame_source) != 0)
+					count_it = 0;
+			}
+			if (count_it && dest != NULL && *dest != '\0')
+			{
+				char frame_dest[AX25_MAX_ADDR_LEN];
+				ax25_get_addr_with_ssid(pp, AX25_DESTINATION, frame_dest);
+#if DEBUG2
+				// I'm cringing at the thought of printing while in a critical region.  But it's only for debug debug.  :-(
+
+				printf("tq_count: compare to frame destination %s\n", frame_dest);
+#endif
+				if (strcmp(dest, frame_dest) != 0)
+					count_it = 0;
+			}
+
+			if (count_it)
+			{
+				if (bytes)
+				{
+					n += ax25_get_frame_len(pp);
+				}
+				else
+				{
+					n++;
+				}
+			}
+		}
+		pp = ax25_get_nextp(pp);
 	}
 
-	dw_mutex_unlock (&tq_mutex);
+	dw_mutex_unlock(&tq_mutex);
 
 #if DEBUG2
-	
-	printf ("tq_count(%d, %d, \"%s\", \"%s\", %d) returns %d\n", chan, prio, source, dest, bytes, n);
+
+	printf("tq_count(%d, %d, \"%s\", \"%s\", %d) returns %d\n", chan, prio, source, dest, bytes, n);
 #endif
 
 	return (n);

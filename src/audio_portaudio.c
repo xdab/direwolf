@@ -35,7 +35,7 @@
  *
  *---------------------------------------------------------------*/
 
-#if	defined(USE_PORTAUDIO)
+#if defined(USE_PORTAUDIO)
 
 #include "direwolf.h"
 
@@ -59,20 +59,21 @@
 #include "audio.h"
 #include "audio_stats.h"
 #include "dtime_now.h"
-#include "demod.h"		/* for alevel_t & demod_get_audio_level() */
+#include "demod.h" /* for alevel_t & demod_get_audio_level() */
 
 #include "portaudio.h"
 
 /* Audio configuration. */
 
-static struct audio_s          *save_audio_config_p;
+static struct audio_s *save_audio_config_p;
 
 /* Current state for each of the audio devices. */
 
-static struct adev_s {
+static struct adev_s
+{
 
 	pthread_mutex_t input_mutex;
-	pthread_cond_t  input_cond;
+	pthread_cond_t input_cond;
 
 	PaStream *inStream;
 	PaStreamParameters inputParameters;
@@ -83,15 +84,15 @@ static struct adev_s {
 	int input_flush;
 
 	void *audio_in_handle;
-	int inbuf_size_in_bytes;	  /* number of bytes allocated */
+	int inbuf_size_in_bytes; /* number of bytes allocated */
 	unsigned char *inbuf_ptr;
-	int inbuf_len;				  /* number byte of actual data available. */
-	int inbuf_next;				  /* index of next to remove. */
-	int inbuf_bytes_per_frame;	  /* number of bytes for a sample from all channels. */
-	int inbuf_frames_per_buffer;  /* number of frames in a buffer. */
+	int inbuf_len;				 /* number byte of actual data available. */
+	int inbuf_next;				 /* index of next to remove. */
+	int inbuf_bytes_per_frame;	 /* number of bytes for a sample from all channels. */
+	int inbuf_frames_per_buffer; /* number of frames in a buffer. */
 
 	pthread_mutex_t output_mutex;
-	pthread_cond_t  output_cond;
+	pthread_cond_t output_cond;
 
 	PaStream *outStream;
 	PaStreamParameters outputParameters;
@@ -107,12 +108,12 @@ static struct adev_s {
 	unsigned char *outbuf_ptr;
 	int outbuf_len;
 	int outbuf_next;			  /* index of next to remove. */
-	int outbuf_bytes_per_frame;   /* number of bytes for a sample from all channels. */
+	int outbuf_bytes_per_frame;	  /* number of bytes for a sample from all channels. */
 	int outbuf_frames_per_buffer; /* number of frames in a buffer. */
 
 	enum audio_in_type_e g_audio_in_type;
 
-	int udp_sock;			      /* UDP socket for receiving data */
+	int udp_sock; /* UDP socket for receiving data */
 
 } adev[MAX_ADEVS];
 
@@ -121,14 +122,14 @@ static struct adev_s {
 #define ONE_BUF_TIME 10
 #define SAMPLE_SILENCE 0
 
-#define PA_INPUT  1
+#define PA_INPUT 1
 #define PA_OUTPUT 2
 
 #define roundup1k(n) (((n) + 0x3ff) & ~0x3ff)
 
 #undef FOR_FUTURE_USE
 
-static int set_portaudio_params (int a, struct adev_s *dev, struct audio_s *pa, char *devname, char *inout);
+static int set_portaudio_params(int a, struct adev_s *dev, struct audio_s *pa, char *devname, char *inout);
 static void print_pa_devices(void);
 static int check_pa_configure(struct adev_s *dev, int sample_rate);
 static void list_supported_sample_rates(struct adev_s *dev);
@@ -136,15 +137,14 @@ static int pa_devNN(char *deviceStr, char *_devName, size_t length, int *_devNo)
 static int searchPADevice(struct adev_s *dev, char *_devName, int reqDeviceNo, int io_flag);
 static int calcbufsize(int rate, int chans, int bits);
 
-
 static int calcbufsize(int rate, int chans, int bits)
 {
-	int size1 = (rate * chans * bits  / 8 * ONE_BUF_TIME) / 1000;
+	int size1 = (rate * chans * bits / 8 * ONE_BUF_TIME) / 1000;
 	int size2 = roundup1k(size1);
 #if DEBUG
-	
-	printf ("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
-			   rate, chans, bits, size1, size2);
+
+	printf("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
+		   rate, chans, bits, size1, size2);
 #endif
 	return (size2);
 }
@@ -160,27 +160,31 @@ static int calcbufsize(int rate, int chans, int bits)
 static int searchPADevice(struct adev_s *dev, char *_devName, int reqDeviceNo, int io_flag)
 {
 	int numDevices = Pa_GetDeviceCount();
-	const PaDeviceInfo * di = (PaDeviceInfo *)0;
+	const PaDeviceInfo *di = (PaDeviceInfo *)0;
 	int i = 0;
 
 	// First check to see if the requested index matches the device name.
-	if(reqDeviceNo < numDevices) {
-		di = Pa_GetDeviceInfo((PaDeviceIndex) reqDeviceNo);
-		if(strncmp(di->name, _devName, 80) == 0) {
-			if((io_flag == PA_INPUT) && di->maxInputChannels)
+	if (reqDeviceNo < numDevices)
+	{
+		di = Pa_GetDeviceInfo((PaDeviceIndex)reqDeviceNo);
+		if (strncmp(di->name, _devName, 80) == 0)
+		{
+			if ((io_flag == PA_INPUT) && di->maxInputChannels)
 				return reqDeviceNo;
-			if((io_flag == PA_OUTPUT) && di->maxOutputChannels)
+			if ((io_flag == PA_OUTPUT) && di->maxOutputChannels)
 				return reqDeviceNo;
 		}
 	}
 
 	// Requested device index doesn't match device name. Search for one.
-	for(i = 0; i < numDevices; i++) {
-		di = Pa_GetDeviceInfo((PaDeviceIndex) i);
-		if(strncmp(di->name, _devName, 80) == 0) {
-			if((io_flag == PA_INPUT) && di->maxInputChannels)
+	for (i = 0; i < numDevices; i++)
+	{
+		di = Pa_GetDeviceInfo((PaDeviceIndex)i);
+		if (strncmp(di->name, _devName, 80) == 0)
+		{
+			if ((io_flag == PA_INPUT) && di->maxInputChannels)
 				return i;
-			if((io_flag == PA_OUTPUT) && di->maxOutputChannels)
+			if ((io_flag == PA_OUTPUT) && di->maxOutputChannels)
 				return i;
 		}
 	}
@@ -199,8 +203,9 @@ static int pa_devNN(char *deviceStr, char *_devName, size_t length, int *_devNo)
 	int count = 0;
 	char numStr[8];
 
-	if(!deviceStr || !_devName || !_devNo) {
-		printf( "Internal Error: Func %s passed null pointer.\n", __func__);
+	if (!deviceStr || !_devName || !_devNo)
+	{
+		printf("Internal Error: Func %s passed null pointer.\n", __func__);
 		return -1;
 	}
 
@@ -209,9 +214,11 @@ static int pa_devNN(char *deviceStr, char *_devName, size_t length, int *_devNo)
 	memset(_devName, 0, length);
 	memset(numStr, 0, sizeof(numStr));
 
-	while(*cPtr) {
+	while (*cPtr)
+	{
 		cVal = *cPtr++;
-		if(cVal == ':')  break;
+		if (cVal == ':')
+			break;
 
 		// See Issue 417.
 		// Originally this copied only printable ASCII characters (space thru ~).
@@ -226,24 +233,29 @@ static int pa_devNN(char *deviceStr, char *_devName, size_t length, int *_devNo)
 		// count could reach length, leaving no room for a nul terminator.
 		// Compare has been changed so count is limited to length minus 1.
 
-		if(count < length - 1) {
+		if (count < length - 1)
+		{
 			_devName[count++] = cVal;
 		}
-
 	}
 
 	count = 0;
 
-	while(*cPtr) {
+	while (*cPtr)
+	{
 		cVal = *cPtr++;
-		if(isdigit(cVal) && (count < (sizeof(numStr) - 1))) {
+		if (isdigit(cVal) && (count < (sizeof(numStr) - 1)))
+		{
 			numStr[count++] = cVal;
 		}
 	}
 
-	if(numStr[0] == 0) {
+	if (numStr[0] == 0)
+	{
 		*_devNo = 0;
-	} else {
+	}
+	else
+	{
 		sscanf(numStr, "%d", _devNo);
 	}
 
@@ -259,32 +271,37 @@ static void list_supported_sample_rates(struct adev_s *dev)
 		8000.0, 9600.0, 11025.0, 12000.0, 16000.0, 22050.0, 24000.0, 32000.0,
 		44100.0, 48000.0, 88200.0, 96000.0, 192000.0, -1 /* negative terminated  list */
 	};
-	int     i, printCount;
+	int i, printCount;
 	PaError err;
 
 	printCount = 0;
-	for(i = 0; standardSampleRates[i] > 0; i++ ) {
-		err = Pa_IsFormatSupported(&dev->inputParameters, &dev->outputParameters, standardSampleRates[i] );
-		if( err == paFormatIsSupported ) {
-			if( printCount == 0 ) {
-				printf( "\t%8.2f", standardSampleRates[i] );
+	for (i = 0; standardSampleRates[i] > 0; i++)
+	{
+		err = Pa_IsFormatSupported(&dev->inputParameters, &dev->outputParameters, standardSampleRates[i]);
+		if (err == paFormatIsSupported)
+		{
+			if (printCount == 0)
+			{
+				printf("\t%8.2f", standardSampleRates[i]);
 				printCount = 1;
 			}
-			else if( printCount == 4 ) {
-				printf( ",\n\t%8.2f", standardSampleRates[i] );
+			else if (printCount == 4)
+			{
+				printf(",\n\t%8.2f", standardSampleRates[i]);
 				printCount = 1;
 			}
-			else {
-				printf( ", %8.2f", standardSampleRates[i] );
+			else
+			{
+				printf(", %8.2f", standardSampleRates[i]);
 				++printCount;
 			}
 		}
 	}
 
-	if( !printCount )
-		printf( "None\n" );
+	if (!printCount)
+		printf("None\n");
 	else
-		printf( "\n" );
+		printf("\n");
 }
 
 /*------------------------------------------------------------------
@@ -292,15 +309,17 @@ static void list_supported_sample_rates(struct adev_s *dev)
  *----------------------------------------------------------------*/
 static int check_pa_configure(struct adev_s *dev, int sample_rate)
 {
-	if(!dev) {
-		printf( "Internal Error: Func %s struct adev_s *dev null pointer.\n", __func__);
+	if (!dev)
+	{
+		printf("Internal Error: Func %s struct adev_s *dev null pointer.\n", __func__);
 		return -1;
 	}
 
 	PaError err = 0;
 	err = Pa_IsFormatSupported(&dev->inputParameters, &dev->outputParameters, sample_rate);
-	if(err == paFormatIsSupported) return 0;
-	printf( "PortAudio Config Error: %s\n", Pa_GetErrorText(err));
+	if (err == paFormatIsSupported)
+		return 0;
+	printf("PortAudio Config Error: %s\n", Pa_GetErrorText(err));
 	return err;
 }
 
@@ -309,68 +328,74 @@ static int check_pa_configure(struct adev_s *dev, int sample_rate)
  *----------------------------------------------------------------*/
 static void print_pa_devices(void)
 {
-	int     i, numDevices, defaultDisplayed;
-	const   PaDeviceInfo *deviceInfo;
+	int i, numDevices, defaultDisplayed;
+	const PaDeviceInfo *deviceInfo;
 
 	numDevices = Pa_GetDeviceCount();
 
-	if( numDevices < 0 ) {
-		printf( "ERROR: Pa_GetDeviceCount returned 0x%x\n", numDevices );
+	if (numDevices < 0)
+	{
+		printf("ERROR: Pa_GetDeviceCount returned 0x%x\n", numDevices);
 		return;
 	}
 
-	printf( "Number of devices = %d\n", numDevices );
+	printf("Number of devices = %d\n", numDevices);
 
-	for(i = 0; i < numDevices; i++ ) {
-		deviceInfo = Pa_GetDeviceInfo( i );
-		printf( "--------------------------------------- device #%d\n", i );
+	for (i = 0; i < numDevices; i++)
+	{
+		deviceInfo = Pa_GetDeviceInfo(i);
+		printf("--------------------------------------- device #%d\n", i);
 
 		/* Mark global and API specific default devices */
 		defaultDisplayed = 0;
-		if( i == Pa_GetDefaultInputDevice() ) {
-			printf( "[ Default Input" );
+		if (i == Pa_GetDefaultInputDevice())
+		{
+			printf("[ Default Input");
 			defaultDisplayed = 1;
 		}
-		else if( i == Pa_GetHostApiInfo( deviceInfo->hostApi )->defaultInputDevice ) {
-			const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
-			printf( "[ Default %s Input", hostInfo->name );
-			defaultDisplayed = 1;
-		}
-
-		if( i == Pa_GetDefaultOutputDevice() ) {
-			printf( (defaultDisplayed ? "," : "[") );
-			printf( " Default Output" );
-			defaultDisplayed = 1;
-		}
-		else if( i == Pa_GetHostApiInfo( deviceInfo->hostApi )->defaultOutputDevice ) {
-			const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
-			printf( (defaultDisplayed ? "," : "[") );
-			printf( " Default %s Output", hostInfo->name );
+		else if (i == Pa_GetHostApiInfo(deviceInfo->hostApi)->defaultInputDevice)
+		{
+			const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo(deviceInfo->hostApi);
+			printf("[ Default %s Input", hostInfo->name);
 			defaultDisplayed = 1;
 		}
 
-		if( defaultDisplayed )
-			printf( " ]\n" );
+		if (i == Pa_GetDefaultOutputDevice())
+		{
+			printf((defaultDisplayed ? "," : "["));
+			printf(" Default Output");
+			defaultDisplayed = 1;
+		}
+		else if (i == Pa_GetHostApiInfo(deviceInfo->hostApi)->defaultOutputDevice)
+		{
+			const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo(deviceInfo->hostApi);
+			printf((defaultDisplayed ? "," : "["));
+			printf(" Default %s Output", hostInfo->name);
+			defaultDisplayed = 1;
+		}
+
+		if (defaultDisplayed)
+			printf(" ]\n");
 
 		/* print device info fields */
-		printf( "Name        = \"%s\"\n", deviceInfo->name );
-		printf( "Host API    = %s\n",     Pa_GetHostApiInfo( deviceInfo->hostApi )->name );
-		printf( "Max inputs  = %d\n",     deviceInfo->maxInputChannels  );
-		printf( "Max outputs = %d\n",     deviceInfo->maxOutputChannels  );
+		printf("Name        = \"%s\"\n", deviceInfo->name);
+		printf("Host API    = %s\n", Pa_GetHostApiInfo(deviceInfo->hostApi)->name);
+		printf("Max inputs  = %d\n", deviceInfo->maxInputChannels);
+		printf("Max outputs = %d\n", deviceInfo->maxOutputChannels);
 	}
 }
 
 /*------------------------------------------------------------------
  * Port Audio Input Callback
  *----------------------------------------------------------------*/
-static int paInput16CB( const void *inputBuffer, void *outputBuffer,
+static int paInput16CB(const void *inputBuffer, void *outputBuffer,
 					   unsigned long framesPerBuffer,
-					   const PaStreamCallbackTimeInfo* timeInfo,
+					   const PaStreamCallbackTimeInfo *timeInfo,
 					   PaStreamCallbackFlags statusFlags,
-					   void *userData )
+					   void *userData)
 {
-	struct adev_s *data = (struct adev_s *) userData;
-	const int16_t *rptr = (const int16_t *) inputBuffer;
+	struct adev_s *data = (struct adev_s *)userData;
+	const int16_t *rptr = (const int16_t *)inputBuffer;
 	size_t framesToCalc = 0;
 	size_t i = 0;
 	int finished = 0;
@@ -378,44 +403,55 @@ static int paInput16CB( const void *inputBuffer, void *outputBuffer,
 	size_t bytes_left = data->inbuf_size_in_bytes - data->inbuf_len;
 	size_t framesLeft = bytes_left / data->inbuf_bytes_per_frame;
 
-	(void) outputBuffer; /* Prevent unused variable warnings. */
-	(void) timeInfo;
-	(void) statusFlags;
-	(void) userData;
+	(void)outputBuffer; /* Prevent unused variable warnings. */
+	(void)timeInfo;
+	(void)statusFlags;
+	(void)userData;
 
-	if( framesLeft < framesPerBuffer ) {
+	if (framesLeft < framesPerBuffer)
+	{
 		framesToCalc = framesLeft;
 		finished = paComplete;
-	} else {
+	}
+	else
+	{
 		framesToCalc = framesPerBuffer;
 		finished = paContinue;
 	}
 
-	if( inputBuffer == NULL || data->input_flush) {
-		for(i = 0; i < framesToCalc; i++) {
+	if (inputBuffer == NULL || data->input_flush)
+	{
+		for (i = 0; i < framesToCalc; i++)
+		{
 			data->inbuf_ptr[data->inbuf_len++] = SAMPLE_SILENCE;
 			data->inbuf_ptr[data->inbuf_len++] = SAMPLE_SILENCE;
-			if(data->no_of_input_channels == 2) {
+			if (data->no_of_input_channels == 2)
+			{
 				data->inbuf_ptr[data->inbuf_len++] = SAMPLE_SILENCE;
 				data->inbuf_ptr[data->inbuf_len++] = SAMPLE_SILENCE;
 			}
 		}
-	} else {
-		for(i = 0; i < framesToCalc; i++) {
-			word = *rptr++;  /* left */
+	}
+	else
+	{
+		for (i = 0; i < framesToCalc; i++)
+		{
+			word = *rptr++; /* left */
 			data->inbuf_ptr[data->inbuf_len++] = word & 0xff;
 			data->inbuf_ptr[data->inbuf_len++] = (word >> 8) & 0xff;
 
-			if(data->no_of_input_channels == 2) {
-				word = *rptr++;  /* right */
+			if (data->no_of_input_channels == 2)
+			{
+				word = *rptr++; /* right */
 				data->inbuf_ptr[data->inbuf_len++] = word & 0xff;
 				data->inbuf_ptr[data->inbuf_len++] = (word >> 8) & 0xff;
 			}
 		}
 	}
 
-	if((finished == paComplete) ||
-	   (data->inbuf_len >= data->inbuf_size_in_bytes)) {
+	if ((finished == paComplete) ||
+		(data->inbuf_len >= data->inbuf_size_in_bytes))
+	{
 		pthread_cond_signal(&data->input_cond);
 		finished = data->input_finished;
 	}
@@ -427,58 +463,67 @@ static int paInput16CB( const void *inputBuffer, void *outputBuffer,
 /*------------------------------------------------------------------
  * Port Audio Output Callback
  *----------------------------------------------------------------*/
-static int paOutput16CB( const void *inputBuffer, void *outputBuffer,
+static int paOutput16CB(const void *inputBuffer, void *outputBuffer,
 						unsigned long framesPerBuffer,
-						const PaStreamCallbackTimeInfo* timeInfo,
+						const PaStreamCallbackTimeInfo *timeInfo,
 						PaStreamCallbackFlags statusFlags,
 						void *userData)
 {
-	struct adev_s *data = (struct adev_s *) userData;
-	int16_t *wptr = (int16_t *) outputBuffer;
+	struct adev_s *data = (struct adev_s *)userData;
+	int16_t *wptr = (int16_t *)outputBuffer;
 	size_t i = 0;
 	int finished = 0;
 	size_t bytes_left = data->outbuf_size_in_bytes - data->outbuf_len;
 	size_t framesLeft = bytes_left / data->outbuf_bytes_per_frame;
 	int word = 0;
 
-	(void) inputBuffer; /* Prevent unused variable warnings. */
-	(void) timeInfo;
-	(void) statusFlags;
-	(void) userData;
+	(void)inputBuffer; /* Prevent unused variable warnings. */
+	(void)timeInfo;
+	(void)statusFlags;
+	(void)userData;
 
-	if(framesLeft && (framesLeft < framesPerBuffer)) {
+	if (framesLeft && (framesLeft < framesPerBuffer))
+	{
 		/* final buffer... */
-		for(i = 0; i < framesLeft; i++ ) {
+		for (i = 0; i < framesLeft; i++)
+		{
 			word = data->outbuf_ptr[data->outbuf_len++] & 0xff;
 			word |= (data->outbuf_ptr[data->outbuf_len++] << 8) & 0xff;
-			*wptr++ = word;  /* left */
-			if(data->no_of_output_channels == 2 ) {
+			*wptr++ = word; /* left */
+			if (data->no_of_output_channels == 2)
+			{
 				word = data->outbuf_ptr[data->outbuf_len++] & 0xff;
 				word |= (data->outbuf_ptr[data->outbuf_len++] << 8) & 0xff;
-				*wptr++ = word;  /* right */
+				*wptr++ = word; /* right */
 			}
 		}
-		for( ; i < framesPerBuffer; i++ ) {
-			*wptr++ = 0;  	/* left */
-			if(data->no_of_output_channels == 2 )
-				*wptr++ = 0;  /* right */
+		for (; i < framesPerBuffer; i++)
+		{
+			*wptr++ = 0; /* left */
+			if (data->no_of_output_channels == 2)
+				*wptr++ = 0; /* right */
 		}
 		finished = paContinue;
-	} else {
-		for(i = 0; i < framesPerBuffer; i++ ) {
+	}
+	else
+	{
+		for (i = 0; i < framesPerBuffer; i++)
+		{
 			word = data->outbuf_ptr[data->outbuf_len++] & 0xff;
 			word |= (data->outbuf_ptr[data->outbuf_len++] << 8) & 0xff;
-			*wptr++ = word;  /* left */
-			if(data->no_of_output_channels == 2) {
+			*wptr++ = word; /* left */
+			if (data->no_of_output_channels == 2)
+			{
 				word = data->outbuf_ptr[data->outbuf_len++] & 0xff;
 				word |= (data->outbuf_ptr[data->outbuf_len++] << 8) & 0xff;
-				*wptr++ = word;  /* right */
+				*wptr++ = word; /* right */
 			}
 		}
 		finished = paComplete;
 	}
 
-	if(data->output_flush) {
+	if (data->output_flush)
+	{
 		data->output_flush = 0;
 		finished = paComplete;
 	}
@@ -535,31 +580,34 @@ static int paOutput16CB( const void *inputBuffer, void *outputBuffer,
  *
  *----------------------------------------------------------------*/
 
-int audio_open (struct audio_s *pa)
+int audio_open(struct audio_s *pa)
 {
-	int err  = 0;
+	int err = 0;
 	int chan = 0;
-	int a    = 0;
+	int a = 0;
 	int clear_value = 0;
 	char audio_in_name[80];
 	char audio_out_name[80];
 	static int initalize_flag = 0;
 	PaError paerr = paNoError;
 
-	if(!initalize_flag) {
+	if (!initalize_flag)
+	{
 		paerr = Pa_Initialize();
 		initalize_flag = -1;
 	}
 
-	if(paerr != paNoError ) return -1;
+	if (paerr != paNoError)
+		return -1;
 
 	save_audio_config_p = pa;
 
-	memset (adev,           0, sizeof(adev));
-	memset (audio_in_name,  0, sizeof(audio_in_name));
-	memset (audio_out_name, 0, sizeof(audio_out_name));
+	memset(adev, 0, sizeof(adev));
+	memset(audio_in_name, 0, sizeof(audio_in_name));
+	memset(audio_out_name, 0, sizeof(audio_out_name));
 
-	for (a = 0; a < MAX_ADEVS; a++) {
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
 		adev[a].udp_sock = -1;
 	}
 
@@ -567,7 +615,8 @@ int audio_open (struct audio_s *pa)
 	 * Fill in defaults for any missing values.
 	 */
 
-	for (a = 0; a < MAX_ADEVS; a++) {
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
 		if (pa->adev[a].num_channels == 0)
 			pa->adev[a].num_channels = DEFAULT_NUM_CHANNELS;
 
@@ -577,7 +626,8 @@ int audio_open (struct audio_s *pa)
 		if (pa->adev[a].bits_per_sample == 0)
 			pa->adev[a].bits_per_sample = DEFAULT_BITS_PER_SAMPLE;
 
-		for (chan = 0; chan < MAX_CHANS; chan++) {
+		for (chan = 0; chan < MAX_CHANS; chan++)
+		{
 			if (pa->achan[chan].mark_freq == 0)
 				pa->achan[chan].mark_freq = DEFAULT_MARK_FREQ;
 
@@ -596,8 +646,10 @@ int audio_open (struct audio_s *pa)
 	 * Open audio device(s).
 	 */
 
-	for (a = 0; a < MAX_ADEVS; a++) {
-		if (pa->adev[a].defined) {
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
+		if (pa->adev[a].defined)
+		{
 
 			adev[a].inbuf_size_in_bytes = 0;
 			adev[a].outbuf_size_in_bytes = 0;
@@ -608,42 +660,49 @@ int audio_open (struct audio_s *pa)
 
 			adev[a].g_audio_in_type = AUDIO_IN_TYPE_SOUNDCARD;
 
-			if (strcasecmp(pa->adev[a].adevice_in, "stdin") == 0 || strcmp(pa->adev[a].adevice_in, "-") == 0) {
+			if (strcasecmp(pa->adev[a].adevice_in, "stdin") == 0 || strcmp(pa->adev[a].adevice_in, "-") == 0)
+			{
 				adev[a].g_audio_in_type = AUDIO_IN_TYPE_STDIN;
 				/* Change "-" to stdin for readability. */
-				strlcpy (pa->adev[a].adevice_in, "stdin", sizeof(pa->adev[a].adevice_in));
+				strlcpy(pa->adev[a].adevice_in, "stdin", sizeof(pa->adev[a].adevice_in));
 			}
 
-			if (strncasecmp(pa->adev[a].adevice_in, "udp:", 4) == 0) {
+			if (strncasecmp(pa->adev[a].adevice_in, "udp:", 4) == 0)
+			{
 				adev[a].g_audio_in_type = AUDIO_IN_TYPE_SDR_UDP;
 				/* Supply default port if none specified. */
-				if (strcasecmp(pa->adev[a].adevice_in,"udp") == 0 ||
-					strcasecmp(pa->adev[a].adevice_in,"udp:") == 0) {
-					snprintf (pa->adev[a].adevice_in, sizeof(pa->adev[a].adevice_in), "udp:%d", DEFAULT_UDP_AUDIO_PORT);
+				if (strcasecmp(pa->adev[a].adevice_in, "udp") == 0 ||
+					strcasecmp(pa->adev[a].adevice_in, "udp:") == 0)
+				{
+					snprintf(pa->adev[a].adevice_in, sizeof(pa->adev[a].adevice_in), "udp:%d", DEFAULT_UDP_AUDIO_PORT);
 				}
 			}
 
 			/* Let user know what is going on. */
 			/* If not specified, the device names should be "default". */
 
-			strlcpy (audio_in_name, pa->adev[a].adevice_in, sizeof(audio_in_name));
-			strlcpy (audio_out_name, pa->adev[a].adevice_out, sizeof(audio_out_name));
+			strlcpy(audio_in_name, pa->adev[a].adevice_in, sizeof(audio_in_name));
+			strlcpy(audio_out_name, pa->adev[a].adevice_out, sizeof(audio_out_name));
 
 			char ctemp[40];
 
-			if (pa->adev[a].num_channels == 2) {
-				snprintf (ctemp, sizeof(ctemp), " (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
-			} else {
-				snprintf (ctemp, sizeof(ctemp), " (channel %d)", ADEVFIRSTCHAN(a));
+			if (pa->adev[a].num_channels == 2)
+			{
+				snprintf(ctemp, sizeof(ctemp), " (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a) + 1);
+			}
+			else
+			{
+				snprintf(ctemp, sizeof(ctemp), " (channel %d)", ADEVFIRSTCHAN(a));
 			}
 
-			
-
-			if (strcmp(audio_in_name,audio_out_name) == 0) {
-				printf ("Audio device for both receive and transmit: %s %s\n", audio_in_name, ctemp);
-			} else {
-				printf ("Audio input device for receive: %s %s\n", audio_in_name, ctemp);
-				printf ("Audio out device for transmit: %s %s\n", audio_out_name, ctemp);
+			if (strcmp(audio_in_name, audio_out_name) == 0)
+			{
+				printf("Audio device for both receive and transmit: %s %s\n", audio_in_name, ctemp);
+			}
+			else
+			{
+				printf("Audio input device for receive: %s %s\n", audio_in_name, ctemp);
+				printf("Audio out device for transmit: %s %s\n", audio_out_name, ctemp);
 			}
 
 			/*
@@ -654,266 +713,282 @@ int audio_open (struct audio_s *pa)
 			 * Input device.
 			 */
 
-			switch (adev[a].g_audio_in_type) {
+			switch (adev[a].g_audio_in_type)
+			{
 
-				case AUDIO_IN_TYPE_SOUNDCARD:
-					print_pa_devices();
-					err = set_portaudio_params (a, &adev[a], pa, audio_in_name, audio_out_name);
-					if(err < 0) return -1;
+			case AUDIO_IN_TYPE_SOUNDCARD:
+				print_pa_devices();
+				err = set_portaudio_params(a, &adev[a], pa, audio_in_name, audio_out_name);
+				if (err < 0)
+					return -1;
 
-					pthread_mutex_init(&adev[a].input_mutex, NULL);
-					pthread_cond_init(&adev[a].input_cond, NULL);
+				pthread_mutex_init(&adev[a].input_mutex, NULL);
+				pthread_cond_init(&adev[a].input_cond, NULL);
 
-					pthread_mutex_init(&adev[a].output_mutex, NULL);
-					pthread_cond_init(&adev[a].output_cond, NULL);
+				pthread_mutex_init(&adev[a].output_mutex, NULL);
+				pthread_cond_init(&adev[a].output_cond, NULL);
 
-					if(pa->adev[a].bits_per_sample == 8)
-						clear_value = 128;
-					else
-						clear_value = 0;
+				if (pa->adev[a].bits_per_sample == 8)
+					clear_value = 128;
+				else
+					clear_value = 0;
 
-					break;
+				break;
 
-					/*
-					 * UDP.
-					 */
-				case AUDIO_IN_TYPE_SDR_UDP:
+				/*
+				 * UDP.
+				 */
+			case AUDIO_IN_TYPE_SDR_UDP:
 
-					// Create socket and bind socket
+				// Create socket and bind socket
 
 				{
 					struct sockaddr_in si_me;
-					//Create UDP Socket
-					if ((adev[a].udp_sock=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
-						
-						printf ("Couldn't create socket, errno %d\n", errno);
+					// Create UDP Socket
+					if ((adev[a].udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+					{
+
+						printf("Couldn't create socket, errno %d\n", errno);
 						return -1;
 					}
 
-					memset((char *) &si_me, 0, sizeof(si_me));
+					memset((char *)&si_me, 0, sizeof(si_me));
 					si_me.sin_family = AF_INET;
-					si_me.sin_port = htons((short)atoi(audio_in_name+4));
+					si_me.sin_port = htons((short)atoi(audio_in_name + 4));
 					si_me.sin_addr.s_addr = htonl(INADDR_ANY);
 
-					//Bind to the socket
-					if (bind(adev[a].udp_sock, (const struct sockaddr *) &si_me, sizeof(si_me))==-1) {
-						
-						printf ("Couldn't bind socket, errno %d\n", errno);
+					// Bind to the socket
+					if (bind(adev[a].udp_sock, (const struct sockaddr *)&si_me, sizeof(si_me)) == -1)
+					{
+
+						printf("Couldn't bind socket, errno %d\n", errno);
 						return -1;
 					}
 				}
-					//adev[a].inbuf_size_in_bytes = SDR_UDP_BUF_MAXLEN;
+				// adev[a].inbuf_size_in_bytes = SDR_UDP_BUF_MAXLEN;
 
-					break;
+				break;
 
-					/*
-					 * stdin.
-					 */
-				case AUDIO_IN_TYPE_STDIN:
+				/*
+				 * stdin.
+				 */
+			case AUDIO_IN_TYPE_STDIN:
 
-					/* Do we need to adjust any properties of stdin? */
+				/* Do we need to adjust any properties of stdin? */
 
-					//adev[a].inbuf_size_in_bytes = 1024;
+				// adev[a].inbuf_size_in_bytes = 1024;
 
-					break;
+				break;
 
-				default:
+			default:
 
-					
-					printf ("Internal error, invalid audio_in_type\n");
-					return (-1);
+				printf("Internal error, invalid audio_in_type\n");
+				return (-1);
 			}
 
 			/*
 			 * Finally allocate buffer for each direction.
 			 */
 
-	                /* Version 1.3 - Add sanity check on buffer size. */
-	                /* There was a reported case of assert failure on buffer size in audio_get(). */
+			/* Version 1.3 - Add sanity check on buffer size. */
+			/* There was a reported case of assert failure on buffer size in audio_get(). */
 
-	                if (adev[a].inbuf_size_in_bytes < 256 || adev[a].inbuf_size_in_bytes > 32768) {
-	                  
-	                  printf ("Audio input buffer has unexpected extreme size of %d bytes.\n", adev[a].inbuf_size_in_bytes);
-	                  printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
-	                  printf ("This might be caused by unusual audio device configuration values.\n"); 
-	                  adev[a].inbuf_size_in_bytes = 2048;
-	                  printf ("Using %d to attempt recovery.\n", adev[a].inbuf_size_in_bytes);
-	                }
+			if (adev[a].inbuf_size_in_bytes < 256 || adev[a].inbuf_size_in_bytes > 32768)
+			{
 
-	                if (adev[a].outbuf_size_in_bytes < 256 || adev[a].outbuf_size_in_bytes > 32768) {
-	                  
-	                  printf ("Audio output buffer has unexpected extreme size of %d bytes.\n", adev[a].outbuf_size_in_bytes);
-	                  printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
-	                  printf ("This might be caused by unusual audio device configuration values.\n"); 
-	                  adev[a].outbuf_size_in_bytes = 2048;
-	                  printf ("Using %d to attempt recovery.\n", adev[a].outbuf_size_in_bytes);
-	                }
+				printf("Audio input buffer has unexpected extreme size of %d bytes.\n", adev[a].inbuf_size_in_bytes);
+				printf("Detected at %s, line %d.\n", __FILE__, __LINE__);
+				printf("This might be caused by unusual audio device configuration values.\n");
+				adev[a].inbuf_size_in_bytes = 2048;
+				printf("Using %d to attempt recovery.\n", adev[a].inbuf_size_in_bytes);
+			}
+
+			if (adev[a].outbuf_size_in_bytes < 256 || adev[a].outbuf_size_in_bytes > 32768)
+			{
+
+				printf("Audio output buffer has unexpected extreme size of %d bytes.\n", adev[a].outbuf_size_in_bytes);
+				printf("Detected at %s, line %d.\n", __FILE__, __LINE__);
+				printf("This might be caused by unusual audio device configuration values.\n");
+				adev[a].outbuf_size_in_bytes = 2048;
+				printf("Using %d to attempt recovery.\n", adev[a].outbuf_size_in_bytes);
+			}
 
 			adev[a].inbuf_ptr = malloc(adev[a].inbuf_size_in_bytes);
-			assert (adev[a].inbuf_ptr != NULL);
+			assert(adev[a].inbuf_ptr != NULL);
 			adev[a].inbuf_len = 0;
 			adev[a].inbuf_next = 0;
 			memset(adev[a].inbuf_ptr, clear_value, adev[a].inbuf_size_in_bytes);
 
 			adev[a].outbuf_ptr = malloc(adev[a].outbuf_size_in_bytes);
-			assert (adev[a].outbuf_ptr != NULL);
+			assert(adev[a].outbuf_ptr != NULL);
 			adev[a].outbuf_len = 0;
 			adev[a].outbuf_next = 0;
 			memset(adev[a].outbuf_ptr, clear_value, adev[a].outbuf_size_in_bytes);
 
-			if(adev[a].inStream) {
+			if (adev[a].inStream)
+			{
 				err = Pa_StartStream(adev[a].inStream);
-				if(err != paNoError) {
-					printf ("Input stream start Error %s\n", Pa_GetErrorText(err));
+				if (err != paNoError)
+				{
+					printf("Input stream start Error %s\n", Pa_GetErrorText(err));
 				}
 			}
 
-			if(adev[a].outStream) {
+			if (adev[a].outStream)
+			{
 				err = Pa_StartStream(adev[a].outStream);
-				if(err != paNoError) {
-					printf ("Output stream start Error %s\n", Pa_GetErrorText(err));
+				if (err != paNoError)
+				{
+					printf("Output stream start Error %s\n", Pa_GetErrorText(err));
 				}
 			}
 		} /* end of audio device defined */
-	} /* end of for each audio device */
+	}	  /* end of for each audio device */
 
 	return (0);
 
 } /* end audio_open */
-
 
 /*
  * Set parameters for sound card.
  *
  * See  ??  for details.
  */
-static int set_portaudio_params (int a, struct adev_s *dev, struct audio_s *pa, char *_audio_in_name, char *_audio_out_name)
+static int set_portaudio_params(int a, struct adev_s *dev, struct audio_s *pa, char *_audio_in_name, char *_audio_out_name)
 {
-	int numDevices  = 0;
+	int numDevices = 0;
 	int err = 0;
 	int buffer_size = 0;
 	int sampleFormat = 0;
 	int no_of_bytes_per_sample = 0;
-	int reqInDeviceNo  = 0;
+	int reqInDeviceNo = 0;
 	int reqOutDeviceNo = 0;
 	char input_devName[80];
 	char output_devName[80];
 
-	
-
-	if(!dev || !pa || !_audio_in_name || !_audio_out_name) {
-		printf ("Internal error, invalid function parameter pointer(s) (null)\n");
+	if (!dev || !pa || !_audio_in_name || !_audio_out_name)
+	{
+		printf("Internal error, invalid function parameter pointer(s) (null)\n");
 		return -1;
 	}
 
-	if(_audio_in_name[0] == 0) {
-		printf ("Input device name null\n");
+	if (_audio_in_name[0] == 0)
+	{
+		printf("Input device name null\n");
 		return -1;
 	}
 
-	if(_audio_out_name[0] == 0) {
-		printf ("Output device name null\n");
+	if (_audio_out_name[0] == 0)
+	{
+		printf("Output device name null\n");
 		return -1;
 	}
 
 	numDevices = Pa_GetDeviceCount();
-	if( numDevices < 0 ) {
-		printf( "ERROR: Pa_GetDeviceCount returned 0x%x\n", numDevices );
+	if (numDevices < 0)
+	{
+		printf("ERROR: Pa_GetDeviceCount returned 0x%x\n", numDevices);
 		return -1;
 	}
 
 	err = pa_devNN(_audio_in_name, input_devName, sizeof(input_devName), &reqInDeviceNo);
-	if(err < 0)	return -1;
+	if (err < 0)
+		return -1;
 
 	reqInDeviceNo = searchPADevice(dev, input_devName, reqInDeviceNo, PA_INPUT);
-	if(reqInDeviceNo < 0) {
-		printf ("Requested Input Audio Device not found %s.\n", input_devName);
+	if (reqInDeviceNo < 0)
+	{
+		printf("Requested Input Audio Device not found %s.\n", input_devName);
 		return -1;
 	}
 
 	err = pa_devNN(_audio_out_name, output_devName, sizeof(output_devName), &reqOutDeviceNo);
-	if(err < 0)	return -1;
+	if (err < 0)
+		return -1;
 
 	reqOutDeviceNo = searchPADevice(dev, output_devName, reqOutDeviceNo, PA_OUTPUT);
-	if(reqOutDeviceNo < 0) {
-		printf ("Requested Output Audio Device not found %s.\n", output_devName);
+	if (reqOutDeviceNo < 0)
+	{
+		printf("Requested Output Audio Device not found %s.\n", output_devName);
 		return -1;
 	}
 
-	dev->pa_input_device_number  = reqInDeviceNo;
+	dev->pa_input_device_number = reqInDeviceNo;
 	dev->pa_output_device_number = reqOutDeviceNo;
 
-	switch(pa->adev[a].bits_per_sample) {
-		case 8:
-			sampleFormat = paInt8;
-			no_of_bytes_per_sample = sizeof(int8_t);
-			assert("int8_t size not equal to 1" && sizeof(int8_t) == 1);
-			break;
+	switch (pa->adev[a].bits_per_sample)
+	{
+	case 8:
+		sampleFormat = paInt8;
+		no_of_bytes_per_sample = sizeof(int8_t);
+		assert("int8_t size not equal to 1" && sizeof(int8_t) == 1);
+		break;
 
-		case 16:
-			sampleFormat = paInt16;
-			no_of_bytes_per_sample = sizeof(int16_t);
-			assert("int16_t size not equal to 2" && sizeof(int16_t) == 2);
-			break;
+	case 16:
+		sampleFormat = paInt16;
+		no_of_bytes_per_sample = sizeof(int16_t);
+		assert("int16_t size not equal to 2" && sizeof(int16_t) == 2);
+		break;
 
-		default:
-			printf ("Unsupported Sample Size %s.\n", output_devName);
-			return -1;
+	default:
+		printf("Unsupported Sample Size %s.\n", output_devName);
+		return -1;
 	}
-
 
 	buffer_size = calcbufsize(pa->adev[a].samples_per_sec, pa->adev[a].num_channels, pa->adev[a].bits_per_sample);
 
-	dev->inbuf_size_in_bytes     = buffer_size;
-	dev->inbuf_bytes_per_frame   = no_of_bytes_per_sample * pa->adev[a].num_channels;
-	dev->inbuf_frames_per_buffer = dev->inbuf_size_in_bytes  / dev->inbuf_bytes_per_frame;
+	dev->inbuf_size_in_bytes = buffer_size;
+	dev->inbuf_bytes_per_frame = no_of_bytes_per_sample * pa->adev[a].num_channels;
+	dev->inbuf_frames_per_buffer = dev->inbuf_size_in_bytes / dev->inbuf_bytes_per_frame;
 
-	dev->inputParameters.device       = dev->pa_input_device_number;
+	dev->inputParameters.device = dev->pa_input_device_number;
 	dev->inputParameters.channelCount = pa->adev[a].num_channels;
 	dev->inputParameters.sampleFormat = sampleFormat;
 	dev->inputParameters.suggestedLatency = Pa_GetDeviceInfo(dev->inputParameters.device)->defaultLowInputLatency;
 	dev->inputParameters.hostApiSpecificStreamInfo = NULL;
 
-	dev->outbuf_size_in_bytes     = buffer_size;
-	dev->outbuf_bytes_per_frame   = no_of_bytes_per_sample * pa->adev[a].num_channels;
+	dev->outbuf_size_in_bytes = buffer_size;
+	dev->outbuf_bytes_per_frame = no_of_bytes_per_sample * pa->adev[a].num_channels;
 	dev->outbuf_frames_per_buffer = dev->outbuf_size_in_bytes / dev->outbuf_bytes_per_frame;
 
-	dev->outputParameters.device       = dev->pa_output_device_number;
+	dev->outputParameters.device = dev->pa_output_device_number;
 	dev->outputParameters.channelCount = pa->adev[a].num_channels;
 	dev->outputParameters.sampleFormat = sampleFormat;
 	dev->outputParameters.suggestedLatency = Pa_GetDeviceInfo(dev->outputParameters.device)->defaultHighOutputLatency;
 	dev->outputParameters.hostApiSpecificStreamInfo = NULL;
 
 	err = check_pa_configure(dev, pa->adev[a].samples_per_sec);
-	if(err) {
-		if(err == paInvalidSampleRate)
+	if (err)
+	{
+		if (err == paInvalidSampleRate)
 			list_supported_sample_rates(dev);
 		return -1;
 	}
 
-	err = Pa_OpenStream(&dev->inStream,	&dev->inputParameters, NULL,
-						pa->adev[a].samples_per_sec, dev->inbuf_frames_per_buffer, 0, paInput16CB, dev );
+	err = Pa_OpenStream(&dev->inStream, &dev->inputParameters, NULL,
+						pa->adev[a].samples_per_sec, dev->inbuf_frames_per_buffer, 0, paInput16CB, dev);
 
-	if( err != paNoError ) {
-		printf( "PortAudio OpenStream (input) Error: %s\n", Pa_GetErrorText(err));
+	if (err != paNoError)
+	{
+		printf("PortAudio OpenStream (input) Error: %s\n", Pa_GetErrorText(err));
 		return -1;
 	}
 
 	err = Pa_OpenStream(&dev->outStream, NULL, &dev->outputParameters,
 						// pa->adev[a].samples_per_sec, framesPerBuffer, 0, paOutput16CB, dev );
-						pa->adev[a].samples_per_sec, dev->outbuf_frames_per_buffer, 0, NULL, dev );
+						pa->adev[a].samples_per_sec, dev->outbuf_frames_per_buffer, 0, NULL, dev);
 
-	if( err != paNoError ) {
-		printf( "PortAudio OpenStream (output) Error: %s\n", Pa_GetErrorText(err));
+	if (err != paNoError)
+	{
+		printf("PortAudio OpenStream (output) Error: %s\n", Pa_GetErrorText(err));
 		return -1;
 	}
 
-	dev->input_finished  = paContinue;
+	dev->input_finished = paContinue;
 	dev->output_finished = paContinue;
 
 	return buffer_size;
 }
-
 
 /*------------------------------------------------------------------
  *
@@ -935,183 +1010,187 @@ static int set_portaudio_params (int a, struct adev_s *dev, struct audio_s *pa, 
 
 // Use hot attribute for all functions called for every audio sample.
 
-__attribute__((hot))
-int audio_get (int a)
+__attribute__((hot)) int audio_get(int a)
 {
 	int n;
 	int retries = 0;
 
-
 #if DEBUGx
-	
 
-	printf ("audio_get():\n");
+	printf("audio_get():\n");
 
 #endif
 
-	assert (adev[a].inbuf_size_in_bytes >= 100 && adev[a].inbuf_size_in_bytes <= 32768);
+	assert(adev[a].inbuf_size_in_bytes >= 100 && adev[a].inbuf_size_in_bytes <= 32768);
 
-	switch (adev[a].g_audio_in_type) {
+	switch (adev[a].g_audio_in_type)
+	{
 
-			/*
-			 * Soundcard - PortAudio
-			 */
-		case AUDIO_IN_TYPE_SOUNDCARD:
+		/*
+		 * Soundcard - PortAudio
+		 */
+	case AUDIO_IN_TYPE_SOUNDCARD:
 
-			while (adev[a].inbuf_next >= adev[a].inbuf_len) {
+		while (adev[a].inbuf_next >= adev[a].inbuf_len)
+		{
 
-				assert (adev[a].inStream != NULL);
+			assert(adev[a].inStream != NULL);
 #if DEBUGx
-				
-				printf ("audio_get(): readi asking for %d frames\n", adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);
+
+			printf("audio_get(): readi asking for %d frames\n", adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame);
 #endif
-				if(adev[a].inbuf_len >= adev[a].inbuf_size_in_bytes) {
-					adev[a].inbuf_len = 0;
-					adev[a].inbuf_next = 0;
-				}
-
-				pthread_mutex_lock(&adev[a].input_mutex);
-				pthread_cond_wait(&adev[a].input_cond, &adev[a].input_mutex);
-				pthread_mutex_unlock(&adev[a].input_mutex);
-
-				n = adev[a].inbuf_len / adev[a].inbuf_bytes_per_frame;
-#if DEBUGx
-				
-				printf ("audio_get(): readi asked for %d and got %d frames\n",
-						   adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame, n);
-#endif
-
-
-				if (n > 0) {
-
-					/* Success */
-
-					adev[a].inbuf_len = n * adev[a].inbuf_bytes_per_frame;		/* convert to number of bytes */
-					adev[a].inbuf_next = 0;
-
-	        			audio_stats (a, 
-						save_audio_config_p->adev[a].num_channels, 
-						n, 
-						save_audio_config_p->statistics_interval);
-
-				}
-				else if (n == 0) {
-
-					/* Didn't expect this, but it's not a problem. */
-					/* Wait a little while and try again. */
-
-					
-					printf ("[%s], Audio input got zero bytes\n", __func__);
-					SLEEP_MS(10);
-
-					adev[a].inbuf_len = 0;
-					adev[a].inbuf_next = 0;
-				}
-				else {
-					/* Error */
-					// TODO: Needs more study and testing.
-
-					// TODO: print n.  should snd_strerror use n or errno?
-					// Audio input device error: Unknown error
-
-					
-					printf ("Audio input device %d error\n", a);
-
-	        			audio_stats (a, 
-						save_audio_config_p->adev[a].num_channels, 
-						0, 
-						save_audio_config_p->statistics_interval);
-
-					/* Try to recover a few times and eventually give up. */
-					if (++retries > 10) {
-						adev[a].inbuf_len = 0;
-						adev[a].inbuf_next = 0;
-						return (-1);
-					}
-
-					if (n == -EPIPE) {
-
-						/* EPIPE means overrun */
-
-						//snd_pcm_recover (adev[a].audio_in_handle, n, 1);
-
-					}
-					else {
-						/* Could be some temporary condition. */
-						/* Wait a little then try again. */
-						/* Sometimes I get "Resource temporarily available" */
-						/* when the Update Manager decides to run. */
-
-						SLEEP_MS (250);
-						//snd_pcm_recover (adev[a].audio_in_handle, n, 1);
-					}
-				}
+			if (adev[a].inbuf_len >= adev[a].inbuf_size_in_bytes)
+			{
+				adev[a].inbuf_len = 0;
+				adev[a].inbuf_next = 0;
 			}
 
-			break;
+			pthread_mutex_lock(&adev[a].input_mutex);
+			pthread_cond_wait(&adev[a].input_cond, &adev[a].input_mutex);
+			pthread_mutex_unlock(&adev[a].input_mutex);
 
-			/*
-			 * UDP.
-			 */
+			n = adev[a].inbuf_len / adev[a].inbuf_bytes_per_frame;
+#if DEBUGx
 
-		case AUDIO_IN_TYPE_SDR_UDP:
+			printf("audio_get(): readi asked for %d and got %d frames\n",
+				   adev[a].inbuf_size_in_bytes / adev[a].bytes_per_frame, n);
+#endif
 
-			while (adev[a].inbuf_next >= adev[a].inbuf_len) {
-				int res;
+			if (n > 0)
+			{
 
-				assert (adev[a].udp_sock > 0);
-				res = recv(adev[a].udp_sock, adev[a].inbuf_ptr, adev[a].inbuf_size_in_bytes, 0);
-				if (res < 0) {
-					
-					printf ("Can't read from udp socket, res=%d", res);
+				/* Success */
+
+				adev[a].inbuf_len = n * adev[a].inbuf_bytes_per_frame; /* convert to number of bytes */
+				adev[a].inbuf_next = 0;
+
+				audio_stats(a,
+							save_audio_config_p->adev[a].num_channels,
+							n,
+							save_audio_config_p->statistics_interval);
+			}
+			else if (n == 0)
+			{
+
+				/* Didn't expect this, but it's not a problem. */
+				/* Wait a little while and try again. */
+
+				printf("[%s], Audio input got zero bytes\n", __func__);
+				SLEEP_MS(10);
+
+				adev[a].inbuf_len = 0;
+				adev[a].inbuf_next = 0;
+			}
+			else
+			{
+				/* Error */
+				// TODO: Needs more study and testing.
+
+				// TODO: print n.  should snd_strerror use n or errno?
+				// Audio input device error: Unknown error
+
+				printf("Audio input device %d error\n", a);
+
+				audio_stats(a,
+							save_audio_config_p->adev[a].num_channels,
+							0,
+							save_audio_config_p->statistics_interval);
+
+				/* Try to recover a few times and eventually give up. */
+				if (++retries > 10)
+				{
 					adev[a].inbuf_len = 0;
 					adev[a].inbuf_next = 0;
-
-	        			audio_stats (a, 
-						save_audio_config_p->adev[a].num_channels, 
-						0, 
-						save_audio_config_p->statistics_interval);
-
 					return (-1);
 				}
 
-				adev[a].inbuf_len = res;
-				adev[a].inbuf_next = 0;
+				if (n == -EPIPE)
+				{
 
-	      			audio_stats (a, 
-					save_audio_config_p->adev[a].num_channels, 
-					res / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8), 
-					save_audio_config_p->statistics_interval);
-			}
-			break;
+					/* EPIPE means overrun */
 
-			/*
-			 * stdin.
-			 */
-		case AUDIO_IN_TYPE_STDIN:
-
-			while (adev[a].inbuf_next >= adev[a].inbuf_len) {
-				int res;
-
-				res = read(STDIN_FILENO, adev[a].inbuf_ptr, (size_t)adev[a].inbuf_size_in_bytes);
-				if (res <= 0) {
-					
-					printf ("\nEnd of file on stdin.  Exiting.\n");
-					exit (0);
+					// snd_pcm_recover (adev[a].audio_in_handle, n, 1);
 				}
+				else
+				{
+					/* Could be some temporary condition. */
+					/* Wait a little then try again. */
+					/* Sometimes I get "Resource temporarily available" */
+					/* when the Update Manager decides to run. */
 
-	      			audio_stats (a, 
-					save_audio_config_p->adev[a].num_channels, 
-					res / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8), 
-					save_audio_config_p->statistics_interval);
+					SLEEP_MS(250);
+					// snd_pcm_recover (adev[a].audio_in_handle, n, 1);
+				}
+			}
+		}
 
-				adev[a].inbuf_len = res;
+		break;
+
+		/*
+		 * UDP.
+		 */
+
+	case AUDIO_IN_TYPE_SDR_UDP:
+
+		while (adev[a].inbuf_next >= adev[a].inbuf_len)
+		{
+			int res;
+
+			assert(adev[a].udp_sock > 0);
+			res = recv(adev[a].udp_sock, adev[a].inbuf_ptr, adev[a].inbuf_size_in_bytes, 0);
+			if (res < 0)
+			{
+
+				printf("Can't read from udp socket, res=%d", res);
+				adev[a].inbuf_len = 0;
 				adev[a].inbuf_next = 0;
+
+				audio_stats(a,
+							save_audio_config_p->adev[a].num_channels,
+							0,
+							save_audio_config_p->statistics_interval);
+
+				return (-1);
 			}
 
-			break;
-	}
+			adev[a].inbuf_len = res;
+			adev[a].inbuf_next = 0;
 
+			audio_stats(a,
+						save_audio_config_p->adev[a].num_channels,
+						res / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8),
+						save_audio_config_p->statistics_interval);
+		}
+		break;
+
+		/*
+		 * stdin.
+		 */
+	case AUDIO_IN_TYPE_STDIN:
+
+		while (adev[a].inbuf_next >= adev[a].inbuf_len)
+		{
+			int res;
+
+			res = read(STDIN_FILENO, adev[a].inbuf_ptr, (size_t)adev[a].inbuf_size_in_bytes);
+			if (res <= 0)
+			{
+
+				printf("\nEnd of file on stdin.  Exiting.\n");
+				exit(0);
+			}
+
+			audio_stats(a,
+						save_audio_config_p->adev[a].num_channels,
+						res / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8),
+						save_audio_config_p->statistics_interval);
+
+			adev[a].inbuf_len = res;
+			adev[a].inbuf_next = 0;
+		}
+
+		break;
+	}
 
 	if (adev[a].inbuf_next < adev[a].inbuf_len)
 		n = adev[a].inbuf_ptr[adev[a].inbuf_next++];
@@ -1120,16 +1199,13 @@ int audio_get (int a)
 
 #if DEBUGx
 
-	
-	printf ("audio_get(): returns %d\n", n);
+	printf("audio_get(): returns %d\n", n);
 
 #endif
-
 
 	return (n);
 
 } /* end audio_get */
-
 
 /*------------------------------------------------------------------
  *
@@ -1151,30 +1227,33 @@ int audio_get (int a)
  *		audio_wait
  *
  *----------------------------------------------------------------*/
-int audio_put (int a, int c)
+int audio_put(int a, int c)
 {
 	int err = 0;
 	size_t frames = 0;
 
-	//#define __TIMED__
+	// #define __TIMED__
 #ifdef __TIMED__
 	static int count = 0;
 	static double start = 0, end = 0, diff = 0;
 
-	if(adev[a].outbuf_len == 0)
+	if (adev[a].outbuf_len == 0)
 		start = dtime_monotonic();
 #endif
 
-	if(c >= 0) {
+	if (c >= 0)
+	{
 		adev[a].outbuf_ptr[adev[a].outbuf_len++] = c;
 	}
 
-	if ((adev[a].outbuf_len >= adev[a].outbuf_size_in_bytes) || (c < 0)) {
+	if ((adev[a].outbuf_len >= adev[a].outbuf_size_in_bytes) || (c < 0))
+	{
 
 		frames = adev[a].outbuf_len / adev[a].outbuf_bytes_per_frame;
 
-		if(frames > 0) {
-			err =  Pa_WriteStream(adev[a].outStream, adev[a].outbuf_ptr, frames);
+		if (frames > 0)
+		{
+			err = Pa_WriteStream(adev[a].outStream, adev[a].outbuf_ptr, frames);
 		}
 
 		// Getting underflow error for some reason on the first pass. Upon examination of the
@@ -1183,23 +1262,25 @@ int audio_put (int a, int c)
 		// sample rate (44100/2 bytes per frame). For now, mask the error.
 		// Transfer Time:0.184750080 No of Frames:56264 Per frame:0.000003284 speed:6.905695
 
-		if ((err != paNoError) && (err != paOutputUnderflowed)) {
-			
-			printf ("[%s] Audio Output Error: %s\n", __func__, Pa_GetErrorText(err));
+		if ((err != paNoError) && (err != paOutputUnderflowed))
+		{
+
+			printf("[%s] Audio Output Error: %s\n", __func__, Pa_GetErrorText(err));
 		}
 
 #ifdef __TIMED__
 		count += frames;
-		if(c < 0) { // When the Ax25 frames are flushed.
+		if (c < 0)
+		{ // When the Ax25 frames are flushed.
 			end = dtime_monotonic();
 			diff = end - start;
-			if(count)
-				printf ("Transfer Time:%3.9f No of Frames:%d Per frame:%3.9f speed:%f\n",
-						   diff, count, diff/(count * 1.0), (1.0/44100.0)/(diff/(count * 1.0)));
+			if (count)
+				printf("Transfer Time:%3.9f No of Frames:%d Per frame:%3.9f speed:%f\n",
+					   diff, count, diff / (count * 1.0), (1.0 / 44100.0) / (diff / (count * 1.0)));
 			count = 0;
 		}
 #endif
-		adev[a].outbuf_len  = 0;
+		adev[a].outbuf_len = 0;
 		adev[a].outbuf_next = 0;
 	}
 
@@ -1220,12 +1301,11 @@ int audio_put (int a, int c)
  *
  *----------------------------------------------------------------*/
 
-int audio_flush (int a)
+int audio_flush(int a)
 {
 	audio_put(a, -1);
 	return 0;
 } /* end audio_flush */
-
 
 /*------------------------------------------------------------------
  *
@@ -1263,16 +1343,15 @@ int audio_flush (int a)
  *
  *----------------------------------------------------------------*/
 
-void audio_wait (int a)
+void audio_wait(int a)
 {
 	audio_flush(a);
-	
+
 #if DEBUG
-	
-	printf ("audio_wait(): after sync, status=%d\n", err);
+
+	printf("audio_wait(): after sync, status=%d\n", err);
 #endif
 } /* end audio_wait */
-
 
 /*------------------------------------------------------------------
  *
@@ -1286,51 +1365,55 @@ void audio_wait (int a)
  *
  *----------------------------------------------------------------*/
 
-int audio_close (void)
+int audio_close(void)
 {
 	int err = 0;
 	int a;
-	
-	for (a = 0; a < MAX_ADEVS; a++) {
-		if(adev[a].g_audio_in_type == AUDIO_IN_TYPE_SOUNDCARD) {
-			
-			audio_wait (a);
-			
-			if (adev[a].inStream != NULL) {
+
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
+		if (adev[a].g_audio_in_type == AUDIO_IN_TYPE_SOUNDCARD)
+		{
+
+			audio_wait(a);
+
+			if (adev[a].inStream != NULL)
+			{
 				pthread_mutex_destroy(&adev[a].input_mutex);
 				pthread_cond_destroy(&adev[a].input_cond);
-				err |= (int) Pa_CloseStream(adev[a].inStream);
+				err |= (int)Pa_CloseStream(adev[a].inStream);
 			}
-			
-			if(adev[a].outStream != NULL) {
+
+			if (adev[a].outStream != NULL)
+			{
 				pthread_mutex_destroy(&adev[a].output_mutex);
 				pthread_cond_destroy(&adev[a].output_cond);
-				err |= (int) Pa_CloseStream(adev[a].outStream);
+				err |= (int)Pa_CloseStream(adev[a].outStream);
 			}
-			
-			err |= (int) Pa_Terminate();
+
+			err |= (int)Pa_Terminate();
 		}
-		
-		if(adev[a].inbuf_ptr)
-			free (adev[a].inbuf_ptr);
-		
-		if(adev[a].outbuf_ptr)
-			free (adev[a].outbuf_ptr);
-		
+
+		if (adev[a].inbuf_ptr)
+			free(adev[a].inbuf_ptr);
+
+		if (adev[a].outbuf_ptr)
+			free(adev[a].outbuf_ptr);
+
 		adev[a].inbuf_size_in_bytes = 0;
-		adev[a].inbuf_ptr  = NULL;
-		adev[a].inbuf_len  = 0;
+		adev[a].inbuf_ptr = NULL;
+		adev[a].inbuf_len = 0;
 		adev[a].inbuf_next = 0;
-		
+
 		adev[a].outbuf_size_in_bytes = 0;
-		adev[a].outbuf_ptr  = NULL;
-		adev[a].outbuf_len  = 0;
+		adev[a].outbuf_ptr = NULL;
+		adev[a].outbuf_len = 0;
 		adev[a].outbuf_next = 0;
 	}
-	
-	if(err < 0)
+
+	if (err < 0)
 		err = -1;
-	
+
 	return (err);
 
 } /* end audio_close */

@@ -25,29 +25,28 @@
 //	Author: Jim McGuire KB3MPL
 //	Date: 	23 October 2007
 //
-// This program is a single-file implementation of the FX.25 encapsulation 
-// structure for use with AX.25 data packets.  Details of the FX.25 
+// This program is a single-file implementation of the FX.25 encapsulation
+// structure for use with AX.25 data packets.  Details of the FX.25
 // specification are available at:
 //     http://www.stensat.org/Docs/Docs.htm
 //
 // This program implements a single RS(255,239) FEC structure.  Future
 // releases will incorporate more capabilities as accommodated in the FX.25
-// spec.  
+// spec.
 //
 // The Reed Solomon encoding routines are based on work performed by
 // Phil Karn.  Phil was kind enough to release his code under the GPL, as
 // noted below.  Consequently, this FX.25 implementation is also released
-// under the terms of the GPL.  
+// under the terms of the GPL.
 //
 // Phil Karn's original copyright notice:
-  /* Test the Reed-Solomon codecs
-   * for various block sizes and with random data and random error patterns
-   *
-   * Copyright 2002 Phil Karn, KA9Q
-   * May be used under the terms of the GNU General Public License (GPL)
-   *
-   */
-                
+/* Test the Reed-Solomon codecs
+ * for various block sizes and with random data and random error patterns
+ *
+ * Copyright 2002 Phil Karn, KA9Q
+ * May be used under the terms of the GNU General Public License (GPL)
+ *
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,28 +55,28 @@
 
 #include "fx25.h"
 
-
-
-void ENCODE_RS(struct rs * restrict rs, DTYPE * restrict data, DTYPE * restrict bb)
+void ENCODE_RS(struct rs *restrict rs, DTYPE *restrict data, DTYPE *restrict bb)
 {
 
   int i, j;
   DTYPE feedback;
 
-  memset(bb,0,NROOTS*sizeof(DTYPE)); // clear out the FEC data area
+  memset(bb, 0, NROOTS * sizeof(DTYPE)); // clear out the FEC data area
 
-  for(i=0;i<NN-NROOTS;i++){
+  for (i = 0; i < NN - NROOTS; i++)
+  {
     feedback = INDEX_OF[data[i] ^ bb[0]];
-    if(feedback != A0){      /* feedback term is non-zero */
-      for(j=1;j<NROOTS;j++)
-	    bb[j] ^= ALPHA_TO[MODNN(feedback + GENPOLY[NROOTS-j])];
+    if (feedback != A0)
+    { /* feedback term is non-zero */
+      for (j = 1; j < NROOTS; j++)
+        bb[j] ^= ALPHA_TO[MODNN(feedback + GENPOLY[NROOTS - j])];
     }
     /* Shift */
-    memmove(&bb[0],&bb[1],sizeof(DTYPE)*(NROOTS-1));
-    if(feedback != A0)
-      bb[NROOTS-1] = ALPHA_TO[MODNN(feedback + GENPOLY[0])];
+    memmove(&bb[0], &bb[1], sizeof(DTYPE) * (NROOTS - 1));
+    if (feedback != A0)
+      bb[NROOTS - 1] = ALPHA_TO[MODNN(feedback + GENPOLY[0])];
     else
-      bb[NROOTS-1] = 0;
+      bb[NROOTS - 1] = 0;
   }
 }
 

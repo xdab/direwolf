@@ -17,8 +17,6 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-
-
 /********************************************************************************
  *
  * File:        fx25_rec.c
@@ -34,9 +32,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
-//#if __WIN32__
-//#include <fcntl.h>
-//#endif
+// #if __WIN32__
+// #include <fcntl.h>
+// #endif
 
 #include "fx25.h"
 
@@ -44,84 +42,93 @@
 #include "multi_modem.h"
 #include "demod.h"
 
-struct fx_context_s {
+struct fx_context_s
+{
 
-	enum { FX_TAG=0, FX_DATA, FX_CHECK } state;
-	uint64_t accum;		// Accumulate bits for matching to correlation tag.
-	int ctag_num;		// Correlation tag number, CTAG_MIN to CTAG_MAX if approx. match found.
-	int k_data_radio;	// Expected size of "data" sent over radio.
-	int coffs;		// Starting offset of the check part.
-	int nroots;		// Expected number of check bytes. 
-	int dlen;		// Accumulated length in "data" below.
-	int clen;		// Accumulated length in "check" below.
-	unsigned char imask;	// Mask for storing a bit.
-	unsigned char block[FX25_BLOCK_SIZE+1];
+	enum
+	{
+		FX_TAG = 0,
+		FX_DATA,
+		FX_CHECK
+	} state;
+	uint64_t accum;		 // Accumulate bits for matching to correlation tag.
+	int ctag_num;		 // Correlation tag number, CTAG_MIN to CTAG_MAX if approx. match found.
+	int k_data_radio;	 // Expected size of "data" sent over radio.
+	int coffs;			 // Starting offset of the check part.
+	int nroots;			 // Expected number of check bytes.
+	int dlen;			 // Accumulated length in "data" below.
+	int clen;			 // Accumulated length in "check" below.
+	unsigned char imask; // Mask for storing a bit.
+	unsigned char block[FX25_BLOCK_SIZE + 1];
 };
 
 static struct fx_context_s *fx_context[MAX_CHANS][MAX_SUBCHANS][MAX_SLICERS];
 
-static void process_rs_block (int chan, int subchan, int slice, struct fx_context_s *F);
+static void process_rs_block(int chan, int subchan, int slice, struct fx_context_s *F);
 
-static int my_unstuff (int chan, int subchan, int slice, unsigned char * restrict pin, int ilen, unsigned char * restrict frame_buf);
+static int my_unstuff(int chan, int subchan, int slice, unsigned char *restrict pin, int ilen, unsigned char *restrict frame_buf);
 
-//#define FXTEST 1	// Define for standalone test application.
-			// It expects to find files fx01.dat, fx02.dat, ..., fx0b.dat/
+// #define FXTEST 1	// Define for standalone test application.
+//  It expects to find files fx01.dat, fx02.dat, ..., fx0b.dat/
 
 #if FXTEST
 static int fx25_test_count = 0;
 
-int main ()
+int main()
 {
 	fx25_init(3);
 
-	for (int i = CTAG_MIN; i <= CTAG_MAX; i++) {
-	
-	  char fname[32];
-	  snprintf (fname, sizeof(fname), "fx%02x.dat", i);
-	  FILE *fp = fopen(fname, "rb");
-	  if (fp == NULL) {
-	    
-	    printf ("\n");
-	    printf ("****** Could not open %s ******\n", fname);
-	    printf ("****** Did you generate the test files first? ******\n");
-	    exit (EXIT_FAILURE);
-	  }
+	for (int i = CTAG_MIN; i <= CTAG_MAX; i++)
+	{
 
-//#if 0  // reminder for future if reading from stdin.
-//#if __WIN32__
-//	// So 0x1a byte does not signal EOF.
-//	_setmode(_fileno(stdin), _O_BINARY);
-//#endif
-//	fp = stdin;
-//#endif
-	  unsigned char ch;
-	  while (fread(&ch, 1, 1, fp) == 1) {
-	    for (unsigned char imask = 0x01; imask != 0; imask <<=1) {
-	      fx25_rec_bit (0, 0, 0, ch & imask);
-	    }
-	  }
-	  fclose (fp);
+		char fname[32];
+		snprintf(fname, sizeof(fname), "fx%02x.dat", i);
+		FILE *fp = fopen(fname, "rb");
+		if (fp == NULL)
+		{
+
+			printf("\n");
+			printf("****** Could not open %s ******\n", fname);
+			printf("****** Did you generate the test files first? ******\n");
+			exit(EXIT_FAILURE);
+		}
+
+		// #if 0  // reminder for future if reading from stdin.
+		// #if __WIN32__
+		//	// So 0x1a byte does not signal EOF.
+		//	_setmode(_fileno(stdin), _O_BINARY);
+		// #endif
+		//	fp = stdin;
+		// #endif
+		unsigned char ch;
+		while (fread(&ch, 1, 1, fp) == 1)
+		{
+			for (unsigned char imask = 0x01; imask != 0; imask <<= 1)
+			{
+				fx25_rec_bit(0, 0, 0, ch & imask);
+			}
+		}
+		fclose(fp);
 	}
 
-	if (fx25_test_count == 11) {
-	  
-	  printf ("\n");
-	  printf ("\n");
-	  printf ("\n");
-	  printf ("***** FX25 unit test Success - all tests passed. *****\n");
-	  exit (EXIT_SUCCESS);
+	if (fx25_test_count == 11)
+	{
+
+		printf("\n");
+		printf("\n");
+		printf("\n");
+		printf("***** FX25 unit test Success - all tests passed. *****\n");
+		exit(EXIT_SUCCESS);
 	}
-	
-	printf ("\n");
-	printf ("\n");
-	printf ("***** FX25 unit test FAILED.  Only %d/11 tests passed. *****\n", fx25_test_count);
-	exit (EXIT_SUCCESS);
 
-} // end main 
+	printf("\n");
+	printf("\n");
+	printf("***** FX25 unit test FAILED.  Only %d/11 tests passed. *****\n", fx25_test_count);
+	exit(EXIT_SUCCESS);
 
-#endif  // FXTEST
+} // end main
 
-
+#endif // FXTEST
 
 /***********************************************************************************
  *
@@ -147,88 +154,97 @@ int main ()
  *
  ***********************************************************************************/
 
-#define FENCE 0x55		// to detect buffer overflow.
+#define FENCE 0x55 // to detect buffer overflow.
 
-void fx25_rec_bit (int chan, int subchan, int slice, int dbit)
+void fx25_rec_bit(int chan, int subchan, int slice, int dbit)
 {
 
-// Allocate context blocks only as needed.
+	// Allocate context blocks only as needed.
 
 	struct fx_context_s *F = fx_context[chan][subchan][slice];
-	if (F == NULL) {
-          assert (chan >= 0 && chan < MAX_CHANS);
-          assert (subchan >= 0 && subchan < MAX_SUBCHANS);
-          assert (slice >= 0 && slice < MAX_SLICERS);
-	  F = fx_context[chan][subchan][slice] = (struct fx_context_s *)malloc(sizeof (struct fx_context_s));
-	  assert (F != NULL);
-	  memset (F, 0, sizeof(struct fx_context_s));
+	if (F == NULL)
+	{
+		assert(chan >= 0 && chan < MAX_CHANS);
+		assert(subchan >= 0 && subchan < MAX_SUBCHANS);
+		assert(slice >= 0 && slice < MAX_SLICERS);
+		F = fx_context[chan][subchan][slice] = (struct fx_context_s *)malloc(sizeof(struct fx_context_s));
+		assert(F != NULL);
+		memset(F, 0, sizeof(struct fx_context_s));
 	}
 
-// State machine to identify correlation tag then gather appropriate number of data and check bytes.
-	  
-	switch (F->state) {
-	  case FX_TAG:
-	    F->accum >>= 1;
-	    if (dbit) F->accum |= 1LL << 63;
-	    int c = fx25_tag_find_match (F->accum);
-	    if (c >= CTAG_MIN && c <= CTAG_MAX) {
-	      
-	      F->ctag_num = c;
-	      F->k_data_radio = fx25_get_k_data_radio (F->ctag_num);
-	      F->nroots = fx25_get_nroots (F->ctag_num);
-	      F->coffs = fx25_get_k_data_rs (F->ctag_num);
-	      assert (F->coffs == FX25_BLOCK_SIZE - F->nroots);
+	// State machine to identify correlation tag then gather appropriate number of data and check bytes.
 
-	      if (fx25_get_debug() >= 2) {
-	        
-	        printf ("FX.25[%d.%d]: Matched correlation tag 0x%02x with %d bit errors.  Expecting %d data & %d check bytes.\n",
-			chan, slice,	// ideally subchan too only if applicable
-			c,
-			__builtin_popcountll(F->accum ^ fx25_get_ctag_value(c)),
-			F->k_data_radio, F->nroots);
-	      }
+	switch (F->state)
+	{
+	case FX_TAG:
+		F->accum >>= 1;
+		if (dbit)
+			F->accum |= 1LL << 63;
+		int c = fx25_tag_find_match(F->accum);
+		if (c >= CTAG_MIN && c <= CTAG_MAX)
+		{
 
-	      F->imask = 0x01;
-	      F->dlen = 0;
-	      F->clen = 0;
-	      memset (F->block, 0, sizeof(F->block));
-	      F->block[FX25_BLOCK_SIZE] = FENCE;
-	      F->state = FX_DATA;
-	    }
-	    break;
+			F->ctag_num = c;
+			F->k_data_radio = fx25_get_k_data_radio(F->ctag_num);
+			F->nroots = fx25_get_nroots(F->ctag_num);
+			F->coffs = fx25_get_k_data_rs(F->ctag_num);
+			assert(F->coffs == FX25_BLOCK_SIZE - F->nroots);
 
-	  case FX_DATA:
-	    if (dbit) F->block[F->dlen] |= F->imask;
-	    F->imask <<= 1;
-	    if (F->imask == 0) {
-	      F->imask = 0x01;
-	      F->dlen++;
-	      if (F->dlen >= F->k_data_radio) {
-	         F->state = FX_CHECK;
-	      }
-	    }
-	    break;
+			if (fx25_get_debug() >= 2)
+			{
 
-	  case FX_CHECK:
-	    if (dbit) F->block[F->coffs + F->clen] |= F->imask;
-	    F->imask <<= 1;
-	    if (F->imask == 0) {
-	      F->imask = 0x01;
-	      F->clen++;
-	      if (F->clen >= F->nroots) {
+				printf("FX.25[%d.%d]: Matched correlation tag 0x%02x with %d bit errors.  Expecting %d data & %d check bytes.\n",
+					   chan, slice, // ideally subchan too only if applicable
+					   c,
+					   __builtin_popcountll(F->accum ^ fx25_get_ctag_value(c)),
+					   F->k_data_radio, F->nroots);
+			}
 
-	        process_rs_block (chan, subchan, slice, F);		// see below
+			F->imask = 0x01;
+			F->dlen = 0;
+			F->clen = 0;
+			memset(F->block, 0, sizeof(F->block));
+			F->block[FX25_BLOCK_SIZE] = FENCE;
+			F->state = FX_DATA;
+		}
+		break;
 
-	        F->ctag_num = -1;
-	        F->accum = 0;
-	        F->state = FX_TAG;
-	      }
-	    }
-	    break;
+	case FX_DATA:
+		if (dbit)
+			F->block[F->dlen] |= F->imask;
+		F->imask <<= 1;
+		if (F->imask == 0)
+		{
+			F->imask = 0x01;
+			F->dlen++;
+			if (F->dlen >= F->k_data_radio)
+			{
+				F->state = FX_CHECK;
+			}
+		}
+		break;
+
+	case FX_CHECK:
+		if (dbit)
+			F->block[F->coffs + F->clen] |= F->imask;
+		F->imask <<= 1;
+		if (F->imask == 0)
+		{
+			F->imask = 0x01;
+			F->clen++;
+			if (F->clen >= F->nroots)
+			{
+
+				process_rs_block(chan, subchan, slice, F); // see below
+
+				F->ctag_num = -1;
+				F->accum = 0;
+				F->state = FX_TAG;
+			}
+		}
+		break;
 	}
 }
-
-
 
 /***********************************************************************************
  *
@@ -247,33 +263,35 @@ void fx25_rec_bit (int chan, int subchan, int slice, int dbit)
  *		symbols) was fine because they all took about the same amount of time.
  *		Now, we can have an additional delay of up to 64 check bytes and
  *		some filler in the data portion.  We can't simply wait that long.
- *		With normal AX.25 a couple frames can come and go during that time.	
+ *		With normal AX.25 a couple frames can come and go during that time.
  *		We want to delay the duplicate removal while FX.25 block reception
  *		is going on.
  *
  ***********************************************************************************/
 
-int fx25_rec_busy (int chan)
+int fx25_rec_busy(int chan)
 {
-	assert (chan >= 0 && chan < MAX_CHANS);
+	assert(chan >= 0 && chan < MAX_CHANS);
 
 	// This could be a little faster if we knew number of
 	// subchannels and slicers but it is probably insignificant.
 
-	for (int i = 0; i < MAX_SUBCHANS; i++) {
-	  for (int j = 0; j < MAX_SLICERS; j++) {
-	    if (fx_context[chan][i][j] != NULL) {
-	      if (fx_context[chan][i][j]->state != FX_TAG) {
-	        return (1);
-	      }
-	    }
-	  }
+	for (int i = 0; i < MAX_SUBCHANS; i++)
+	{
+		for (int j = 0; j < MAX_SLICERS; j++)
+		{
+			if (fx_context[chan][i][j] != NULL)
+			{
+				if (fx_context[chan][i][j]->state != FX_TAG)
+				{
+					return (1);
+				}
+			}
+		}
 	}
 	return (0);
 
 } // end fx25_rec_busy
-
-
 
 /***********************************************************************************
  *
@@ -304,86 +322,98 @@ int fx25_rec_busy (int chan)
  *
  ***********************************************************************************/
 
-static void process_rs_block (int chan, int subchan, int slice, struct fx_context_s *F)
+static void process_rs_block(int chan, int subchan, int slice, struct fx_context_s *F)
 {
-	if (fx25_get_debug() >= 3) {
-	  
-	  printf ("FX.25[%d.%d]: Received RS codeblock.\n", chan, slice);
-	  fx_hex_dump (F->block, FX25_BLOCK_SIZE);
-	}
-	assert (F->block[FX25_BLOCK_SIZE] == FENCE);
+	if (fx25_get_debug() >= 3)
+	{
 
-	int derrlocs[FX25_MAX_CHECK];	// Half would probably be OK.
+		printf("FX.25[%d.%d]: Received RS codeblock.\n", chan, slice);
+		fx_hex_dump(F->block, FX25_BLOCK_SIZE);
+	}
+	assert(F->block[FX25_BLOCK_SIZE] == FENCE);
+
+	int derrlocs[FX25_MAX_CHECK]; // Half would probably be OK.
 	struct rs *rs = fx25_get_rs(F->ctag_num);
 
 	int derrors = DECODE_RS(rs, F->block, derrlocs, 0);
 
-	if (derrors >= 0) {		// -1 for failure.  >= 0 for success, number of bytes corrected.
+	if (derrors >= 0)
+	{ // -1 for failure.  >= 0 for success, number of bytes corrected.
 
-	  if (fx25_get_debug() >= 2) {
-	    
-	    if (derrors == 0) {
-	      printf ("FX.25[%d.%d]: FEC complete with no errors.\n", chan, slice);
-	    }
-	    else {
-	      printf ("FX.25[%d.%d]: FEC complete, fixed %2d errors in byte positions:", chan, slice, derrors);
-	      for (int k = 0; k < derrors; k++) {
-	        printf (" %d", derrlocs[k]);
-	      }
-	      printf ("\n");
-	    }
-	  }
+		if (fx25_get_debug() >= 2)
+		{
 
-	  unsigned char frame_buf[FX25_MAX_DATA+1];	// Out must be shorter than input.
-	  int frame_len = my_unstuff (chan, subchan, slice, F->block, F->dlen, frame_buf);
+			if (derrors == 0)
+			{
+				printf("FX.25[%d.%d]: FEC complete with no errors.\n", chan, slice);
+			}
+			else
+			{
+				printf("FX.25[%d.%d]: FEC complete, fixed %2d errors in byte positions:", chan, slice, derrors);
+				for (int k = 0; k < derrors; k++)
+				{
+					printf(" %d", derrlocs[k]);
+				}
+				printf("\n");
+			}
+		}
 
-	  if (frame_len >= 14 + 1 + 2) {		// Minimum length: Two addresses & control & FCS.
+		unsigned char frame_buf[FX25_MAX_DATA + 1]; // Out must be shorter than input.
+		int frame_len = my_unstuff(chan, subchan, slice, F->block, F->dlen, frame_buf);
 
-	    unsigned short actual_fcs = frame_buf[frame_len-2] | (frame_buf[frame_len-1] << 8);
-	    unsigned short expected_fcs = fcs_calc (frame_buf, frame_len - 2);
-	    if (actual_fcs == expected_fcs) {
+		if (frame_len >= 14 + 1 + 2)
+		{ // Minimum length: Two addresses & control & FCS.
 
-	      if (fx25_get_debug() >= 3) {
-	        
-	        printf ("FX.25[%d.%d]: Extracted AX.25 frame:\n", chan, slice);
-	        fx_hex_dump (frame_buf, frame_len);
-	      }
+			unsigned short actual_fcs = frame_buf[frame_len - 2] | (frame_buf[frame_len - 1] << 8);
+			unsigned short expected_fcs = fcs_calc(frame_buf, frame_len - 2);
+			if (actual_fcs == expected_fcs)
+			{
 
-#if FXTEST 
-	      fx25_test_count++;
+				if (fx25_get_debug() >= 3)
+				{
+
+					printf("FX.25[%d.%d]: Extracted AX.25 frame:\n", chan, slice);
+					fx_hex_dump(frame_buf, frame_len);
+				}
+
+#if FXTEST
+				fx25_test_count++;
 #else
-	      alevel_t alevel = demod_get_audio_level (chan, subchan);
+				alevel_t alevel = demod_get_audio_level(chan, subchan);
 
-	      multi_modem_process_rec_frame (chan, subchan, slice, frame_buf, frame_len - 2, alevel, derrors, 1);   /* len-2 to remove FCS. */
+				multi_modem_process_rec_frame(chan, subchan, slice, frame_buf, frame_len - 2, alevel, derrors, 1); /* len-2 to remove FCS. */
 
 #endif
-	    } else {
-	      // Most likely cause is defective sender software.
-	      
-	      printf ("FX.25[%d.%d]: Bad FCS for AX.25 frame.\n", chan, slice);
-	      fx_hex_dump (F->block, F->dlen);
-	      fx_hex_dump (frame_buf, frame_len);
-	    }
-	  }
-	  else {
-	    // Most likely cause is defective sender software.
-	    
-	    printf ("FX.25[%d.%d]: AX.25 frame is shorter than minimum length.\n", chan, slice);
-	    fx_hex_dump (F->block, F->dlen);
-	    fx_hex_dump (frame_buf, frame_len);
-	  }
+			}
+			else
+			{
+				// Most likely cause is defective sender software.
+
+				printf("FX.25[%d.%d]: Bad FCS for AX.25 frame.\n", chan, slice);
+				fx_hex_dump(F->block, F->dlen);
+				fx_hex_dump(frame_buf, frame_len);
+			}
+		}
+		else
+		{
+			// Most likely cause is defective sender software.
+
+			printf("FX.25[%d.%d]: AX.25 frame is shorter than minimum length.\n", chan, slice);
+			fx_hex_dump(F->block, F->dlen);
+			fx_hex_dump(frame_buf, frame_len);
+		}
 	}
-	else if (fx25_get_debug() >= 2) {
-	  
-	  printf ("FX.25[%d.%d]: FEC failed.  Too many errors.\n", chan, slice);
+	else if (fx25_get_debug() >= 2)
+	{
+
+		printf("FX.25[%d.%d]: FEC failed.  Too many errors.\n", chan, slice);
 	}
 
 } // process_rs_block
 
-
 /***********************************************************************************
  *
- * Name:	my_unstuff  
+ * Name:	my_unstuff
  *
  * Purpose:	Remove HDLC it stuffing and surrounding flag delimiters.
  *
@@ -411,72 +441,85 @@ static void process_rs_block (int chan, int subchan, int slice, struct fx_contex
  *
  ***********************************************************************************/
 
-static int my_unstuff (int chan, int subchan, int slice, unsigned char * restrict pin, int ilen, unsigned char * restrict frame_buf)
+static int my_unstuff(int chan, int subchan, int slice, unsigned char *restrict pin, int ilen, unsigned char *restrict frame_buf)
 {
-	unsigned char pat_det = 0;	// Pattern detector.
-	unsigned char oacc = 0;		// Accumulator for a byte out.
-	int olen = 0;			// Number of good bits in oacc.
-	int frame_len = 0;		// Number of bytes accumulated, including CRC.
-	
-	if (*pin != 0x7e) {
-	  
-	  printf ("FX.25[%d.%d] error: Data section did not start with 0x7e.\n", chan, slice);
-	  fx_hex_dump (pin, ilen);
-	  return (0);
+	unsigned char pat_det = 0; // Pattern detector.
+	unsigned char oacc = 0;	   // Accumulator for a byte out.
+	int olen = 0;			   // Number of good bits in oacc.
+	int frame_len = 0;		   // Number of bytes accumulated, including CRC.
+
+	if (*pin != 0x7e)
+	{
+
+		printf("FX.25[%d.%d] error: Data section did not start with 0x7e.\n", chan, slice);
+		fx_hex_dump(pin, ilen);
+		return (0);
 	}
-	while (ilen > 0 && *pin == 0x7e) {
-	  ilen--;
-	  pin++;	// Skip over leading flag byte(s).
+	while (ilen > 0 && *pin == 0x7e)
+	{
+		ilen--;
+		pin++; // Skip over leading flag byte(s).
 	}
- 
-	for (int i=0; i<ilen; pin++, i++) {
-	  for (unsigned char imask = 0x01; imask != 0; imask <<= 1) {
-	    unsigned char dbit = (*pin & imask) != 0;
 
-	    pat_det >>= 1;	// Shift the most recent eight bits thru the pattern detector.
-	    pat_det |= dbit << 7; 
+	for (int i = 0; i < ilen; pin++, i++)
+	{
+		for (unsigned char imask = 0x01; imask != 0; imask <<= 1)
+		{
+			unsigned char dbit = (*pin & imask) != 0;
 
-	    if (pat_det == 0xfe) {
-	      
-	      printf ("FX.25[%d.%d]: Invalid AX.25 frame - Seven '1' bits in a row.\n", chan, slice);
-	      fx_hex_dump (pin, ilen);
-	      return 0;
-	    }
+			pat_det >>= 1; // Shift the most recent eight bits thru the pattern detector.
+			pat_det |= dbit << 7;
 
-	    if (dbit) {
-	      oacc >>= 1;
-	      oacc |= 0x80;
-	    } else {
-	      if (pat_det == 0x7e) {	// "flag" pattern - End of frame.
-	        if (olen == 7) {
-	          return (frame_len);	// Whole number of bytes in result including CRC
+			if (pat_det == 0xfe)
+			{
+
+				printf("FX.25[%d.%d]: Invalid AX.25 frame - Seven '1' bits in a row.\n", chan, slice);
+				fx_hex_dump(pin, ilen);
+				return 0;
+			}
+
+			if (dbit)
+			{
+				oacc >>= 1;
+				oacc |= 0x80;
+			}
+			else
+			{
+				if (pat_det == 0x7e)
+				{ // "flag" pattern - End of frame.
+					if (olen == 7)
+					{
+						return (frame_len); // Whole number of bytes in result including CRC
+					}
+					else
+					{
+
+						printf("FX.25[%d.%d]: Invalid AX.25 frame - Not a whole number of bytes.\n", chan, slice);
+						fx_hex_dump(pin, ilen);
+						return (0);
+					}
+				}
+				else if ((pat_det >> 2) == 0x1f)
+				{
+					continue; // Five '1' bits in a row, followed by '0'.  Discard the '0'.
+				}
+				oacc >>= 1;
+			}
+
+			olen++;
+			if (olen & 8)
+			{
+				olen = 0;
+				frame_buf[frame_len++] = oacc;
+			}
 		}
-	        else {
-	          
-	          printf ("FX.25[%d.%d]: Invalid AX.25 frame - Not a whole number of bytes.\n", chan, slice);
-	          fx_hex_dump (pin, ilen);
-	          return (0);
-	        }
-	      } else if ( (pat_det >> 2) == 0x1f ) {
-	        continue;	// Five '1' bits in a row, followed by '0'.  Discard the '0'.
-	      }
-	      oacc >>= 1;
-	    }
+	} /* end of loop on all bits in block */
 
-	    olen++;
-	    if (olen & 8) {
-	      olen = 0;
-              frame_buf[frame_len++] = oacc;
-	    }
-	  }
-	}	/* end of loop on all bits in block */
+	printf("FX.25[%d.%d]: Invalid AX.25 frame - Terminating flag not found.\n", chan, slice);
+	fx_hex_dump(pin, ilen);
 
-	
-	printf ("FX.25[%d.%d]: Invalid AX.25 frame - Terminating flag not found.\n", chan, slice);
-	fx_hex_dump (pin, ilen);
+	return (0); // Should never fall off the end.
 
-	return (0);	// Should never fall off the end.
-
-}  // my_unstuff
+} // my_unstuff
 
 // end fx25_rec.c

@@ -18,13 +18,12 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-
 /*------------------------------------------------------------------
  *
  * Module:      audio_win.c
  *
  * Purpose:   	Interface to audio device commonly called a "sound card" for
- *		historical reasons.		
+ *		historical reasons.
  *
  *		This version uses the native Windows sound interface.
  *
@@ -38,10 +37,8 @@
  *
  *---------------------------------------------------------------*/
 
-
-#include "direwolf.h"		// Sets _WIN32_WINNT for XP API level needed by ws2tcpip.h
-				// Also includes windows.h.
-
+#include "direwolf.h" // Sets _WIN32_WINNT for XP API level needed by ws2tcpip.h
+// Also includes windows.h.
 
 #include <stdio.h>
 #include <unistd.h>
@@ -60,24 +57,20 @@
 #endif
 
 #include <winsock2.h>
-#include <ws2tcpip.h>  		// _WIN32_WINNT must be set to 0x0501 before including this
-
+#include <ws2tcpip.h> // _WIN32_WINNT must be set to 0x0501 before including this
 
 #include "audio.h"
 #include "audio_stats.h"
 #include "ptt.h"
-#include "demod.h"		/* for alevel_t & demod_get_audio_level() */
-
-
+#include "demod.h" /* for alevel_t & demod_get_audio_level() */
 
 /* Audio configuration. */
 
-static struct audio_s          *save_audio_config_p;
+static struct audio_s *save_audio_config_p;
 
-
-/* 
- * Allocate enough buffers for 1 second each direction. 
- * Each buffer size is a trade off between being responsive 
+/*
+ * Allocate enough buffers for 1 second each direction.
+ * Each buffer size is a trade off between being responsive
  * to activity on the channel vs. overhead of having too
  * many little transfers.
  */
@@ -89,87 +82,83 @@ static struct audio_s          *save_audio_config_p;
  * it was really about 50 mS per buffer or about 20 per second.
  * For stereo, the buffer size was rounded up from 7056 to 7k so
  * it was really about 43.7 mS per buffer or about 23 per second.
- * 
+ *
  * In version 1.2, let's try changing it to 10 to reduce the latency.
  * For mono, the buffer size was rounded up from 882 to 1k so it
  * was really about 12.5 mS per buffer or about 80 per second.
  */
 
-#define TOTAL_BUF_TIME 1000	
+#define TOTAL_BUF_TIME 1000
 #define ONE_BUF_TIME 10
-		
-#define NUM_IN_BUF ((TOTAL_BUF_TIME)/(ONE_BUF_TIME))
-#define NUM_OUT_BUF ((TOTAL_BUF_TIME)/(ONE_BUF_TIME))
 
+#define NUM_IN_BUF ((TOTAL_BUF_TIME) / (ONE_BUF_TIME))
+#define NUM_OUT_BUF ((TOTAL_BUF_TIME) / (ONE_BUF_TIME))
 
 #define roundup1k(n) (((n) + 0x3ff) & ~0x3ff)
 
 static int calcbufsize(int rate, int chans, int bits)
 {
-	int size1 = (rate * chans * bits  / 8 * ONE_BUF_TIME) / 1000;
+	int size1 = (rate * chans * bits / 8 * ONE_BUF_TIME) / 1000;
 	int size2 = roundup1k(size1);
 #if DEBUG
-	
-	printf ("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
-		rate, chans, bits, size1, size2);
+
+	printf("audio_open: calcbufsize (rate=%d, chans=%d, bits=%d) calc size=%d, round up to %d\n",
+		   rate, chans, bits, size1, size2);
 #endif
 
 	/* Version 1.3 - add a sanity check. */
-	if (size2 < 256 || size2 > 32768) {
-	  
-	  printf ("Audio buffer has unexpected extreme size of %d bytes.\n", size2);
-	  printf ("Detected at %s, line %d.\n", __FILE__, __LINE__);
-	  printf ("This might be caused by unusual audio device configuration values.\n"); 
-	  size2 = 2048;
-	  printf ("Using %d to attempt recovery.\n", size2);
+	if (size2 < 256 || size2 > 32768)
+	{
+
+		printf("Audio buffer has unexpected extreme size of %d bytes.\n", size2);
+		printf("Detected at %s, line %d.\n", __FILE__, __LINE__);
+		printf("This might be caused by unusual audio device configuration values.\n");
+		size2 = 2048;
+		printf("Using %d to attempt recovery.\n", size2);
 	}
 
 	return (size2);
 }
 
-
 /* Information for each audio stream (soundcard, stdin, or UDP) */
 
-static struct adev_s {
+static struct adev_s
+{
 
-	enum audio_in_type_e g_audio_in_type;	
+	enum audio_in_type_e g_audio_in_type;
 
-/*
- * UDP socket for receiving audio stream.
- * Buffer, length, and pointer for UDP or stdin.
- */
+	/*
+	 * UDP socket for receiving audio stream.
+	 * Buffer, length, and pointer for UDP or stdin.
+	 */
 
-	
 	SOCKET udp_sock;
 	char stream_data[SDR_UDP_BUF_MAXLEN];
 	int stream_len;
 	int stream_next;
 
+	/* For sound output. */
+	/* out_wavehdr.dwUser is used to keep track of output buffer state. */
 
-/* For sound output. */
-/* out_wavehdr.dwUser is used to keep track of output buffer state. */
-
-#define DWU_FILLING 1		/* Ready to use or in process of being filled. */
-#define DWU_PLAYING 2		/* Was given to sound system for playing. */
-#define DWU_DONE 3		/* Sound system is done with it. */
+#define DWU_FILLING 1 /* Ready to use or in process of being filled. */
+#define DWU_PLAYING 2 /* Was given to sound system for playing. */
+#define DWU_DONE 3	  /* Sound system is done with it. */
 
 	HWAVEOUT audio_out_handle;
 
 	volatile WAVEHDR out_wavehdr[NUM_OUT_BUF];
-	int out_current;		/* index to above. */
+	int out_current; /* index to above. */
 	int outbuf_size;
 
+	/* For sound input. */
+	/* In this case dwUser is index of next available byte to remove. */
 
-/* For sound input. */
-/* In this case dwUser is index of next available byte to remove. */
-
-	HWAVEIN  audio_in_handle;
+	HWAVEIN audio_in_handle;
 	WAVEHDR in_wavehdr[NUM_IN_BUF];
-	volatile WAVEHDR *in_headp;	/* head of queue to process. */
+	volatile WAVEHDR *in_headp; /* head of queue to process. */
 	CRITICAL_SECTION in_cs;
 
 } adev[MAX_ADEVS];
-
 
 /*------------------------------------------------------------------
  *
@@ -181,7 +170,7 @@ static struct adev_s {
  *		followed by a port number.
  *
  * Inputs:      pa		- Address of structure of type audio_s.
- *				
+ *
  *				Using a structure, rather than separate arguments
  *				seemed to make sense because we often pass around
  *				the same set of parameters various places.
@@ -194,14 +183,14 @@ static struct adev_s {
  *
  * Outputs:	pa		- The ACTUAL values are returned here.
  *
- *				The Linux version adjusts strange values to the 
+ *				The Linux version adjusts strange values to the
  *				nearest valid value.  Don't know, yet, if Windows
  *				does the same or just fails.  Or performs some
  *				expensive resampling from a rate supported by
  *				hardware.
  *
  *				These might not be exactly the same as what was requested.
- *					
+ *
  *				Example: ask for stereo, 16 bits, 22050 per second.
  *				An ordinary desktop/laptop PC should be able to handle this.
  *				However, some other sort of smaller device might be
@@ -211,7 +200,7 @@ static struct adev_s {
  *				The software modem must use this ACTUAL information
  *				that the device is supplying, that could be different
  *				than what the user specified.
- * 
+ *
  * Returns:     0 for success, -1 for failure.
  *
  * References:	Multimedia Reference
@@ -220,11 +209,10 @@ static struct adev_s {
  *
  *----------------------------------------------------------------*/
 
+static void CALLBACK in_callback(HWAVEIN handle, UINT msg, DWORD_PTR instance, DWORD_PTR param1, DWORD_PTR param2);
+static void CALLBACK out_callback(HWAVEOUT handle, UINT msg, DWORD_PTR instance, DWORD_PTR param1, DWORD_PTR param2);
 
-static void CALLBACK in_callback (HWAVEIN handle, UINT msg, DWORD_PTR instance, DWORD_PTR param1, DWORD_PTR param2);
-static void CALLBACK out_callback (HWAVEOUT handle, UINT msg, DWORD_PTR instance, DWORD_PTR param1, DWORD_PTR param2);
-
-int audio_open (struct audio_s *pa)
+int audio_open(struct audio_s *pa)
 {
 	int a;
 
@@ -234,225 +222,254 @@ int audio_open (struct audio_s *pa)
 	int in_dev_no[MAX_ADEVS];
 	int out_dev_no[MAX_ADEVS];
 
-
 	int num_devices;
 	WAVEINCAPS wic;
 	WAVEOUTCAPS woc;
 
 	save_audio_config_p = pa;
 
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
+		if (pa->adev[a].defined)
+		{
 
-    	for (a=0; a<MAX_ADEVS; a++) {
-      	  if (pa->adev[a].defined) {
+			struct adev_s *A = &(adev[a]);
 
-            struct adev_s *A = &(adev[a]);
+			assert(A->audio_in_handle == 0);
+			assert(A->audio_out_handle == 0);
 
-	    assert (A->audio_in_handle == 0);
-	    assert (A->audio_out_handle == 0);
+			//
+			// printf ("pa->adev[a].adevice_in = '%s'\n",  pa->adev[a].adevice_in);
+			// printf ("pa->adev[a].adevice_out = '%s'\n", pa->adev[a].adevice_out);
 
-	    //
-	    //printf ("pa->adev[a].adevice_in = '%s'\n",  pa->adev[a].adevice_in);
-	    //printf ("pa->adev[a].adevice_out = '%s'\n", pa->adev[a].adevice_out);
+			/*
+			 * Fill in defaults for any missing values.
+			 */
+			if (pa->adev[a].num_channels == 0)
+				pa->adev[a].num_channels = DEFAULT_NUM_CHANNELS;
 
+			if (pa->adev[a].samples_per_sec == 0)
+				pa->adev[a].samples_per_sec = DEFAULT_SAMPLES_PER_SEC;
 
-/*
- * Fill in defaults for any missing values.
- */
-	    if (pa -> adev[a].num_channels == 0)
-	      pa -> adev[a].num_channels = DEFAULT_NUM_CHANNELS;
+			if (pa->adev[a].bits_per_sample == 0)
+				pa->adev[a].bits_per_sample = DEFAULT_BITS_PER_SAMPLE;
 
-	    if (pa -> adev[a].samples_per_sec == 0)
-	      pa -> adev[a].samples_per_sec = DEFAULT_SAMPLES_PER_SEC;
+			A->g_audio_in_type = AUDIO_IN_TYPE_SOUNDCARD;
 
-	    if (pa -> adev[a].bits_per_sample == 0)
-	      pa -> adev[a].bits_per_sample = DEFAULT_BITS_PER_SAMPLE;
+			for (chan = 0; chan < MAX_CHANS; chan++)
+			{
+				if (pa->achan[chan].mark_freq == 0)
+					pa->achan[chan].mark_freq = DEFAULT_MARK_FREQ;
 
-	    A->g_audio_in_type = AUDIO_IN_TYPE_SOUNDCARD;
+				if (pa->achan[chan].space_freq == 0)
+					pa->achan[chan].space_freq = DEFAULT_SPACE_FREQ;
 
-	    for (chan=0; chan<MAX_CHANS; chan++) {
-	      if (pa -> achan[chan].mark_freq == 0)
-	        pa -> achan[chan].mark_freq = DEFAULT_MARK_FREQ;
+				if (pa->achan[chan].baud == 0)
+					pa->achan[chan].baud = DEFAULT_BAUD;
 
-	      if (pa -> achan[chan].space_freq == 0)
-	        pa -> achan[chan].space_freq = DEFAULT_SPACE_FREQ;
+				if (pa->achan[chan].num_subchan == 0)
+					pa->achan[chan].num_subchan = 1;
+			}
 
-	      if (pa -> achan[chan].baud == 0)
-	        pa -> achan[chan].baud = DEFAULT_BAUD;
+			A->udp_sock = INVALID_SOCKET;
 
-	      if (pa->achan[chan].num_subchan == 0)
-	        pa->achan[chan].num_subchan = 1;
-	    }
+			in_dev_no[a] = WAVE_MAPPER; /* = ((UINT)-1) in mmsystem.h */
+			out_dev_no[a] = WAVE_MAPPER;
 
+			/*
+			 * Determine the type of audio input and select device.
+			 * This can be soundcard, UDP stream, or stdin.
+			 */
 
-	    A->udp_sock = INVALID_SOCKET;
+			if (strcasecmp(pa->adev[a].adevice_in, "stdin") == 0 || strcmp(pa->adev[a].adevice_in, "-") == 0)
+			{
+				A->g_audio_in_type = AUDIO_IN_TYPE_STDIN;
+				/* Change - to stdin for readability. */
+				strlcpy(pa->adev[a].adevice_in, "stdin", sizeof(pa->adev[a].adevice_in));
+			}
+			else if (strncasecmp(pa->adev[a].adevice_in, "udp:", 4) == 0)
+			{
+				A->g_audio_in_type = AUDIO_IN_TYPE_SDR_UDP;
+				/* Supply default port if none specified. */
+				if (strcasecmp(pa->adev[a].adevice_in, "udp") == 0 ||
+					strcasecmp(pa->adev[a].adevice_in, "udp:") == 0)
+				{
+					snprintf(pa->adev[a].adevice_in, sizeof(pa->adev[a].adevice_in), "udp:%d", DEFAULT_UDP_AUDIO_PORT);
+				}
+			}
+			else
+			{
+				A->g_audio_in_type = AUDIO_IN_TYPE_SOUNDCARD;
 
-	    in_dev_no[a] = WAVE_MAPPER;	/* = ((UINT)-1) in mmsystem.h */
-	    out_dev_no[a] = WAVE_MAPPER;
+				/* Does config file have a number?  */
+				/* If so, it is an index into list of devices. */
+				/* Originally only a single digit was recognized.  */
+				/* v 1.5 also recognizes two digits.  (Issue 116) */
 
-/*
- * Determine the type of audio input and select device.
- * This can be soundcard, UDP stream, or stdin.
- */
-	
-	    if (strcasecmp(pa->adev[a].adevice_in, "stdin") == 0 || strcmp(pa->adev[a].adevice_in, "-") == 0) {
-	      A->g_audio_in_type = AUDIO_IN_TYPE_STDIN;
-	      /* Change - to stdin for readability. */
-	      strlcpy (pa->adev[a].adevice_in, "stdin", sizeof(pa->adev[a].adevice_in));
-	    }
-	    else if (strncasecmp(pa->adev[a].adevice_in, "udp:", 4) == 0) {
-	      A->g_audio_in_type = AUDIO_IN_TYPE_SDR_UDP;
-	      /* Supply default port if none specified. */
-	      if (strcasecmp(pa->adev[a].adevice_in,"udp") == 0 ||
-	        strcasecmp(pa->adev[a].adevice_in,"udp:") == 0) {
-	        snprintf (pa->adev[a].adevice_in, sizeof(pa->adev[a].adevice_in), "udp:%d", DEFAULT_UDP_AUDIO_PORT);
-	      }
-	    } 
-	    else {
-	      A->g_audio_in_type = AUDIO_IN_TYPE_SOUNDCARD; 	
+				if (strlen(pa->adev[a].adevice_in) == 1 && isdigit(pa->adev[a].adevice_in[0]))
+				{
+					in_dev_no[a] = atoi(pa->adev[a].adevice_in);
+				}
+				else if (strlen(pa->adev[a].adevice_in) == 2 && isdigit(pa->adev[a].adevice_in[0]) && isdigit(pa->adev[a].adevice_in[1]))
+				{
+					in_dev_no[a] = atoi(pa->adev[a].adevice_in);
+				}
 
-	      /* Does config file have a number?  */
-	      /* If so, it is an index into list of devices. */
-	      /* Originally only a single digit was recognized.  */
-	      /* v 1.5 also recognizes two digits.  (Issue 116) */
+				/* Otherwise, does it have search string? */
 
-	      if (strlen(pa->adev[a].adevice_in) == 1 && isdigit(pa->adev[a].adevice_in[0])) {
-	        in_dev_no[a] = atoi(pa->adev[a].adevice_in);
-	      }
-	      else if (strlen(pa->adev[a].adevice_in) == 2 && isdigit(pa->adev[a].adevice_in[0]) && isdigit(pa->adev[a].adevice_in[1])) {
-	        in_dev_no[a] = atoi(pa->adev[a].adevice_in);
-	      }
+				if ((UINT)(in_dev_no[a]) == WAVE_MAPPER && strlen(pa->adev[a].adevice_in) >= 1)
+				{
+					num_devices = waveInGetNumDevs();
+					for (n = 0; n < num_devices && (UINT)(in_dev_no[a]) == WAVE_MAPPER; n++)
+					{
+						if (!waveInGetDevCaps(n, &wic, sizeof(WAVEINCAPS)))
+						{
+							if (strstr(wic.szPname, pa->adev[a].adevice_in) != NULL)
+							{
+								in_dev_no[a] = n;
+							}
+						}
+					}
+					if ((UINT)(in_dev_no[a]) == WAVE_MAPPER)
+					{
 
-	      /* Otherwise, does it have search string? */
+						printf("\"%s\" doesn't match any of the input devices.\n", pa->adev[a].adevice_in);
+					}
+				}
+			}
 
-	      if ((UINT)(in_dev_no[a]) == WAVE_MAPPER && strlen(pa->adev[a].adevice_in) >= 1) {
-	        num_devices = waveInGetNumDevs();
-	        for (n=0 ; n<num_devices && (UINT)(in_dev_no[a]) == WAVE_MAPPER ; n++) {
-	          if ( ! waveInGetDevCaps(n, &wic, sizeof(WAVEINCAPS))) {
-	            if (strstr(wic.szPname, pa->adev[a].adevice_in) != NULL) {
-	              in_dev_no[a] = n;
-	            }
-	          }
-	        }
-	        if ((UINT)(in_dev_no[a]) == WAVE_MAPPER) {
-	          
-	          printf ("\"%s\" doesn't match any of the input devices.\n", pa->adev[a].adevice_in);
-	        }
-	      }
- 	    }
+			/*
+			 * Select output device.
+			 * Only soundcard at this point.
+			 * Purhaps we'd like to add UDP for an SDR transmitter.
+			 */
+			if (strlen(pa->adev[a].adevice_out) == 1 && isdigit(pa->adev[a].adevice_out[0]))
+			{
+				out_dev_no[a] = atoi(pa->adev[a].adevice_out);
+			}
+			else if (strlen(pa->adev[a].adevice_out) == 2 && isdigit(pa->adev[a].adevice_out[0]) && isdigit(pa->adev[a].adevice_out[1]))
+			{
+				out_dev_no[a] = atoi(pa->adev[a].adevice_out);
+			}
 
-/*
- * Select output device.
- * Only soundcard at this point.
- * Purhaps we'd like to add UDP for an SDR transmitter.
- */
-	    if (strlen(pa->adev[a].adevice_out) == 1 && isdigit(pa->adev[a].adevice_out[0])) {
-	      out_dev_no[a] = atoi(pa->adev[a].adevice_out);
-	    }
-	    else if (strlen(pa->adev[a].adevice_out) == 2 && isdigit(pa->adev[a].adevice_out[0]) && isdigit(pa->adev[a].adevice_out[1])) {
-	      out_dev_no[a] = atoi(pa->adev[a].adevice_out);
-	    }
+			if ((UINT)(out_dev_no[a]) == WAVE_MAPPER && strlen(pa->adev[a].adevice_out) >= 1)
+			{
+				num_devices = waveOutGetNumDevs();
+				for (n = 0; n < num_devices && (UINT)(out_dev_no[a]) == WAVE_MAPPER; n++)
+				{
+					if (!waveOutGetDevCaps(n, &woc, sizeof(WAVEOUTCAPS)))
+					{
+						if (strstr(woc.szPname, pa->adev[a].adevice_out) != NULL)
+						{
+							out_dev_no[a] = n;
+						}
+					}
+				}
+				if ((UINT)(out_dev_no[a]) == WAVE_MAPPER)
+				{
 
-	    if ((UINT)(out_dev_no[a]) == WAVE_MAPPER && strlen(pa->adev[a].adevice_out) >= 1) {
-	      num_devices = waveOutGetNumDevs();
-	      for (n=0 ; n<num_devices && (UINT)(out_dev_no[a]) == WAVE_MAPPER ; n++) {
-	        if ( ! waveOutGetDevCaps(n, &woc, sizeof(WAVEOUTCAPS))) {
-	          if (strstr(woc.szPname, pa->adev[a].adevice_out) != NULL) {
-	            out_dev_no[a] = n;
-	          }
-	        }
-	      }
-	      if ((UINT)(out_dev_no[a]) == WAVE_MAPPER) {
-	        
-	        printf ("\"%s\" doesn't match any of the output devices.\n", pa->adev[a].adevice_out);
-	      }
-	    }
-	  }   /* if defined */
-	}    /* for each device */
+					printf("\"%s\" doesn't match any of the output devices.\n", pa->adev[a].adevice_out);
+				}
+			}
+		} /* if defined */
+	}	  /* for each device */
 
+	/*
+	 * Display the input devices (soundcards) available and what is selected.
+	 */
 
-/*
- * Display the input devices (soundcards) available and what is selected.
- */
-
-	
-	printf ("Available audio input devices for receive (*=selected):\n");
+	printf("Available audio input devices for receive (*=selected):\n");
 
 	num_devices = waveInGetNumDevs();
 
-        for (a=0; a<MAX_ADEVS; a++) {
-          if (pa->adev[a].defined) {
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
+		if (pa->adev[a].defined)
+		{
 
-	    if (in_dev_no[a] < -1 || in_dev_no[a] >= num_devices) {
-	      
-	      printf ("Invalid input (receive) audio device number %d.\n", in_dev_no[a]);
-	      in_dev_no[a] = WAVE_MAPPER;
-	    }
-	  }
-        }
+			if (in_dev_no[a] < -1 || in_dev_no[a] >= num_devices)
+			{
 
-	
-	for (n=0; n<num_devices; n++) {
+				printf("Invalid input (receive) audio device number %d.\n", in_dev_no[a]);
+				in_dev_no[a] = WAVE_MAPPER;
+			}
+		}
+	}
 
-	  if ( ! waveInGetDevCaps(n, &wic, sizeof(WAVEINCAPS))) {
-	    for (a=0; a<MAX_ADEVS; a++) {
-	      if (pa->adev[a].defined) {
-	        printf (" %c", n==in_dev_no[a] ? '*' : ' ');
+	for (n = 0; n < num_devices; n++)
+	{
 
-	      }
-	    }
-	    printf ("  %d: %s", n, wic.szPname);
+		if (!waveInGetDevCaps(n, &wic, sizeof(WAVEINCAPS)))
+		{
+			for (a = 0; a < MAX_ADEVS; a++)
+			{
+				if (pa->adev[a].defined)
+				{
+					printf(" %c", n == in_dev_no[a] ? '*' : ' ');
+				}
+			}
+			printf("  %d: %s", n, wic.szPname);
 
-	    for (a=0; a<MAX_ADEVS; a++) {
-	      if (pa->adev[a].defined && n==in_dev_no[a]) {
-	        if (pa->adev[a].num_channels == 2) {
-	          printf ("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
-	        }
-	        else {
-	          printf ("   (channel %d)", ADEVFIRSTCHAN(a));
-	        }
-	      }
-	    }
-	    printf ("\n");
- 	  }
-    	}
+			for (a = 0; a < MAX_ADEVS; a++)
+			{
+				if (pa->adev[a].defined && n == in_dev_no[a])
+				{
+					if (pa->adev[a].num_channels == 2)
+					{
+						printf("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a) + 1);
+					}
+					else
+					{
+						printf("   (channel %d)", ADEVFIRSTCHAN(a));
+					}
+				}
+			}
+			printf("\n");
+		}
+	}
 
-// Add UDP or stdin to end of device list if used.
+	// Add UDP or stdin to end of device list if used.
 
-    	for (a=0; a<MAX_ADEVS; a++) {
-      	  if (pa->adev[a].defined) {
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
+		if (pa->adev[a].defined)
+		{
 
-            struct adev_s *A = &(adev[a]);
+			struct adev_s *A = &(adev[a]);
 
-	    /* Display stdin or udp:port if appropriate. */   
+			/* Display stdin or udp:port if appropriate. */
 
-	    if (A->g_audio_in_type != AUDIO_IN_TYPE_SOUNDCARD) {
+			if (A->g_audio_in_type != AUDIO_IN_TYPE_SOUNDCARD)
+			{
 
-	      int aaa;
-	      for (aaa=0; aaa<MAX_ADEVS; aaa++) {
-	        if (pa->adev[aaa].defined) {
-	          printf (" %c", a == aaa ? '*' : ' ');
+				int aaa;
+				for (aaa = 0; aaa < MAX_ADEVS; aaa++)
+				{
+					if (pa->adev[aaa].defined)
+					{
+						printf(" %c", a == aaa ? '*' : ' ');
+					}
+				}
+				printf("  %s                             ", pa->adev[a].adevice_in); /* should be UDP:nnnn or stdin */
 
-	        }
-	      }
-	      printf ("  %s                             ", pa->adev[a].adevice_in);	/* should be UDP:nnnn or stdin */
+				if (pa->adev[a].num_channels == 2)
+				{
+					printf("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a) + 1);
+				}
+				else
+				{
+					printf("   (channel %d)", ADEVFIRSTCHAN(a));
+				}
+				printf("\n");
+			}
+		}
+	}
 
-	      if (pa->adev[a].num_channels == 2) {
-	        printf ("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
-	      }
-	      else {
-	        printf ("   (channel %d)", ADEVFIRSTCHAN(a));
-	      }
-	      printf ("\n");
-	    }
-      	  }
-     	}
+	/*
+	 * Display the output devices (soundcards) available and what is selected.
+	 */
 
-
-/*
- * Display the output devices (soundcards) available and what is selected.
- */
-
-	printf ("Available audio output devices for transmit (*=selected):\n");
+	printf("Available audio output devices for transmit (*=selected):\n");
 
 	/* TODO? */
 	/* No "*" is currently displayed when using the default device. */
@@ -461,264 +478,280 @@ int audio_open (struct audio_s *pa)
 
 	num_devices = waveOutGetNumDevs();
 
-        for (a=0; a<MAX_ADEVS; a++) {
-          if (pa->adev[a].defined) {
-	    if (out_dev_no[a] < -1 || out_dev_no[a] >= num_devices) {
-	      
-	      printf ("Invalid output (transmit) audio device number %d.\n", out_dev_no[a]);
-	      out_dev_no[a] = WAVE_MAPPER;
-	    }
-	  }
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
+		if (pa->adev[a].defined)
+		{
+			if (out_dev_no[a] < -1 || out_dev_no[a] >= num_devices)
+			{
+
+				printf("Invalid output (transmit) audio device number %d.\n", out_dev_no[a]);
+				out_dev_no[a] = WAVE_MAPPER;
+			}
+		}
 	}
 
-	
-	for (n=0; n<num_devices; n++) {
+	for (n = 0; n < num_devices; n++)
+	{
 
-	  if ( ! waveOutGetDevCaps(n, &woc, sizeof(WAVEOUTCAPS))) {
-	    for (a=0; a<MAX_ADEVS; a++) {
-	      if (pa->adev[a].defined) {
-	        printf (" %c", n==out_dev_no[a] ? '*' : ' ');
+		if (!waveOutGetDevCaps(n, &woc, sizeof(WAVEOUTCAPS)))
+		{
+			for (a = 0; a < MAX_ADEVS; a++)
+			{
+				if (pa->adev[a].defined)
+				{
+					printf(" %c", n == out_dev_no[a] ? '*' : ' ');
+				}
+			}
+			printf("  %d: %s", n, woc.szPname);
 
-	      }
-	    }
-	    printf ("  %d: %s", n, woc.szPname);
-
-	    for (a=0; a<MAX_ADEVS; a++) {
-	      if (pa->adev[a].defined && n==out_dev_no[a]) {
-	        if (pa->adev[a].num_channels == 2) {
-	          printf ("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a)+1);
-	        }
-	        else {
-	          printf ("   (channel %d)", ADEVFIRSTCHAN(a));
-	        }
-	      }
-	    }
-	    printf ("\n");
-	  }
+			for (a = 0; a < MAX_ADEVS; a++)
+			{
+				if (pa->adev[a].defined && n == out_dev_no[a])
+				{
+					if (pa->adev[a].num_channels == 2)
+					{
+						printf("   (channels %d & %d)", ADEVFIRSTCHAN(a), ADEVFIRSTCHAN(a) + 1);
+					}
+					else
+					{
+						printf("   (channel %d)", ADEVFIRSTCHAN(a));
+					}
+				}
+			}
+			printf("\n");
+		}
 	}
 
+	/*
+	 * Open for each audio device input/output pair.
+	 */
 
-/*
- * Open for each audio device input/output pair.
- */
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
+		if (pa->adev[a].defined)
+		{
 
-     	for (a=0; a<MAX_ADEVS; a++) {
-      	  if (pa->adev[a].defined) {
+			struct adev_s *A = &(adev[a]);
 
-            struct adev_s *A = &(adev[a]);
+			WAVEFORMATEX wf;
 
-	     WAVEFORMATEX wf;
+			wf.wFormatTag = WAVE_FORMAT_PCM;
+			wf.nChannels = pa->adev[a].num_channels;
+			wf.nSamplesPerSec = pa->adev[a].samples_per_sec;
+			wf.wBitsPerSample = pa->adev[a].bits_per_sample;
+			wf.nBlockAlign = (wf.wBitsPerSample / 8) * wf.nChannels;
+			wf.nAvgBytesPerSec = wf.nBlockAlign * wf.nSamplesPerSec;
+			wf.cbSize = 0;
 
-	     wf.wFormatTag = WAVE_FORMAT_PCM;
-	     wf.nChannels = pa -> adev[a].num_channels; 
-	     wf.nSamplesPerSec = pa -> adev[a].samples_per_sec;
-	     wf.wBitsPerSample = pa -> adev[a].bits_per_sample;
-	     wf.nBlockAlign = (wf.wBitsPerSample / 8) * wf.nChannels;
-	     wf.nAvgBytesPerSec = wf.nBlockAlign * wf.nSamplesPerSec;
-	     wf.cbSize = 0;
+			A->outbuf_size = calcbufsize(wf.nSamplesPerSec, wf.nChannels, wf.wBitsPerSample);
 
-	     A->outbuf_size = calcbufsize(wf.nSamplesPerSec,wf.nChannels,wf.wBitsPerSample);
+			/*
+			 * Open the audio output device.
+			 * Soundcard is only possibility at this time.
+			 */
 
+			err = waveOutOpen(&(A->audio_out_handle), out_dev_no[a], &wf, (DWORD_PTR)out_callback, a, CALLBACK_FUNCTION);
+			if (err != MMSYSERR_NOERROR)
+			{
 
-/*
- * Open the audio output device.
- * Soundcard is only possibility at this time.
- */
+				printf("Could not open audio device for output.\n");
+				return (-1);
+			}
 
-	     err = waveOutOpen (&(A->audio_out_handle), out_dev_no[a], &wf, (DWORD_PTR)out_callback, a, CALLBACK_FUNCTION);
-	     if (err != MMSYSERR_NOERROR) {
-	       
-	       printf ("Could not open audio device for output.\n");
-	       return (-1);
-	     }
-	  
+			/*
+			 * Set up the output buffers.
+			 * We use dwUser to indicate it is available for filling.
+			 */
 
-/*
- * Set up the output buffers.
- * We use dwUser to indicate it is available for filling.
- */
+			memset((void *)(A->out_wavehdr), 0, sizeof(A->out_wavehdr));
 
-	     memset ((void*)(A->out_wavehdr), 0, sizeof(A->out_wavehdr));
+			for (n = 0; n < NUM_OUT_BUF; n++)
+			{
+				A->out_wavehdr[n].lpData = malloc(A->outbuf_size);
+				A->out_wavehdr[n].dwUser = DWU_FILLING;
+				A->out_wavehdr[n].dwBufferLength = 0;
+			}
+			A->out_current = 0;
 
-	     for (n = 0; n < NUM_OUT_BUF; n++) {
-	       A->out_wavehdr[n].lpData = malloc(A->outbuf_size);
-	       A->out_wavehdr[n].dwUser = DWU_FILLING;	
-	       A->out_wavehdr[n].dwBufferLength = 0;
-	     }
-	     A->out_current = 0;			
+			/*
+			 * Open audio input device.
+			 * More possibilities here:  soundcard, UDP port, stdin.
+			 */
 
-	
-/*
- * Open audio input device.
- * More possibilities here:  soundcard, UDP port, stdin.
- */
+			switch (A->g_audio_in_type)
+			{
 
-	     switch (A->g_audio_in_type) {
+				/*
+				 * Soundcard.
+				 */
+			case AUDIO_IN_TYPE_SOUNDCARD:
 
-/*
- * Soundcard.
- */
-	       case AUDIO_IN_TYPE_SOUNDCARD:
+				// Use InitializeCriticalSectionAndSpinCount to avoid exceptions in low memory situations?
 
-		 // Use InitializeCriticalSectionAndSpinCount to avoid exceptions in low memory situations?
+				InitializeCriticalSection(&(A->in_cs));
 
-	         InitializeCriticalSection (&(A->in_cs));
+				err = waveInOpen(&(A->audio_in_handle), in_dev_no[a], &wf, (DWORD_PTR)in_callback, a, CALLBACK_FUNCTION);
+				if (err != MMSYSERR_NOERROR)
+				{
 
-	         err = waveInOpen (&(A->audio_in_handle), in_dev_no[a], &wf, (DWORD_PTR)in_callback, a, CALLBACK_FUNCTION);
-	         if (err != MMSYSERR_NOERROR) {
-	           
-	           printf ("Could not open audio device for input.\n");
-	           return (-1);
-	         }	  
+					printf("Could not open audio device for input.\n");
+					return (-1);
+				}
 
+				/*
+				 * Set up the input buffers.
+				 */
 
-	         /*
-	          * Set up the input buffers.
-	          */
+				memset((void *)(A->in_wavehdr), 0, sizeof(A->in_wavehdr));
 
-	         memset ((void*)(A->in_wavehdr), 0, sizeof(A->in_wavehdr));
+				for (n = 0; n < NUM_OUT_BUF; n++)
+				{
+					A->in_wavehdr[n].dwBufferLength = A->outbuf_size; /* all the same size */
+					A->in_wavehdr[n].lpData = malloc(A->outbuf_size);
+				}
+				A->in_headp = NULL;
 
-	         for (n = 0; n < NUM_OUT_BUF; n++) {
-	           A->in_wavehdr[n].dwBufferLength = A->outbuf_size;  /* all the same size */
-	           A->in_wavehdr[n].lpData = malloc(A->outbuf_size);
-	         }
-	         A->in_headp = NULL;			
+				/*
+				 * Give them to the sound input system.
+				 */
 
-	         /*
-	          * Give them to the sound input system.
-	          */
-	
-	         for (n = 0; n < NUM_OUT_BUF; n++) {
-	           waveInPrepareHeader(A->audio_in_handle, &(A->in_wavehdr[n]), sizeof(WAVEHDR));
-	           waveInAddBuffer(A->audio_in_handle, &(A->in_wavehdr[n]), sizeof(WAVEHDR));
-	         }
+				for (n = 0; n < NUM_OUT_BUF; n++)
+				{
+					waveInPrepareHeader(A->audio_in_handle, &(A->in_wavehdr[n]), sizeof(WAVEHDR));
+					waveInAddBuffer(A->audio_in_handle, &(A->in_wavehdr[n]), sizeof(WAVEHDR));
+				}
 
-	         /*
-	          * Start it up.
-	          * The callback function is called when one is filled.
-	          */
+				/*
+				 * Start it up.
+				 * The callback function is called when one is filled.
+				 */
 
-	         waveInStart (A->audio_in_handle);
-	         break;
+				waveInStart(A->audio_in_handle);
+				break;
 
-/*
- * UDP.
- */
-	       case AUDIO_IN_TYPE_SDR_UDP:
+				/*
+				 * UDP.
+				 */
+			case AUDIO_IN_TYPE_SDR_UDP:
 
-	         {
-	           WSADATA wsadata;
-	           struct sockaddr_in si_me;
-	           //int slen=sizeof(si_me);
-	           //int data_size = 0;
-	           int err;
+			{
+				WSADATA wsadata;
+				struct sockaddr_in si_me;
+				// int slen=sizeof(si_me);
+				// int data_size = 0;
+				int err;
 
-	           err = WSAStartup (MAKEWORD(2,2), &wsadata);
-	           if (err != 0) {
-	               
-	               printf("WSAStartup failed: %d\n", err);
-	               return (-1);
-	           }
+				err = WSAStartup(MAKEWORD(2, 2), &wsadata);
+				if (err != 0)
+				{
 
-	           if (LOBYTE(wsadata.wVersion) != 2 || HIBYTE(wsadata.wVersion) != 2) {
-	             
-                     printf("Could not find a usable version of Winsock.dll\n");
-                     WSACleanup();
-                     return (-1);
-	           }
+					printf("WSAStartup failed: %d\n", err);
+					return (-1);
+				}
 
-	           // Create UDP Socket
+				if (LOBYTE(wsadata.wVersion) != 2 || HIBYTE(wsadata.wVersion) != 2)
+				{
 
-	           A->udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	           if (A->udp_sock == INVALID_SOCKET) {
-	             
-	             printf ("Couldn't create socket, errno %d\n", WSAGetLastError());
-	             return -1;
-	           }
+					printf("Could not find a usable version of Winsock.dll\n");
+					WSACleanup();
+					return (-1);
+				}
 
-	           memset((char *) &si_me, 0, sizeof(si_me));
-	           si_me.sin_family = AF_INET;   
-	           si_me.sin_port = htons((short)atoi(pa->adev[a].adevice_in + 4));
-	           si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+				// Create UDP Socket
 
-	           // Bind to the socket
+				A->udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+				if (A->udp_sock == INVALID_SOCKET)
+				{
 
-	           if (bind(A->udp_sock, (SOCKADDR *) &si_me, sizeof(si_me)) != 0) {
-	             
-	             printf ("Couldn't bind socket, errno %d\n", WSAGetLastError());
-	             return -1;
-	           }
-	           A->stream_next= 0;
-	           A->stream_len = 0;
-	         }
+					printf("Couldn't create socket, errno %d\n", WSAGetLastError());
+					return -1;
+				}
 
-	         break;
+				memset((char *)&si_me, 0, sizeof(si_me));
+				si_me.sin_family = AF_INET;
+				si_me.sin_port = htons((short)atoi(pa->adev[a].adevice_in + 4));
+				si_me.sin_addr.s_addr = htonl(INADDR_ANY);
 
-/* 
- * stdin.
- */
-   	       case AUDIO_IN_TYPE_STDIN:
+				// Bind to the socket
 
-  	         setmode (STDIN_FILENO, _O_BINARY);
-	         A->stream_next= 0;
-	         A->stream_len = 0;
+				if (bind(A->udp_sock, (SOCKADDR *)&si_me, sizeof(si_me)) != 0)
+				{
 
-	         break;
+					printf("Couldn't bind socket, errno %d\n", WSAGetLastError());
+					return -1;
+				}
+				A->stream_next = 0;
+				A->stream_len = 0;
+			}
 
-	       default:
+			break;
 
-	         
-	         printf ("Internal error, invalid audio_in_type\n");
-	         return (-1);
-  	     }
+				/*
+				 * stdin.
+				 */
+			case AUDIO_IN_TYPE_STDIN:
 
-	  }
-    	}
+				setmode(STDIN_FILENO, _O_BINARY);
+				A->stream_next = 0;
+				A->stream_len = 0;
+
+				break;
+
+			default:
+
+				printf("Internal error, invalid audio_in_type\n");
+				return (-1);
+			}
+		}
+	}
 
 	return (0);
 
 } /* end audio_open */
 
-
-
 /*
  * Called when input audio block is ready.
  */
 
-static void CALLBACK in_callback (HWAVEIN handle, UINT msg, DWORD_PTR instance, DWORD_PTR param1, DWORD_PTR param2)
+static void CALLBACK in_callback(HWAVEIN handle, UINT msg, DWORD_PTR instance, DWORD_PTR param1, DWORD_PTR param2)
 {
 
-	//printf ("in_callback, handle = %p, msg = %d, instance = %I64d\n", handle, msg, instance);
+	// printf ("in_callback, handle = %p, msg = %d, instance = %I64d\n", handle, msg, instance);
 
 	int a = instance;
-	assert (a >= 0 && a < MAX_ADEVS);
+	assert(a >= 0 && a < MAX_ADEVS);
 	struct adev_s *A = &(adev[a]);
 
-	if (msg == WIM_DATA) {
-	
-	  WAVEHDR *p = (WAVEHDR*)param1;
-	  
-	  p->dwUser = 0x5a5a5a5a;	/* needs to be unprepared. */
-					/* dwUser can be 32 or 64 bit unsigned int. */
-	  p->lpNext = NULL;
+	if (msg == WIM_DATA)
+	{
 
-	  // printf ("dwBytesRecorded = %ld\n", p->dwBytesRecorded);
+		WAVEHDR *p = (WAVEHDR *)param1;
 
-	  EnterCriticalSection (&(A->in_cs));
+		p->dwUser = 0x5a5a5a5a; /* needs to be unprepared. */
+								/* dwUser can be 32 or 64 bit unsigned int. */
+		p->lpNext = NULL;
 
-	  if (A->in_headp == NULL) {
-	    A->in_headp = p;		/* first one in list */
-	  }
-	  else {
-	    WAVEHDR *last = (WAVEHDR*)(A->in_headp);
+		// printf ("dwBytesRecorded = %ld\n", p->dwBytesRecorded);
 
-	    while (last->lpNext != NULL) {
-	      last = last->lpNext;
-	    }
-	    last->lpNext = p;		/* append to last one */
-	  }
+		EnterCriticalSection(&(A->in_cs));
 
-	  LeaveCriticalSection (&(A->in_cs));
+		if (A->in_headp == NULL)
+		{
+			A->in_headp = p; /* first one in list */
+		}
+		else
+		{
+			WAVEHDR *last = (WAVEHDR *)(A->in_headp);
+
+			while (last->lpNext != NULL)
+			{
+				last = last->lpNext;
+			}
+			last->lpNext = p; /* append to last one */
+		}
+
+		LeaveCriticalSection(&(A->in_cs));
 	}
 }
 
@@ -727,18 +760,17 @@ static void CALLBACK in_callback (HWAVEIN handle, UINT msg, DWORD_PTR instance, 
  * is again available for us to fill.
  */
 
-
-static void CALLBACK out_callback (HWAVEOUT handle, UINT msg, DWORD_PTR instance, DWORD_PTR param1, DWORD_PTR param2)
+static void CALLBACK out_callback(HWAVEOUT handle, UINT msg, DWORD_PTR instance, DWORD_PTR param1, DWORD_PTR param2)
 {
-	if (msg == WOM_DONE) {   
+	if (msg == WOM_DONE)
+	{
 
-	  WAVEHDR *p = (WAVEHDR*)param1;
-	  
-	  p->dwBufferLength = 0;
-	  p->dwUser = DWU_DONE;
+		WAVEHDR *p = (WAVEHDR *)param1;
+
+		p->dwBufferLength = 0;
+		p->dwUser = DWU_DONE;
 	}
 }
-
 
 /*------------------------------------------------------------------
  *
@@ -761,155 +793,161 @@ static void CALLBACK out_callback (HWAVEOUT handle, UINT msg, DWORD_PTR instance
 
 // Use hot attribute for all functions called for every audio sample.
 
-__attribute__((hot))
-int audio_get (int a)
+__attribute__((hot)) int audio_get(int a)
 {
 	struct adev_s *A;
- 
+
 	WAVEHDR *p;
 	int n;
 	int sample;
 
-        A = &(adev[a]); 
+	A = &(adev[a]);
 
-	switch (A->g_audio_in_type) {
+	switch (A->g_audio_in_type)
+	{
 
-/*
- * Soundcard.
- */
-	  case AUDIO_IN_TYPE_SOUNDCARD:
+		/*
+		 * Soundcard.
+		 */
+	case AUDIO_IN_TYPE_SOUNDCARD:
 
-	    while (1) {
+		while (1)
+		{
 
-	      /*
-	       * Wait if nothing available.
-	       * Could use an event to wake up but this is adequate.
-	       */
-	      int timeout = 25;
+			/*
+			 * Wait if nothing available.
+			 * Could use an event to wake up but this is adequate.
+			 */
+			int timeout = 25;
 
-	      while (A->in_headp == NULL) {
-	        //SLEEP_MS (ONE_BUF_TIME / 5);
-	        SLEEP_MS (ONE_BUF_TIME);
-	        timeout--;
-	        if (timeout <= 0) {
-	          
+			while (A->in_headp == NULL)
+			{
+				// SLEEP_MS (ONE_BUF_TIME / 5);
+				SLEEP_MS(ONE_BUF_TIME);
+				timeout--;
+				if (timeout <= 0)
+				{
 
-// TODO1.2: Need more details.  Can we keep going?
+					// TODO1.2: Need more details.  Can we keep going?
 
-	          printf ("Timeout waiting for input from audio device %d.\n", a);
+					printf("Timeout waiting for input from audio device %d.\n", a);
 
-	          audio_stats (a, 
-			save_audio_config_p->adev[a].num_channels, 
-			0, 
-			save_audio_config_p->statistics_interval);
+					audio_stats(a,
+								save_audio_config_p->adev[a].num_channels,
+								0,
+								save_audio_config_p->statistics_interval);
 
-	          return (-1);
-	        }
-	      }
+					return (-1);
+				}
+			}
 
-	      p = (WAVEHDR*)(A->in_headp);		/* no need to be volatile at this point */
+			p = (WAVEHDR *)(A->in_headp); /* no need to be volatile at this point */
 
-	      if (p->dwUser == 0x5a5a5a5a) {		// dwUser can be 32 or bit unsigned.
-	        waveInUnprepareHeader(A->audio_in_handle, p, sizeof(WAVEHDR));
-	        p->dwUser = 0;	/* Index for next byte. */
+			if (p->dwUser == 0x5a5a5a5a)
+			{ // dwUser can be 32 or bit unsigned.
+				waveInUnprepareHeader(A->audio_in_handle, p, sizeof(WAVEHDR));
+				p->dwUser = 0; /* Index for next byte. */
 
-	        audio_stats (a, 
-			save_audio_config_p->adev[a].num_channels, 
-			p->dwBytesRecorded / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8), 
-			save_audio_config_p->statistics_interval);
-	      }
+				audio_stats(a,
+							save_audio_config_p->adev[a].num_channels,
+							p->dwBytesRecorded / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8),
+							save_audio_config_p->statistics_interval);
+			}
 
-	      if (p->dwUser < p->dwBytesRecorded) {
-	        n = ((unsigned char*)(p->lpData))[p->dwUser++];
+			if (p->dwUser < p->dwBytesRecorded)
+			{
+				n = ((unsigned char *)(p->lpData))[p->dwUser++];
 #if DEBUGx
 
-	        
-	        printf ("audio_get(): returns %d\n", n);
+				printf("audio_get(): returns %d\n", n);
 
 #endif
-	        return (n);
-	      }
-	      /*
-	       * Buffer is all used up.  Give it back to sound input system.
-	       */
+				return (n);
+			}
+			/*
+			 * Buffer is all used up.  Give it back to sound input system.
+			 */
 
-	      EnterCriticalSection (&(A->in_cs));
-	      A->in_headp = p->lpNext;
-	      LeaveCriticalSection (&(A->in_cs));
+			EnterCriticalSection(&(A->in_cs));
+			A->in_headp = p->lpNext;
+			LeaveCriticalSection(&(A->in_cs));
 
-	      p->dwFlags = 0;
-	      waveInPrepareHeader(A->audio_in_handle, p, sizeof(WAVEHDR));
-	      waveInAddBuffer(A->audio_in_handle, p, sizeof(WAVEHDR));	  
-	    }
-	    break;
-/*
- * UDP.
- */
-	  case AUDIO_IN_TYPE_SDR_UDP:
+			p->dwFlags = 0;
+			waveInPrepareHeader(A->audio_in_handle, p, sizeof(WAVEHDR));
+			waveInAddBuffer(A->audio_in_handle, p, sizeof(WAVEHDR));
+		}
+		break;
+		/*
+		 * UDP.
+		 */
+	case AUDIO_IN_TYPE_SDR_UDP:
 
-	    while (A->stream_next >= A->stream_len) {
-	      int res;
+		while (A->stream_next >= A->stream_len)
+		{
+			int res;
 
-              assert (A->udp_sock > 0);
+			assert(A->udp_sock > 0);
 
-	      res = SOCK_RECV (A->udp_sock, A->stream_data, SDR_UDP_BUF_MAXLEN);
-	      if (res <= 0) {
-	        
-	        printf ("Can't read from udp socket, errno %d", WSAGetLastError());
-	        A->stream_len = 0;
-	        A->stream_next = 0;
+			res = SOCK_RECV(A->udp_sock, A->stream_data, SDR_UDP_BUF_MAXLEN);
+			if (res <= 0)
+			{
 
-	        audio_stats (a, 
-			save_audio_config_p->adev[a].num_channels, 
-			0, 
-			save_audio_config_p->statistics_interval);
+				printf("Can't read from udp socket, errno %d", WSAGetLastError());
+				A->stream_len = 0;
+				A->stream_next = 0;
 
-	        return (-1);
-	      } 
+				audio_stats(a,
+							save_audio_config_p->adev[a].num_channels,
+							0,
+							save_audio_config_p->statistics_interval);
 
-	      audio_stats (a, 
-			save_audio_config_p->adev[a].num_channels, 
-			res / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8), 
-			save_audio_config_p->statistics_interval);
+				return (-1);
+			}
 
-	      A->stream_len = res;
-	      A->stream_next = 0;
-	    }
-	    sample = A->stream_data[A->stream_next] & 0xff;
-	    A->stream_next++;
-	    return (sample);
-	    break;
-/* 
- * stdin.
- */
-   	  case AUDIO_IN_TYPE_STDIN:
+			audio_stats(a,
+						save_audio_config_p->adev[a].num_channels,
+						res / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8),
+						save_audio_config_p->statistics_interval);
 
-	    while (A->stream_next >= A->stream_len) {
-	      int res;
+			A->stream_len = res;
+			A->stream_next = 0;
+		}
+		sample = A->stream_data[A->stream_next] & 0xff;
+		A->stream_next++;
+		return (sample);
+		break;
+		/*
+		 * stdin.
+		 */
+	case AUDIO_IN_TYPE_STDIN:
 
-	      res = read(STDIN_FILENO, A->stream_data, 1024);
-	      if (res <= 0) {
-	        
-	        printf ("\nEnd of file on stdin.  Exiting.\n");
-	        exit (0);
-	      }
+		while (A->stream_next >= A->stream_len)
+		{
+			int res;
 
-	      audio_stats (a, 
-			save_audio_config_p->adev[a].num_channels, 
-			res / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8), 
-			save_audio_config_p->statistics_interval);
-	    
-	      A->stream_len = res;
-	      A->stream_next = 0;
-	    }
-	    return (A->stream_data[A->stream_next++] & 0xff);
-	    break;
-  	}
+			res = read(STDIN_FILENO, A->stream_data, 1024);
+			if (res <= 0)
+			{
+
+				printf("\nEnd of file on stdin.  Exiting.\n");
+				exit(0);
+			}
+
+			audio_stats(a,
+						save_audio_config_p->adev[a].num_channels,
+						res / (save_audio_config_p->adev[a].num_channels * save_audio_config_p->adev[a].bits_per_sample / 8),
+						save_audio_config_p->statistics_interval);
+
+			A->stream_len = res;
+			A->stream_next = 0;
+		}
+		return (A->stream_data[A->stream_next++] & 0xff);
+		break;
+	}
 
 	return (-1);
 
 } /* end audio_get */
-
 
 /*------------------------------------------------------------------
  *
@@ -935,61 +973,63 @@ int audio_get (int a)
  *
  *----------------------------------------------------------------*/
 
-int audio_put (int a, int c)
+int audio_put(int a, int c)
 {
 	WAVEHDR *p;
 
 	struct adev_s *A;
-	A = &(adev[a]); 
-	
-/* 
- * Wait if no buffers are available.
- * Don't use p yet because compiler might might consider dwFlags a loop invariant. 
- */
+	A = &(adev[a]);
+
+	/*
+	 * Wait if no buffers are available.
+	 * Don't use p yet because compiler might might consider dwFlags a loop invariant.
+	 */
 
 	int timeout = 10;
-	while ( A->out_wavehdr[A->out_current].dwUser == DWU_PLAYING) {
-	  SLEEP_MS (ONE_BUF_TIME);
-	  timeout--;
-	  if (timeout <= 0) {
-	    
+	while (A->out_wavehdr[A->out_current].dwUser == DWU_PLAYING)
+	{
+		SLEEP_MS(ONE_BUF_TIME);
+		timeout--;
+		if (timeout <= 0)
+		{
 
-// TODO: open issues 78 & 165.  How can we avoid/improve this?
+			// TODO: open issues 78 & 165.  How can we avoid/improve this?
 
-	    printf ("Audio output failure waiting for buffer.\n");
-	    printf ("This can occur when we are producing audio output for\n");
-	    printf ("transmit and the operating system doesn't provide buffer\n");
-	    printf ("space after waiting and retrying many times.\n");
-	    //printf ("In recent years, this has been reported only when running the\n");
-	    //printf ("Windows version with VMWare on a Macintosh.\n");
-	    ptt_term ();
-	    return (-1);
-	  }
+			printf("Audio output failure waiting for buffer.\n");
+			printf("This can occur when we are producing audio output for\n");
+			printf("transmit and the operating system doesn't provide buffer\n");
+			printf("space after waiting and retrying many times.\n");
+			// printf ("In recent years, this has been reported only when running the\n");
+			// printf ("Windows version with VMWare on a Macintosh.\n");
+			ptt_term();
+			return (-1);
+		}
 	}
 
 	p = (LPWAVEHDR)(&(A->out_wavehdr[A->out_current]));
 
-	if (p->dwUser == DWU_DONE) {
-	  waveOutUnprepareHeader (A->audio_out_handle, p, sizeof(WAVEHDR));
-	  p->dwBufferLength = 0;
-	  p->dwUser = DWU_FILLING;
+	if (p->dwUser == DWU_DONE)
+	{
+		waveOutUnprepareHeader(A->audio_out_handle, p, sizeof(WAVEHDR));
+		p->dwBufferLength = 0;
+		p->dwUser = DWU_FILLING;
 	}
 
 	/* Should never be full at this point. */
 
-	assert (p->dwBufferLength >= 0);
-	assert (p->dwBufferLength < (DWORD)(A->outbuf_size));
+	assert(p->dwBufferLength >= 0);
+	assert(p->dwBufferLength < (DWORD)(A->outbuf_size));
 
 	p->lpData[p->dwBufferLength++] = c;
 
-	if (p->dwBufferLength == (DWORD)(A->outbuf_size)) {
-	  return (audio_flush(a));
+	if (p->dwBufferLength == (DWORD)(A->outbuf_size))
+	{
+		return (audio_flush(a));
 	}
 
 	return (0);
 
 } /* end audio_put */
-
 
 /*------------------------------------------------------------------
  *
@@ -1007,38 +1047,39 @@ int audio_put (int a, int c)
  *
  *----------------------------------------------------------------*/
 
-int audio_flush (int a)
+int audio_flush(int a)
 {
 	WAVEHDR *p;
 	MMRESULT e;
 	struct adev_s *A;
 
-	A = &(adev[a]); 
-	
+	A = &(adev[a]);
+
 	p = (LPWAVEHDR)(&(A->out_wavehdr[A->out_current]));
 
-	if (p->dwUser == DWU_FILLING && p->dwBufferLength > 0) {
+	if (p->dwUser == DWU_FILLING && p->dwBufferLength > 0)
+	{
 
-	  p->dwUser = DWU_PLAYING;
+		p->dwUser = DWU_PLAYING;
 
-	  waveOutPrepareHeader(A->audio_out_handle, p, sizeof(WAVEHDR));
+		waveOutPrepareHeader(A->audio_out_handle, p, sizeof(WAVEHDR));
 
-	  e = waveOutWrite(A->audio_out_handle, p, sizeof(WAVEHDR));
-	  if (e != MMSYSERR_NOERROR) {
-	    printf ("audio out write error %d\n", e);
+		e = waveOutWrite(A->audio_out_handle, p, sizeof(WAVEHDR));
+		if (e != MMSYSERR_NOERROR)
+		{
+			printf("audio out write error %d\n", e);
 
-	    /* I don't expect this to ever happen but if it */
-	    /* does, make the buffer available for filling. */
+			/* I don't expect this to ever happen but if it */
+			/* does, make the buffer available for filling. */
 
-	    p->dwUser = DWU_DONE;
-	    return (-1);
-	  }
-	  A->out_current = (A->out_current + 1) % NUM_OUT_BUF;
+			p->dwUser = DWU_DONE;
+			return (-1);
+		}
+		A->out_current = (A->out_current + 1) % NUM_OUT_BUF;
 	}
 	return (0);
 
 } /* end audio_flush */
-
 
 /*------------------------------------------------------------------
  *
@@ -1055,7 +1096,7 @@ int audio_flush (int a)
  *		Take any other necessary actions to stop audio output.
  *
  * In an ideal world:
- * 
+ *
  *		We would like to ask the hardware when all the queued
  *		up sound has actually come out the speaker.
  *
@@ -1066,8 +1107,8 @@ int audio_flush (int a)
  *		Caller does the following:
  *
  *		(1) Make note of when PTT is turned on.
- *		(2) Calculate how long it will take to transmit the 
- *			frame including TXDELAY, frame (including 
+ *		(2) Calculate how long it will take to transmit the
+ *			frame including TXDELAY, frame (including
  *			"flags", data, FCS and bit stuffing), and TXTAIL.
  *		(3) Call this function, which might or might not wait long enough.
  *		(4) Add (1) and (2) resulting in when PTT should be turned off.
@@ -1076,13 +1117,12 @@ int audio_flush (int a)
  *
  *----------------------------------------------------------------*/
 
-void audio_wait (int a)
-{	
+void audio_wait(int a)
+{
 
-	audio_flush (a);
+	audio_flush(a);
 
 } /* end audio_wait */
-
 
 /*------------------------------------------------------------------
  *
@@ -1097,7 +1137,7 @@ void audio_wait (int a)
  *
  *----------------------------------------------------------------*/
 
-int audio_close (void)
+int audio_close(void)
 {
 	int err = 0;
 
@@ -1105,68 +1145,73 @@ int audio_close (void)
 
 	int a;
 
-    	for (a=0; a<MAX_ADEVS; a++) {
-      	  if (save_audio_config_p->adev[a].defined) {
+	for (a = 0; a < MAX_ADEVS; a++)
+	{
+		if (save_audio_config_p->adev[a].defined)
+		{
 
-            struct adev_s *A = &(adev[a]);
+			struct adev_s *A = &(adev[a]);
 
-	    assert (A->audio_in_handle != 0);
-	    assert (A->audio_out_handle != 0);
+			assert(A->audio_in_handle != 0);
+			assert(A->audio_out_handle != 0);
 
-	    audio_wait (a);
+			audio_wait(a);
 
-/* Shutdown audio input. */
+			/* Shutdown audio input. */
 
-	    waveInReset(A->audio_in_handle); 
-	    waveInStop(A->audio_in_handle);
-	    waveInClose(A->audio_in_handle);
-	    A->audio_in_handle = 0;
+			waveInReset(A->audio_in_handle);
+			waveInStop(A->audio_in_handle);
+			waveInClose(A->audio_in_handle);
+			A->audio_in_handle = 0;
 
-	    for (n = 0; n < NUM_IN_BUF; n++) {
+			for (n = 0; n < NUM_IN_BUF; n++)
+			{
 
-	      waveInUnprepareHeader (A->audio_in_handle, (LPWAVEHDR)(&(A->in_wavehdr[n])), sizeof(WAVEHDR));
-	      A->in_wavehdr[n].dwFlags = 0;
-	      free (A->in_wavehdr[n].lpData);
- 	      A->in_wavehdr[n].lpData = NULL;
-	    }
+				waveInUnprepareHeader(A->audio_in_handle, (LPWAVEHDR)(&(A->in_wavehdr[n])), sizeof(WAVEHDR));
+				A->in_wavehdr[n].dwFlags = 0;
+				free(A->in_wavehdr[n].lpData);
+				A->in_wavehdr[n].lpData = NULL;
+			}
 
-	    DeleteCriticalSection (&(A->in_cs));
+			DeleteCriticalSection(&(A->in_cs));
 
+			/* Make sure all output buffers have been played then free them. */
 
-/* Make sure all output buffers have been played then free them. */
+			for (n = 0; n < NUM_OUT_BUF; n++)
+			{
+				if (A->out_wavehdr[n].dwUser == DWU_PLAYING)
+				{
 
-	    for (n = 0; n < NUM_OUT_BUF; n++) {
-	      if (A->out_wavehdr[n].dwUser == DWU_PLAYING) {
+					int timeout = 2 * NUM_OUT_BUF;
+					while (A->out_wavehdr[n].dwUser == DWU_PLAYING)
+					{
+						SLEEP_MS(ONE_BUF_TIME);
+						timeout--;
+						if (timeout <= 0)
+						{
 
-	        int timeout = 2 * NUM_OUT_BUF;
-	        while (A->out_wavehdr[n].dwUser == DWU_PLAYING) {
-	          SLEEP_MS (ONE_BUF_TIME);
-	          timeout--;
-	          if (timeout <= 0) {
-	            
-	            printf ("Audio output failure on close.\n");
-	          }
-	        }
+							printf("Audio output failure on close.\n");
+						}
+					}
 
-	        waveOutUnprepareHeader (A->audio_out_handle, (LPWAVEHDR)(&(A->out_wavehdr[n])), sizeof(WAVEHDR));
+					waveOutUnprepareHeader(A->audio_out_handle, (LPWAVEHDR)(&(A->out_wavehdr[n])), sizeof(WAVEHDR));
 
-	        A->out_wavehdr[n].dwUser = DWU_DONE;
-	      }
-	      free (A->out_wavehdr[n].lpData);
- 	      A->out_wavehdr[n].lpData = NULL;
-	    }
+					A->out_wavehdr[n].dwUser = DWU_DONE;
+				}
+				free(A->out_wavehdr[n].lpData);
+				A->out_wavehdr[n].lpData = NULL;
+			}
 
-	    waveOutClose (A->audio_out_handle);
-	    A->audio_out_handle = 0;
+			waveOutClose(A->audio_out_handle);
+			A->audio_out_handle = 0;
 
-          }  /* if device configured */
-        }  /* for each device. */
+		} /* if device configured */
+	}	  /* for each device. */
 
-        /* Not right.  always returns 0 but at this point, doesn't matter. */
+	/* Not right.  always returns 0 but at this point, doesn't matter. */
 
 	return (err);
 
 } /* end audio_close */
 
 /* end audio_win.c */
-

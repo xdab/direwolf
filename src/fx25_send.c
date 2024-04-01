@@ -29,44 +29,40 @@
 #include "audio.h"
 #include "gen_tone.h"
 
-
-//#define FXTEST 1		// To build unit test application.
-
+// #define FXTEST 1		// To build unit test application.
 
 #ifndef FXTEST
-static void send_bytes (int chan, unsigned char *b, int count);
-static void send_bit (int chan, int b);
+static void send_bytes(int chan, unsigned char *b, int count);
+static void send_bit(int chan, int b);
 #endif
-static int stuff_it (unsigned char *in, int ilen, unsigned char *out, int osize);
+static int stuff_it(unsigned char *in, int ilen, unsigned char *out, int osize);
 
-
-static int number_of_bits_sent[MAX_CHANS];		// Count number of bits sent by "fx25_send_frame" or "???"
-
+static int number_of_bits_sent[MAX_CHANS]; // Count number of bits sent by "fx25_send_frame" or "???"
 
 #if FXTEST
 static unsigned char preload[] = {
-	'T'<<1, 'E'<<1, 'S'<<1, 'T'<<1, ' '<<1, ' '<<1, 0x60,
-	'W'<<1, 'B'<<1, '2'<<1, 'O'<<1, 'S'<<1, 'Z'<<1, 0x63,
+	'T' << 1, 'E' << 1, 'S' << 1, 'T' << 1, ' ' << 1, ' ' << 1, 0x60,
+	'W' << 1, 'B' << 1, '2' << 1, 'O' << 1, 'S' << 1, 'Z' << 1, 0x63,
 	0x03, 0xf0,
-	'F', 'o', 'o', '?' , 'B', 'a', 'r', '?' ,   //  '?' causes bit stuffing
-	0, 0, 0		// Room for FCS + extra
-}; 
+	'F', 'o', 'o', '?', 'B', 'a', 'r', '?', //  '?' causes bit stuffing
+	0, 0, 0									// Room for FCS + extra
+};
 
-int main ()
+int main()
 {
-	
+
 	printf("fxsend - FX.25 unit test.\n");
 	printf("This generates 11 files named fx01.dat, fx02.dat, ..., fx0b.dat\n");
 	printf("Run fxrec as second part of test.\n");
 
-	fx25_init (3);
-	for (int i = 100 + CTAG_MIN; i <= 100 + CTAG_MAX; i++) {
-	  fx25_send_frame (0, preload, (int)sizeof(preload)-3, i);
+	fx25_init(3);
+	for (int i = 100 + CTAG_MIN; i <= 100 + CTAG_MAX; i++)
+	{
+		fx25_send_frame(0, preload, (int)sizeof(preload) - 3, i);
 	}
 	exit(EXIT_SUCCESS);
 } // end main
 #endif
-
 
 /*-------------------------------------------------------------
  *
@@ -81,7 +77,7 @@ int main ()
  *		flen	- Frame length, before bit-stuffing, not including the FCS.
  *
  *		fx_mode	- Normally, this would be 16, 32, or 64 for the desired number
- *			  of check bytes.  The shortest format, adequate for the 
+ *			  of check bytes.  The shortest format, adequate for the
  *			  required data length will be picked automatically.
  *			  0x01 thru 0x0b may also be specified for a specific format
  *			  but this is expected to be mostly for testing, not normal
@@ -90,7 +86,7 @@ int main ()
  * Outputs:	Bits are shipped out by calling tone_gen_put_bit().
  *
  * Returns:	Number of bits sent including "flags" and the
- *		stuffing bits.  
+ *		stuffing bits.
  *		The required time can be calculated by dividing this
  *		number by the transmit rate of bits/sec.
  *		-1 is returned for failure.
@@ -99,7 +95,7 @@ int main ()
  *		it inside of the FX.25 correlation tag and check bytes.
  *
  * Assumptions:	It is assumed that the tone_gen module has been
- *		properly initialized so that bits sent with 
+ *		properly initialized so that bits sent with
  *		tone_gen_put_bit() are processed correctly.
  *
  * Errors:	If something goes wrong, return -1 and the caller should
@@ -109,135 +105,144 @@ int main ()
  *
  *--------------------------------------------------------------*/
 
-int fx25_send_frame (int chan, unsigned char *fbuf, int flen, int fx_mode)
+int fx25_send_frame(int chan, unsigned char *fbuf, int flen, int fx_mode)
 {
-	if (fx25_get_debug() >= 3) {
-	  
-	  printf ("------\n");
-	  printf ("FX.25[%d] send frame: FX.25 mode = %d\n", chan, fx_mode);
-	  fx_hex_dump (fbuf, flen);
+	if (fx25_get_debug() >= 3)
+	{
+
+		printf("------\n");
+		printf("FX.25[%d] send frame: FX.25 mode = %d\n", chan, fx_mode);
+		fx_hex_dump(fbuf, flen);
 	}
 
 	number_of_bits_sent[chan] = 0;
 
 	// Append the FCS.
 
-	int fcs = fcs_calc (fbuf, flen);
+	int fcs = fcs_calc(fbuf, flen);
 	fbuf[flen++] = fcs & 0xff;
 	fbuf[flen++] = (fcs >> 8) & 0xff;
 
 	// Add bit-stuffing.
 
-	unsigned char data[FX25_MAX_DATA+1];
+	unsigned char data[FX25_MAX_DATA + 1];
 	const unsigned char fence = 0xaa;
 	data[FX25_MAX_DATA] = fence;
 
 	int dlen = stuff_it(fbuf, flen, data, FX25_MAX_DATA);
 
-	assert (data[FX25_MAX_DATA] == fence);
-	if (dlen < 0) {
-	  
-	  printf ("FX.25[%d]: Frame length of %d + overhead is too large to encode.\n", chan, flen);
-	  return (-1);
+	assert(data[FX25_MAX_DATA] == fence);
+	if (dlen < 0)
+	{
+
+		printf("FX.25[%d]: Frame length of %d + overhead is too large to encode.\n", chan, flen);
+		return (-1);
 	}
 
 	// Pick suitable correlation tag depending on
 	// user's preference, for number of check bytes,
 	// and the data size.
 
-	int ctag_num = fx25_pick_mode (fx_mode, dlen);
+	int ctag_num = fx25_pick_mode(fx_mode, dlen);
 
-	if (ctag_num < CTAG_MIN || ctag_num > CTAG_MAX) {
-	  
-	  printf ("FX.25[%d]: Could not find suitable format for requested %d and data length %d.\n", chan, fx_mode, dlen);
-	  return (-1);
+	if (ctag_num < CTAG_MIN || ctag_num > CTAG_MAX)
+	{
+
+		printf("FX.25[%d]: Could not find suitable format for requested %d and data length %d.\n", chan, fx_mode, dlen);
+		return (-1);
 	}
 
-	uint64_t ctag_value = fx25_get_ctag_value (ctag_num);
+	uint64_t ctag_value = fx25_get_ctag_value(ctag_num);
 
 	// Zero out part of data which won't be transmitted.
 	// It should all be filled by extra HDLC "flag" patterns.
 
-	int k_data_radio = fx25_get_k_data_radio (ctag_num);
-	int k_data_rs = fx25_get_k_data_rs (ctag_num);
+	int k_data_radio = fx25_get_k_data_radio(ctag_num);
+	int k_data_rs = fx25_get_k_data_rs(ctag_num);
 	int shorten_by = FX25_MAX_DATA - k_data_radio;
-	if (shorten_by > 0) {
-	  memset (data + k_data_radio, 0, shorten_by);
+	if (shorten_by > 0)
+	{
+		memset(data + k_data_radio, 0, shorten_by);
 	}
 
 	// Compute the check bytes.
 
-	unsigned char check[FX25_MAX_CHECK+1];
+	unsigned char check[FX25_MAX_CHECK + 1];
 	check[FX25_MAX_CHECK] = fence;
-	struct rs *rs = fx25_get_rs (ctag_num);
+	struct rs *rs = fx25_get_rs(ctag_num);
 
-	assert (k_data_rs + NROOTS == NN);
+	assert(k_data_rs + NROOTS == NN);
 
 	ENCODE_RS(rs, data, check);
-	assert (check[FX25_MAX_CHECK] == fence);
+	assert(check[FX25_MAX_CHECK] == fence);
 
-	if (fx25_get_debug() >= 3) {
-	  
-	  printf ("FX.25[%d]: transmit %d data bytes, ctag number 0x%02x\n", chan, k_data_radio, ctag_num);
-	  fx_hex_dump (data, k_data_radio);
-	  printf ("FX.25[%d]: transmit %d check bytes:\n", chan, NROOTS);
-	  fx_hex_dump (check, NROOTS);
-	  printf ("------\n");
+	if (fx25_get_debug() >= 3)
+	{
+
+		printf("FX.25[%d]: transmit %d data bytes, ctag number 0x%02x\n", chan, k_data_radio, ctag_num);
+		fx_hex_dump(data, k_data_radio);
+		printf("FX.25[%d]: transmit %d check bytes:\n", chan, NROOTS);
+		fx_hex_dump(check, NROOTS);
+		printf("------\n");
 	}
 
 #if FXTEST
 	// Standalone text application.
 
-	unsigned char flags[16] = { 0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e ,0x7e };
+	unsigned char flags[16] = {0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e};
 	char fname[32];
-	snprintf (fname, sizeof(fname), "fx%02x.dat", ctag_num);
+	snprintf(fname, sizeof(fname), "fx%02x.dat", ctag_num);
 	FILE *fp = fopen(fname, "wb");
-	fwrite (flags, sizeof(flags), 1, fp);
-	//fwrite ((unsigned char *)(&ctag_value), sizeof(ctag_value), 1, fp);	// No - assumes little endian.
-	for (int k = 0; k < 8; k++) {
-	  unsigned char b = (ctag_value >> (k * 8)) & 0xff;	// Should be portable to big endian too.
-	  fwrite (&b, 1, 1, fp);
+	fwrite(flags, sizeof(flags), 1, fp);
+	// fwrite ((unsigned char *)(&ctag_value), sizeof(ctag_value), 1, fp);	// No - assumes little endian.
+	for (int k = 0; k < 8; k++)
+	{
+		unsigned char b = (ctag_value >> (k * 8)) & 0xff; // Should be portable to big endian too.
+		fwrite(&b, 1, 1, fp);
 	}
 #if 1
-	for (int j = 8; j < 16; j++) {	// Introduce errors.
-	  data[j] = ~ data[j];
+	for (int j = 8; j < 16; j++)
+	{ // Introduce errors.
+		data[j] = ~data[j];
 	}
 #endif
-	fwrite (data, k_data_radio, 1, fp);
-	fwrite (check, NROOTS, 1, fp);
-	fwrite (flags, sizeof(flags), 1, fp);
+	fwrite(data, k_data_radio, 1, fp);
+	fwrite(check, NROOTS, 1, fp);
+	fwrite(flags, sizeof(flags), 1, fp);
 	fflush(fp);
-	fclose (fp);
+	fclose(fp);
 #else
 	// Normal usage.  Send bits to modulator.
 
-// Temp hack for testing.  Corrupt first 8 bytes.
-//	for (int j = 0; j < 16; j++) {
-//	  data[j] = ~ data[j];
-//	}
+	// Temp hack for testing.  Corrupt first 8 bytes.
+	//	for (int j = 0; j < 16; j++) {
+	//	  data[j] = ~ data[j];
+	//	}
 
-	for (int k = 0; k < 8; k++) {
-	  unsigned char b = (ctag_value >> (k * 8)) & 0xff;
-	  send_bytes (chan, &b, 1);
+	for (int k = 0; k < 8; k++)
+	{
+		unsigned char b = (ctag_value >> (k * 8)) & 0xff;
+		send_bytes(chan, &b, 1);
 	}
-	send_bytes (chan, data, k_data_radio);
-	send_bytes (chan, check, NROOTS);
+	send_bytes(chan, data, k_data_radio);
+	send_bytes(chan, check, NROOTS);
 #endif
-	
+
 	return (number_of_bits_sent[chan]);
 }
 
-
 #ifndef FXTEST
 
-static void send_bytes (int chan, unsigned char *b, int count)
+static void send_bytes(int chan, unsigned char *b, int count)
 {
-	for (int j = 0; j < count; j++) {
-	  unsigned char x = b[j];
-	  for (int k = 0; k < 8; k++) {
-	    send_bit (chan, x & 0x01);
-	    x >>= 1;
-	  }
+	for (int j = 0; j < count; j++)
+	{
+		unsigned char x = b[j];
+		for (int k = 0; k < 8; k++)
+		{
+			send_bit(chan, x & 0x01);
+			x >>= 1;
+		}
 	}
 }
 
@@ -246,18 +251,18 @@ static void send_bytes (int chan, unsigned char *b, int count)
  * data 1 bit -> no change.
  * data 0 bit -> invert signal.
  */
-static void send_bit (int chan, int b)
+static void send_bit(int chan, int b)
 {
 	static int output[MAX_CHANS];
 
-	if (b == 0) {
-	  output[chan] = ! output[chan];
+	if (b == 0)
+	{
+		output[chan] = !output[chan];
 	}
-	tone_gen_put_bit (chan, output[chan]);
+	tone_gen_put_bit(chan, output[chan]);
 	number_of_bits_sent[chan]++;
 }
-#endif  // FXTEST
-
+#endif // FXTEST
 
 /*-------------------------------------------------------------
  *
@@ -282,50 +287,60 @@ static void send_bit (int chan, int b)
  *			bit stuffed data, including FCS
  *			end flag
  *		Fill remainder with flag octets which might not be on byte boundaries.
- * 
+ *
  *--------------------------------------------------------------*/
 
-#define put_bit(value)  {						\
-			if (olen >= osize) return(-1);			\
-			if (value) out[olen>>3] |= 1 << (olen & 0x7);	\
-			olen++;						\
-			}
+#define put_bit(value)                           \
+	{                                            \
+		if (olen >= osize)                       \
+			return (-1);                         \
+		if (value)                               \
+			out[olen >> 3] |= 1 << (olen & 0x7); \
+		olen++;                                  \
+	}
 
-static int stuff_it (unsigned char *in, int ilen, unsigned char *out, int osize)
+static int stuff_it(unsigned char *in, int ilen, unsigned char *out, int osize)
 {
 	const unsigned char flag = 0x7e;
 	int ret = -1;
-	memset (out, 0, osize);
+	memset(out, 0, osize);
 	out[0] = flag;
-	int olen = 8;			// Number of bits in output.
-	osize *= 8;			// Now in bits rather than bytes.
+	int olen = 8; // Number of bits in output.
+	osize *= 8;	  // Now in bits rather than bytes.
 	int ones = 0;
 
-	for (int i = 0; i < ilen; i++) {
-	  for (unsigned char imask = 1; imask != 0; imask <<= 1) {
-	    int v = in[i] & imask;
-	    put_bit(v);
-	    if (v) {
-	      ones++;
-	      if (ones == 5) {
-	        put_bit(0);
-	        ones = 0;
-	      }
-	    }
-	    else {
-	      ones = 0;
-	    }
-	  }
+	for (int i = 0; i < ilen; i++)
+	{
+		for (unsigned char imask = 1; imask != 0; imask <<= 1)
+		{
+			int v = in[i] & imask;
+			put_bit(v);
+			if (v)
+			{
+				ones++;
+				if (ones == 5)
+				{
+					put_bit(0);
+					ones = 0;
+				}
+			}
+			else
+			{
+				ones = 0;
+			}
+		}
 	}
-	for (unsigned char imask = 1; imask != 0; imask <<= 1) {
-	  put_bit(flag & imask);
+	for (unsigned char imask = 1; imask != 0; imask <<= 1)
+	{
+		put_bit(flag & imask);
 	}
-	ret = (olen + 7) / 8;		// Includes any partial byte.
+	ret = (olen + 7) / 8; // Includes any partial byte.
 
 	unsigned char imask = 1;
-	while (olen < osize) {
-	  put_bit( flag & imask);
-	  imask = (imask << 1) | (imask >> 7);	// Rotate.
+	while (olen < osize)
+	{
+		put_bit(flag & imask);
+		imask = (imask << 1) | (imask >> 7); // Rotate.
 	}
 
 	return (ret);
