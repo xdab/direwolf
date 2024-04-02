@@ -377,7 +377,7 @@ static void append_to_queue(struct dlq_item_s *pnew)
 	{
 		dw_mutex_lock(&wake_up_mutex);
 
-		err = pthread_cond_signal(&wake_up_cond);
+		int err = pthread_cond_signal(&wake_up_cond);
 		if (err != 0)
 		{
 
