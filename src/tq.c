@@ -36,14 +36,13 @@
 
 #define TQ_C 1
 
-#include "direwolf.h"
-
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 
+#include "dwthread.h"
 #include "ax25_pad.h"
 #include "audio.h"
 #include "tq.h"

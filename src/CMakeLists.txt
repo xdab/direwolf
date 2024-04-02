@@ -29,6 +29,7 @@ list(APPEND direwolf_SOURCES
   dlq.c
   dsp.c
   dwsock.c
+  dwthread.c
   fcs_calc.c
   fx25_encode.c
   fx25_extract.c

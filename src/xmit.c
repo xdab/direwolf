@@ -50,8 +50,6 @@
  *
  *---------------------------------------------------------------*/
 
-#include "direwolf.h"
-
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -61,9 +59,9 @@
 #include <errno.h>
 #include <stddef.h>
 
-#include "direwolf.h"
 #include "ax25_pad.h"
 #include "audio.h"
+#include "dwthread.h"
 #include "tq.h"
 #include "xmit.h"
 #include "hdlc_send.h"
