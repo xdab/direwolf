@@ -237,15 +237,6 @@ void tq_append(int chan, int prio, packet_t pp)
 		return;
 	}
 
-#if AX25MEMDEBUG
-
-	if (ax25memdebug_get())
-	{
-
-		printf("tq_append (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
-	}
-#endif
-
 	// Normal case - put in queue for radio transmission.
 	// Error if trying to transmit to a radio channel which was not configured.
 
@@ -445,15 +436,6 @@ void lm_data_request(int chan, int prio, packet_t pp)
 		return;
 	}
 
-#if AX25MEMDEBUG
-
-	if (ax25memdebug_get())
-	{
-
-		printf("lm_data_request (chan=%d, prio=%d, seq=%d)\n", chan, prio, ax25memdebug_seq(pp));
-	}
-#endif
-
 	if (chan < 0 || chan >= MAX_CHANS || save_audio_config_p->chan_medium[chan] != MEDIUM_RADIO)
 	{
 		// Connected mode is allowed only with internal modems.
@@ -621,15 +603,6 @@ void lm_seize_request(int chan)
 	}
 
 	pp = ax25_new();
-
-#if AX25MEMDEBUG
-
-	if (ax25memdebug_get())
-	{
-
-		printf("lm_seize_request (chan=%d, seq=%d)\n", chan, ax25memdebug_seq(pp));
-	}
-#endif
 
 #if DEBUG
 
@@ -823,16 +796,7 @@ packet_t tq_remove(int chan, int prio)
 	printf("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
 #endif
 
-#if AX25MEMDEBUG
-
-	if (ax25memdebug_get() && result_p != NULL)
-	{
-
-		printf("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
-	}
-#endif
 	return (result_p);
-
 } /* end tq_remove */
 
 /*-------------------------------------------------------------------
@@ -870,20 +834,10 @@ packet_t tq_peek(int chan, int prio)
 	// dw_mutex_unlock (&tq_mutex);
 
 #if DEBUG
-
 	printf("tq_remove(%d,%d) leave critical section, returns %p\n", chan, prio, result_p);
 #endif
 
-#if AX25MEMDEBUG
-
-	if (ax25memdebug_get() && result_p != NULL)
-	{
-
-		printf("tq_remove (chan=%d, prio=%d)  seq=%d\n", chan, prio, ax25memdebug_seq(result_p));
-	}
-#endif
 	return (result_p);
-
 } /* end tq_peek */
 
 /*-------------------------------------------------------------------

@@ -542,11 +542,6 @@ int main(int argc, char *argv[])
 					d_o_opt++;
 					ptt_set_debug(d_o_opt);
 					break;
-#if AX25MEMDEBUG
-				case 'l':
-					ax25memdebug_set();
-					break; // Track down memory Leak.  Not documented.
-#endif					   // Previously 'm' but that is now used for mheard.
 #if USE_HAMLIB
 				case 'h':
 					d_h_opt++;

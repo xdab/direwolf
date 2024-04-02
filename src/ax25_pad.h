@@ -319,47 +319,15 @@ typedef enum ax25_frame_type_e
 
 typedef struct alevel_s
 {
-
 	int rec;
 	int mark;
 	int space;
-	// float ms_ratio;	// TODO: take out after temporary investigation.
 } alevel_t;
 
-#ifndef AXTEST
-// TODO: remove this?
-#define AX25MEMDEBUG 1
-#endif
-
-#if AX25MEMDEBUG // to investigate a memory leak problem
-
-extern void ax25memdebug_set(void);
-extern int ax25memdebug_get(void);
-extern int ax25memdebug_seq(packet_t this_p);
-
-extern packet_t ax25_from_text_debug(char *monitor, int strict, char *src_file, int src_line);
-#define ax25_from_text(m, s) ax25_from_text_debug(m, s, __FILE__, __LINE__)
-
-extern packet_t ax25_from_frame_debug(unsigned char *data, int len, char *src_file, int src_line);
-#define ax25_from_frame(d, l) ax25_from_frame_debug(d, l, __FILE__, __LINE__);
-
-extern packet_t ax25_dup_debug(packet_t copy_from, char *src_file, int src_line);
-#define ax25_dup(p) ax25_dup_debug(p, __FILE__, __LINE__);
-
-extern void ax25_delete_debug(packet_t pp, char *src_file, int src_line);
-#define ax25_delete(p) ax25_delete_debug(p, __FILE__, __LINE__);
-
-#else
-
 extern packet_t ax25_from_text(char *monitor, int strict);
-
 extern packet_t ax25_from_frame(unsigned char *data, int len);
-
 extern packet_t ax25_dup(packet_t copy_from);
-
 extern void ax25_delete(packet_t pp);
-
-#endif
 
 extern int ax25_parse_addr(int position, char *in_addr, int strict, char *out_addr, int *out_ssid, int *out_heard);
 extern int ax25_check_addresses(packet_t pp);

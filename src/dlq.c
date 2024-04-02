@@ -235,15 +235,6 @@ void dlq_rec_frame(int chan, int subchan, int slice, packet_t pp, alevel_t aleve
 		return;
 	}
 
-#if AX25MEMDEBUG
-
-	if (ax25memdebug_get())
-	{
-
-		printf("dlq_rec_frame (chan=%d.%d, seq=%d, ...)\n", chan, subchan, ax25memdebug_seq(pp));
-	}
-#endif
-
 	/* Allocate a new queue item. */
 
 	pnew = (struct dlq_item_s *)calloc(sizeof(struct dlq_item_s), 1);
@@ -629,25 +620,7 @@ struct dlq_item_s *dlq_remove(void)
 #endif
 
 #if DEBUG
-
 	printf("dlq_remove()  returns \n");
-#endif
-
-#if AX25MEMDEBUG
-
-	if (ax25memdebug_get() && result != NULL)
-	{
-
-		if (result->pp != NULL)
-		{
-			// TODO: mnemonics for type.
-			printf("dlq_remove (chan=%d.%d, seq=%d, ...)\n", result->chan, result->subchan, ax25memdebug_seq(result->pp));
-		}
-		else
-		{
-			printf("dlq_remove (chan=%d, ...)\n", result->chan);
-		}
-	}
 #endif
 
 	return (result);

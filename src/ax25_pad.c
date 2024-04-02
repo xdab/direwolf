@@ -189,27 +189,6 @@ static volatile int new_count = 0;
 static volatile int delete_count = 0;
 static volatile int last_seq_num = 0;
 
-#if AX25MEMDEBUG
-
-int ax25memdebug = 0;
-
-void ax25memdebug_set(void)
-{
-	ax25memdebug = 1;
-}
-
-int ax25memdebug_get(void)
-{
-	return (ax25memdebug);
-}
-
-int ax25memdebug_seq(packet_t this_p)
-{
-	return (this_p->seq);
-}
-
-#endif
-
 #define CLEAR_LAST_ADDR_FLAG this_p->frame_data[this_p->num_addr * 7 - 1] &= ~SSID_LAST_MASK
 #define SET_LAST_ADDR_FLAG this_p->frame_data[this_p->num_addr * 7 - 1] |= SSID_LAST_MASK
 
@@ -245,12 +224,7 @@ packet_t ax25_new(void)
 	// if (new_count > delete_count + 100) {
 	if (new_count > delete_count + 256)
 	{
-
 		printf("Report to WB2OSZ - Memory leak for packet objects.  new=%d, delete=%d\n", new_count, delete_count);
-#if AX25MEMDEBUG
-		// Force on debug option to gather evidence.
-		ax25memdebug_set();
-#endif
 	}
 
 	this_p = calloc(sizeof(struct packet_s), (size_t)1);
@@ -278,12 +252,7 @@ packet_t ax25_new(void)
  * Purpose:	Destroy a packet object, freeing up memory it was using.
  *
  *------------------------------------------------------------------------------*/
-
-#if AX25MEMDEBUG
-void ax25_delete_debug(packet_t this_p, char *src_file, int src_line)
-#else
 void ax25_delete(packet_t this_p)
-#endif
 {
 #if DEBUG
 
@@ -298,14 +267,6 @@ void ax25_delete(packet_t this_p)
 	}
 
 	delete_count++;
-
-#if AX25MEMDEBUG
-	if (ax25memdebug)
-	{
-
-		printf("ax25_delete, seq=%d, called from %s %d, new_count=%d, delete_count=%d\n", this_p->seq, src_file, src_line, new_count, delete_count);
-	}
-#endif
 
 	assert(this_p->magic1 == MAGIC);
 	assert(this_p->magic2 == MAGIC);
@@ -351,14 +312,8 @@ void ax25_delete(packet_t this_p)
  * Outputs:	Use the "get" functions to retrieve information in different ways.
  *
  *------------------------------------------------------------------------------*/
-
-#if AX25MEMDEBUG
-packet_t ax25_from_text_debug(char *monitor, int strict, char *src_file, int src_line)
-#else
 packet_t ax25_from_text(char *monitor, int strict)
-#endif
 {
-
 	/*
 	 * Tearing it apart is destructive so make our own copy first.
 	 */
@@ -372,14 +327,6 @@ packet_t ax25_from_text(char *monitor, int strict)
 	int info_len;
 
 	packet_t this_p = ax25_new();
-
-#if AX25MEMDEBUG
-	if (ax25memdebug)
-	{
-
-		printf("ax25_from_text, seq=%d, called from %s %d\n", this_p->seq, src_file, src_line);
-	}
-#endif
 
 	/* Is it possible to have a nul character (zero byte) in the */
 	/* information field of an AX.25 frame? */
@@ -614,12 +561,7 @@ packet_t ax25_from_text(char *monitor, int strict)
  * Outputs:	Use the "get" functions to retrieve information in different ways.
  *
  *------------------------------------------------------------------------------*/
-
-#if AX25MEMDEBUG
-packet_t ax25_from_frame_debug(unsigned char *fbuf, int flen, char *src_file, int src_line)
-#else
 packet_t ax25_from_frame(unsigned char *fbuf, int flen)
-#endif
 {
 	packet_t this_p;
 
@@ -649,14 +591,6 @@ packet_t ax25_from_frame(unsigned char *fbuf, int flen)
 
 	this_p = ax25_new();
 
-#if AX25MEMDEBUG
-	if (ax25memdebug)
-	{
-
-		printf("ax25_from_frame, seq=%d, called from %s %d\n", this_p->seq, src_file, src_line);
-	}
-#endif
-
 	/* Copy the whole thing intact. */
 
 	memcpy(this_p->frame_data, fbuf, flen);
@@ -683,12 +617,7 @@ packet_t ax25_from_frame(unsigned char *fbuf, int flen)
  *
  *
  *------------------------------------------------------------------------------*/
-
-#if AX25MEMDEBUG
-packet_t ax25_dup_debug(packet_t copy_from, char *src_file, int src_line)
-#else
 packet_t ax25_dup(packet_t copy_from)
-#endif
 {
 	int save_seq;
 	packet_t this_p;
@@ -700,14 +629,6 @@ packet_t ax25_dup(packet_t copy_from)
 
 	memcpy(this_p, copy_from, sizeof(struct packet_s));
 	this_p->seq = save_seq;
-
-#if AX25MEMDEBUG
-	if (ax25memdebug)
-	{
-
-		printf("ax25_dup, seq=%d, called from %s %d, clone of seq %d\n", this_p->seq, src_file, src_line, copy_from->seq);
-	}
-#endif
 
 	return (this_p);
 }
