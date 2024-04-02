@@ -248,9 +248,9 @@ void dlq_rec_frame(int chan, int subchan, int slice, packet_t pp, alevel_t aleve
 	pnew->fec_type = fec_type;
 	pnew->retries = retries;
 	if (spectrum == NULL)
-		strlcpy(pnew->spectrum, "", sizeof(pnew->spectrum));
+		strncpy(pnew->spectrum, "", sizeof(pnew->spectrum));
 	else
-		strlcpy(pnew->spectrum, spectrum, sizeof(pnew->spectrum));
+		strncpy(pnew->spectrum, spectrum, sizeof(pnew->spectrum));
 
 	/* Put it into queue. */
 

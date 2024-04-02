@@ -8,23 +8,16 @@ include_directories(
 if(LINUX)
 # Previously -
 #  list(APPEND misc_SOURCES
-#    # Provide our own copy of strlcpy and strlcat
+#    # Provide our own copy of strlcat
 #    # because they are not included with Linux.
-#    ${CUSTOM_MISC_DIR}/strlcpy.c
 #    ${CUSTOM_MISC_DIR}/strlcat.c
 #    )
-# It seems that Alpine Linux and Void Linux have strlcpy and
+# It seems that Alpine Linux and Void Linux have
 # strlcat so we need to handle the situation more delicately.
 # When doing it this way, there is probably no reason to
 # distinguish between Linux and BSD-like systems here.
 # If we kept going, the same thing could be done for each
 # of the functions and no OS check would be needed.
-
-  if (NOT HAVE_STRLCPY)
-    list(APPEND misc_SOURCES
-      ${CUSTOM_MISC_DIR}/strlcpy.c
-      )
-  endif()
 
   if (NOT HAVE_STRLCAT)
     list(APPEND misc_SOURCES
@@ -39,7 +32,7 @@ if(LINUX)
   #if("${misc_SOURCES}")
   # This is less elegant and less maintainable but it works.
 
-  if ((NOT HAVE_STRLCPY) OR (NOT HAVE_STRLCAT))
+  if (NOT HAVE_STRLCAT)
     add_library(misc STATIC
       ${misc_SOURCES}
       )
@@ -57,7 +50,6 @@ elseif(WIN32 OR CYGWIN) # windows
     ${CUSTOM_MISC_DIR}/strsep.c
     ${CUSTOM_MISC_DIR}/strtok_r.c
     ${CUSTOM_MISC_DIR}/strcasestr.c
-    ${CUSTOM_MISC_DIR}/strlcpy.c
     ${CUSTOM_MISC_DIR}/strlcat.c
     )
 

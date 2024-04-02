@@ -870,7 +870,7 @@ int xmit_speak_it(char *script, int c, char *orig_msg)
 
 	/* Remove any quotes because it will mess up command line argument parsing. */
 
-	strlcpy(msg, orig_msg, sizeof(msg));
+	strncpy(msg, orig_msg, sizeof(msg));
 
 	for (p = msg; *p != '\0'; p++)
 	{
@@ -899,7 +899,7 @@ int xmit_speak_it(char *script, int c, char *orig_msg)
 
 		ignore = getcwd(cwd, sizeof(cwd));
 		(void)ignore;
-		strlcpy(path, getenv("PATH"), sizeof(path));
+		strncpy(path, getenv("PATH"), sizeof(path));
 
 		printf("CWD = %s\n", cwd);
 		printf("PATH = %s\n", path);

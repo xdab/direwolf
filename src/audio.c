@@ -291,7 +291,7 @@ int audio_open(struct audio_s *pa)
 			{
 				adev[a].g_audio_in_type = AUDIO_IN_TYPE_STDIN;
 				/* Change "-" to stdin for readability. */
-				strlcpy(pa->adev[a].adevice_in, "stdin", sizeof(pa->adev[a].adevice_in));
+				strncpy(pa->adev[a].adevice_in, "stdin", sizeof(pa->adev[a].adevice_in));
 			}
 			if (strncasecmp(pa->adev[a].adevice_in, "udp:", 4) == 0)
 			{
@@ -308,8 +308,8 @@ int audio_open(struct audio_s *pa)
 
 			/* If not specified, the device names should be "default". */
 
-			strlcpy(audio_in_name, pa->adev[a].adevice_in, sizeof(audio_in_name));
-			strlcpy(audio_out_name, pa->adev[a].adevice_out, sizeof(audio_out_name));
+			strncpy(audio_in_name, pa->adev[a].adevice_in, sizeof(audio_in_name));
+			strncpy(audio_out_name, pa->adev[a].adevice_out, sizeof(audio_out_name));
 
 			char ctemp[40];
 

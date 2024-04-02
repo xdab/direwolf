@@ -184,9 +184,9 @@ int main(int argc, char *argv[])
 	char x_opt_mode = ' '; /* "-x N" option for transmitting calibration tones. */
 	int x_opt_chan = 0;	   /* Split into 2 parts.  Mode e.g.  m, a, and optional channel. */
 
-	strlcpy(l_opt_logdir, "", sizeof(l_opt_logdir));
-	strlcpy(L_opt_logfile, "", sizeof(L_opt_logfile));
-	strlcpy(P_opt, "", sizeof(P_opt));
+	strncpy(l_opt_logdir, "", sizeof(l_opt_logdir));
+	strncpy(L_opt_logfile, "", sizeof(L_opt_logfile));
+	strncpy(P_opt, "", sizeof(P_opt));
 
 #if __WIN32__
 
@@ -309,14 +309,14 @@ int main(int argc, char *argv[])
 	 * TODO:  Automatically search other places.
 	 */
 
-	strlcpy(config_file, "direwolf.conf", sizeof(config_file));
+	strncpy(config_file, "direwolf.conf", sizeof(config_file));
 
 	/*
 	 * Look at command line options.
 	 * So far, the only one is the configuration file location.
 	 */
 
-	strlcpy(input_file, "", sizeof(input_file));
+	strncpy(input_file, "", sizeof(input_file));
 	while (1)
 	{
 		// int this_option_optind = optind ? optind : 1;
@@ -363,7 +363,7 @@ int main(int argc, char *argv[])
 
 		case 'c': /* -c for configuration file name */
 
-			strlcpy(config_file, optarg, sizeof(config_file));
+			strncpy(config_file, optarg, sizeof(config_file));
 			break;
 
 #if __WIN32__
@@ -403,7 +403,7 @@ int main(int argc, char *argv[])
 		case 'P': /* -P for modem profile. */
 
 			// debug: printf ("Demodulator profile set to \"%s\"\n", optarg);
-			strlcpy(P_opt, optarg, sizeof(P_opt));
+			strncpy(P_opt, optarg, sizeof(P_opt));
 			break;
 
 		case 'D': /* -D divide AFSK demodulator sample rate */
@@ -596,12 +596,12 @@ int main(int argc, char *argv[])
 
 		case 'l': /* -l for log directory with daily files */
 
-			strlcpy(l_opt_logdir, optarg, sizeof(l_opt_logdir));
+			strncpy(l_opt_logdir, optarg, sizeof(l_opt_logdir));
 			break;
 
 		case 'L': /* -L for log file name with full path */
 
-			strlcpy(L_opt_logfile, optarg, sizeof(L_opt_logfile));
+			strncpy(L_opt_logfile, optarg, sizeof(L_opt_logfile));
 			break;
 
 		case 'E': /* -E Error rate (%) for corrupting frames. */
@@ -662,7 +662,7 @@ int main(int argc, char *argv[])
 			printf("Warning: File(s) beyond the first are ignored.\n");
 		}
 
-		strlcpy(input_file, argv[optind], sizeof(input_file));
+		strncpy(input_file, argv[optind], sizeof(input_file));
 	}
 
 	/*
@@ -725,7 +725,7 @@ int main(int argc, char *argv[])
 	if (strlen(P_opt) > 0)
 	{
 		/* -P for modem profile. */
-		strlcpy(audio_config.achan[0].profiles, P_opt, sizeof(audio_config.achan[0].profiles));
+		strncpy(audio_config.achan[0].profiles, P_opt, sizeof(audio_config.achan[0].profiles));
 	}
 
 	if (D_opt != 0)
@@ -757,12 +757,12 @@ int main(int argc, char *argv[])
 	if (strlen(L_opt_logfile) > 0)
 	{
 		misc_config.log_daily_names = 0;
-		strlcpy(misc_config.log_path, L_opt_logfile, sizeof(misc_config.log_path));
+		strncpy(misc_config.log_path, L_opt_logfile, sizeof(misc_config.log_path));
 	}
 	else if (strlen(l_opt_logdir) > 0)
 	{
 		misc_config.log_daily_names = 1;
-		strlcpy(misc_config.log_path, l_opt_logdir, sizeof(misc_config.log_path));
+		strncpy(misc_config.log_path, l_opt_logdir, sizeof(misc_config.log_path));
 	}
 
 	misc_config.enable_kiss_pt = enable_pseudo_terminal;
@@ -770,7 +770,7 @@ int main(int argc, char *argv[])
 	if (strlen(input_file) > 0)
 	{
 
-		strlcpy(audio_config.adev[0].adevice_in, input_file, sizeof(audio_config.adev[0].adevice_in));
+		strncpy(audio_config.adev[0].adevice_in, input_file, sizeof(audio_config.adev[0].adevice_in));
 	}
 
 	audio_config.recv_ber = e_recv_ber;
@@ -961,12 +961,12 @@ void app_process_rec_packet(int chan, int subchan, int slice, packet_t pp, aleve
 	assert(slice >= 0 && slice < MAX_SLICERS);
 	assert(pp != NULL); // 1.1J+
 
-	strlcpy(display_retries, "", sizeof(display_retries));
+	strncpy(display_retries, "", sizeof(display_retries));
 
 	switch (fec_type)
 	{
 	case fec_type_fx25:
-		strlcpy(display_retries, " FX.25 ", sizeof(display_retries));
+		strncpy(display_retries, " FX.25 ", sizeof(display_retries));
 		break;
 	case fec_type_none:
 	default:
@@ -992,7 +992,7 @@ void app_process_rec_packet(int chan, int subchan, int slice, packet_t pp, aleve
 	{
 		/* Not AX.25. No station to display below. */
 		h = -1;
-		strlcpy(heard, "", sizeof(heard));
+		strncpy(heard, "", sizeof(heard));
 	}
 	else
 	{

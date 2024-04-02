@@ -388,8 +388,8 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 	for (adevice = 0; adevice < MAX_ADEVS; adevice++)
 	{
 
-		strlcpy(p_audio_config->adev[adevice].adevice_in, DEFAULT_ADEVICE, sizeof(p_audio_config->adev[adevice].adevice_in));
-		strlcpy(p_audio_config->adev[adevice].adevice_out, DEFAULT_ADEVICE, sizeof(p_audio_config->adev[adevice].adevice_out));
+		strncpy(p_audio_config->adev[adevice].adevice_in, DEFAULT_ADEVICE, sizeof(p_audio_config->adev[adevice].adevice_in));
+		strncpy(p_audio_config->adev[adevice].adevice_out, DEFAULT_ADEVICE, sizeof(p_audio_config->adev[adevice].adevice_out));
 
 		p_audio_config->adev[adevice].defined = 0;
 		p_audio_config->adev[adevice].num_channels = DEFAULT_NUM_CHANNELS;		 /* -2 stereo */
@@ -412,7 +412,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 		p_audio_config->achan[channel].baud = DEFAULT_BAUD;				/* -b option */
 
 		/* None.  Will set default later based on other factors. */
-		strlcpy(p_audio_config->achan[channel].profiles, "", sizeof(p_audio_config->achan[channel].profiles));
+		strncpy(p_audio_config->achan[channel].profiles, "", sizeof(p_audio_config->achan[channel].profiles));
 
 		p_audio_config->achan[channel].num_freq = 1;
 		p_audio_config->achan[channel].offset = 0;
@@ -426,7 +426,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 		for (ot = 0; ot < NUM_OCTYPES; ot++)
 		{
 			p_audio_config->achan[channel].octrl[ot].ptt_method = PTT_METHOD_NONE;
-			strlcpy(p_audio_config->achan[channel].octrl[ot].ptt_device, "", sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
+			strncpy(p_audio_config->achan[channel].octrl[ot].ptt_device, "", sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
 			p_audio_config->achan[channel].octrl[ot].ptt_line = PTT_LINE_NONE;
 			p_audio_config->achan[channel].octrl[ot].ptt_line2 = PTT_LINE_NONE;
 			p_audio_config->achan[channel].octrl[ot].out_gpio_num = 0;
@@ -468,7 +468,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 	p_misc_config->enable_kiss_pt = 0; /* -p option */
 	p_misc_config->kiss_copy = 0;
 
-	strlcpy(p_misc_config->kiss_serial_port, "", sizeof(p_misc_config->kiss_serial_port));
+	strncpy(p_misc_config->kiss_serial_port, "", sizeof(p_misc_config->kiss_serial_port));
 	p_misc_config->kiss_serial_speed = 0;
 	p_misc_config->kiss_serial_poll = 0;
 
@@ -493,7 +493,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 
 	// TODO: Would be better to have a search list and loop thru it.
 
-	strlcpy(filepath, fname, sizeof(filepath));
+	strncpy(filepath, fname, sizeof(filepath));
 
 	fp = fopen(filepath, "r");
 
@@ -503,12 +503,12 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 		/* Failed to open the default location.  Try home dir. */
 		char *p;
 
-		strlcpy(filepath, "", sizeof(filepath));
+		strncpy(filepath, "", sizeof(filepath));
 
 		p = getenv("HOME");
 		if (p != NULL)
 		{
-			strlcpy(filepath, p, sizeof(filepath));
+			strncpy(filepath, p, sizeof(filepath));
 			strlcat(filepath, "/direwolf.conf", sizeof(filepath));
 			fp = fopen(filepath, "r");
 		}
@@ -592,13 +592,13 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 			/* First channel of device is valid. */
 			p_audio_config->chan_medium[ADEVFIRSTCHAN(adevice)] = MEDIUM_RADIO;
 
-			strlcpy(p_audio_config->adev[adevice].adevice_in, t, sizeof(p_audio_config->adev[adevice].adevice_in));
-			strlcpy(p_audio_config->adev[adevice].adevice_out, t, sizeof(p_audio_config->adev[adevice].adevice_out));
+			strncpy(p_audio_config->adev[adevice].adevice_in, t, sizeof(p_audio_config->adev[adevice].adevice_in));
+			strncpy(p_audio_config->adev[adevice].adevice_out, t, sizeof(p_audio_config->adev[adevice].adevice_out));
 
 			t = split(NULL, 0);
 			if (t != NULL)
 			{
-				strlcpy(p_audio_config->adev[adevice].adevice_out, t, sizeof(p_audio_config->adev[adevice].adevice_out));
+				strncpy(p_audio_config->adev[adevice].adevice_out, t, sizeof(p_audio_config->adev[adevice].adevice_out));
 			}
 		}
 
@@ -651,7 +651,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 			/* First channel of device is valid. */
 			p_audio_config->chan_medium[ADEVFIRSTCHAN(adevice)] = MEDIUM_RADIO;
 
-			strlcpy(p_audio_config->adev[adevice].adevice_in, t, sizeof(p_audio_config->adev[adevice].adevice_in));
+			strncpy(p_audio_config->adev[adevice].adevice_in, t, sizeof(p_audio_config->adev[adevice].adevice_in));
 		}
 		else if (strcasecmp(t, "PAODEVICE") == 0)
 		{
@@ -682,7 +682,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 			/* First channel of device is valid. */
 			p_audio_config->chan_medium[ADEVFIRSTCHAN(adevice)] = MEDIUM_RADIO;
 
-			strlcpy(p_audio_config->adev[adevice].adevice_out, t, sizeof(p_audio_config->adev[adevice].adevice_out));
+			strncpy(p_audio_config->adev[adevice].adevice_out, t, sizeof(p_audio_config->adev[adevice].adevice_out));
 		}
 
 		/*
@@ -957,7 +957,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 							}
 						}
 
-						strlcpy(p_audio_config->achan[channel].profiles, t, sizeof(p_audio_config->achan[channel].profiles));
+						strncpy(p_audio_config->achan[channel].profiles, t, sizeof(p_audio_config->achan[channel].profiles));
 						t = split(NULL, 0);
 						if (strlen(p_audio_config->achan[channel].profiles) > 1 && t != NULL)
 						{
@@ -1062,7 +1062,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 						{ /* profile of letter(s) + - */
 
 							// Will be validated later.
-							strlcpy(p_audio_config->achan[channel].profiles, t, sizeof(p_audio_config->achan[channel].profiles));
+							strncpy(p_audio_config->achan[channel].profiles, t, sizeof(p_audio_config->achan[channel].profiles));
 						}
 
 						else if (*t == '/')
@@ -1216,17 +1216,17 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 			if (strcasecmp(t, "PTT") == 0)
 			{
 				ot = OCTYPE_PTT;
-				strlcpy(otname, "PTT", sizeof(otname));
+				strncpy(otname, "PTT", sizeof(otname));
 			}
 			else if (strcasecmp(t, "DCD") == 0)
 			{
 				ot = OCTYPE_DCD;
-				strlcpy(otname, "DCD", sizeof(otname));
+				strncpy(otname, "DCD", sizeof(otname));
 			}
 			else
 			{
 				ot = OCTYPE_CON;
-				strlcpy(otname, "CON", sizeof(otname));
+				strncpy(otname, "CON", sizeof(otname));
 			}
 
 			t = split(NULL, 0);
@@ -1341,7 +1341,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 					printf("Config file line %d: Missing port for hamlib.\n", line);
 					continue;
 				}
-				strlcpy(p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
+				strncpy(p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
 
 				// Optional serial port rate for CAT control PTT.
 
@@ -1429,7 +1429,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 #if __WIN32__
 					else if (*t == '\\')
 					{
-						strlcpy(p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
+						strncpy(p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
 					}
 					else
 					{
@@ -1440,7 +1440,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 #else
 					else if (*t == '/')
 					{
-						strlcpy(p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
+						strncpy(p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
 					}
 					else
 					{
@@ -1487,7 +1487,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 
 				/* serial port case. */
 
-				strlcpy(p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
+				strncpy(p_audio_config->achan[channel].octrl[ot].ptt_device, t, sizeof(p_audio_config->achan[channel].octrl[ot].ptt_device));
 
 				t = split(NULL, 0);
 				if (t == NULL)
@@ -1589,7 +1589,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 		{
 			char itname[8];
 
-			strlcpy(itname, "TXINH", sizeof(itname));
+			strncpy(itname, "TXINH", sizeof(itname));
 
 			t = split(NULL, 0);
 			if (t == NULL)
@@ -1962,7 +1962,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 
 					printf("Config file: Warning serial port name on line %d replaces earlier value.\n", line);
 				}
-				strlcpy(p_misc_config->kiss_serial_port, t, sizeof(p_misc_config->kiss_serial_port));
+				strncpy(p_misc_config->kiss_serial_port, t, sizeof(p_misc_config->kiss_serial_port));
 				p_misc_config->kiss_serial_speed = 0;
 				p_misc_config->kiss_serial_poll = 0;
 			}
@@ -1995,7 +1995,7 @@ void config_init(char *fname, struct audio_s *p_audio_config,
 
 					printf("Config file: Warning serial port name on line %d replaces earlier value.\n", line);
 				}
-				strlcpy(p_misc_config->kiss_serial_port, t, sizeof(p_misc_config->kiss_serial_port));
+				strncpy(p_misc_config->kiss_serial_port, t, sizeof(p_misc_config->kiss_serial_port));
 				p_misc_config->kiss_serial_speed = 0;
 				p_misc_config->kiss_serial_poll = 1; // set polling.
 			}

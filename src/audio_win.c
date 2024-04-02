@@ -283,7 +283,7 @@ int audio_open(struct audio_s *pa)
 			{
 				A->g_audio_in_type = AUDIO_IN_TYPE_STDIN;
 				/* Change - to stdin for readability. */
-				strlcpy(pa->adev[a].adevice_in, "stdin", sizeof(pa->adev[a].adevice_in));
+				strncpy(pa->adev[a].adevice_in, "stdin", sizeof(pa->adev[a].adevice_in));
 			}
 			else if (strncasecmp(pa->adev[a].adevice_in, "udp:", 4) == 0)
 			{

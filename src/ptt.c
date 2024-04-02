@@ -582,7 +582,7 @@ void export_gpio(int ch, int ot, int invert, int direction)
 		{
 			if (strcmp(lookfor, file_list[i]->d_name) == 0)
 			{
-				strlcpy(gpio_name, file_list[i]->d_name, MAX_GPIO_NAME_LEN);
+				strncpy(gpio_name, file_list[i]->d_name, MAX_GPIO_NAME_LEN);
 				ok = 1;
 			}
 		}
@@ -595,7 +595,7 @@ void export_gpio(int ch, int ot, int invert, int direction)
 		{
 			if (strncmp(lookfor, file_list[i]->d_name, strlen(lookfor)) == 0)
 			{
-				strlcpy(gpio_name, file_list[i]->d_name, MAX_GPIO_NAME_LEN);
+				strncpy(gpio_name, file_list[i]->d_name, MAX_GPIO_NAME_LEN);
 				ok = 1;
 			}
 		}
@@ -650,16 +650,16 @@ void export_gpio(int ch, int ot, int invert, int direction)
 	{
 		if (invert)
 		{
-			strlcpy(gpio_val, "high", sizeof(gpio_val));
+			strncpy(gpio_val, "high", sizeof(gpio_val));
 		}
 		else
 		{
-			strlcpy(gpio_val, "low", sizeof(gpio_val));
+			strncpy(gpio_val, "low", sizeof(gpio_val));
 		}
 	}
 	else
 	{
-		strlcpy(gpio_val, "in", sizeof(gpio_val));
+		strncpy(gpio_val, "in", sizeof(gpio_val));
 	}
 	if (write(fd, gpio_val, strlen(gpio_val)) != strlen(gpio_val))
 	{
@@ -754,9 +754,9 @@ void ptt_init(struct audio_s *audio_config_p)
 
 	save_audio_config_p = audio_config_p;
 
-	strlcpy(otnames[OCTYPE_PTT], "PTT", sizeof(otnames[OCTYPE_PTT]));
-	strlcpy(otnames[OCTYPE_DCD], "DCD", sizeof(otnames[OCTYPE_DCD]));
-	strlcpy(otnames[OCTYPE_CON], "CON", sizeof(otnames[OCTYPE_CON]));
+	strncpy(otnames[OCTYPE_PTT], "PTT", sizeof(otnames[OCTYPE_PTT]));
+	strncpy(otnames[OCTYPE_DCD], "DCD", sizeof(otnames[OCTYPE_DCD]));
+	strncpy(otnames[OCTYPE_CON], "CON", sizeof(otnames[OCTYPE_CON]));
 
 	for (ch = 0; ch < MAX_CHANS; ch++)
 	{
@@ -850,14 +850,14 @@ void ptt_init(struct audio_s *audio_config_p)
 						// Bug fix in release 1.1 - Need to munge name for COM10 and up.
 						// http://support.microsoft.com/kb/115831
 
-						strlcpy(bettername, audio_config_p->achan[ch].octrl[ot].ptt_device, sizeof(bettername));
+						strncpy(bettername, audio_config_p->achan[ch].octrl[ot].ptt_device, sizeof(bettername));
 						if (strncasecmp(bettername, "COM", 3) == 0)
 						{
 							int n;
 							n = atoi(bettername + 3);
 							if (n >= 10)
 							{
-								strlcpy(bettername, "\\\\.\\", sizeof(bettername));
+								strncpy(bettername, "\\\\.\\", sizeof(bettername));
 								strlcat(bettername, audio_config_p->achan[ch].octrl[ot].ptt_device, sizeof(bettername));
 							}
 						}
@@ -1081,7 +1081,7 @@ void ptt_init(struct audio_s *audio_config_p)
 							hamlib_port_t hport; // http://hamlib.sourceforge.net/manuals/1.2.15/structhamlib__port__t.html
 
 							memset(&hport, 0, sizeof(hport));
-							strlcpy(hport.pathname, audio_config_p->achan[ch].octrl[ot].ptt_device, sizeof(hport.pathname));
+							strncpy(hport.pathname, audio_config_p->achan[ch].octrl[ot].ptt_device, sizeof(hport.pathname));
 
 							if (audio_config_p->achan[ch].octrl[ot].ptt_rate > 0)
 							{
@@ -1116,7 +1116,7 @@ void ptt_init(struct audio_s *audio_config_p)
 							continue;
 						}
 
-						strlcpy(rig[ch][ot]->state.rigport.pathname, audio_config_p->achan[ch].octrl[ot].ptt_device, sizeof(rig[ch][ot]->state.rigport.pathname));
+						strncpy(rig[ch][ot]->state.rigport.pathname, audio_config_p->achan[ch].octrl[ot].ptt_device, sizeof(rig[ch][ot]->state.rigport.pathname));
 
 						// Issue 290.
 						// We had a case where hamlib defaulted to 9600 baud for a particular

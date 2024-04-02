@@ -233,7 +233,7 @@ static int kisspt_open_pt(void)
 		return (-1);
 	}
 
-	strlcpy(pt_slave_name, pts, sizeof(pt_slave_name));
+	strncpy(pt_slave_name, pts, sizeof(pt_slave_name));
 
 	e = tcgetattr(fd, &ts);
 	if (e != 0)
@@ -377,7 +377,7 @@ void kisspt_send_rec_packet(int chan, int kiss_cmd, unsigned char *fbuf, int fle
 		{
 			kiss_debug_print(TO_CLIENT, "Fake command prompt", fbuf, flen);
 		}
-		strlcpy((char *)kiss_buff, (char *)fbuf, sizeof(kiss_buff));
+		strncpy((char *)kiss_buff, (char *)fbuf, sizeof(kiss_buff));
 		kiss_len = strlen((char *)kiss_buff);
 	}
 	else

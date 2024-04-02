@@ -182,7 +182,7 @@ int demod_init(struct audio_s *pa)
 				 */
 				if (num_letters == 0)
 				{
-					strlcpy(just_letters, "A", sizeof(just_letters));
+					strncpy(just_letters, "A", sizeof(just_letters));
 					num_letters = strlen(just_letters);
 
 					if (have_plus != -1)
@@ -240,7 +240,7 @@ int demod_init(struct audio_s *pa)
 				if (have_plus == -1)
 					have_plus = 0;
 
-				strlcpy(save_audio_config_p->achan[chan].profiles, just_letters, sizeof(save_audio_config_p->achan[chan].profiles));
+				strncpy(save_audio_config_p->achan[chan].profiles, just_letters, sizeof(save_audio_config_p->achan[chan].profiles));
 
 				assert(strlen(save_audio_config_p->achan[chan].profiles) >= 1);
 
@@ -510,7 +510,7 @@ int demod_init(struct audio_s *pa)
 					/* We want higher performance to be the default. */
 					/* "MODEM 9600 -" can be used on very slow CPU if necessary. */
 
-					strlcpy(save_audio_config_p->achan[chan].profiles, "+", sizeof(save_audio_config_p->achan[chan].profiles));
+					strncpy(save_audio_config_p->achan[chan].profiles, "+", sizeof(save_audio_config_p->achan[chan].profiles));
 				}
 
 				/*

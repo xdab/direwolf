@@ -336,7 +336,7 @@ int main(int argc, char **argv)
 	if (argc >= 2)
 	{
 		char path[128];
-		strlcpy(path, argv[1], sizeof(path));
+		strncpy(path, argv[1], sizeof(path));
 		int gpio = 3;
 		if (argc >= 3)
 		{
@@ -561,7 +561,7 @@ int cm108_inventory(struct thing_s *things, int max_things)
 			things[num_things].pid = cur_dev->product_id;
 			wcstombs(things[num_things].product, cur_dev->product_string, sizeof(things[num_things].product));
 			things[num_things].product[sizeof(things[num_things].product) - 1] = '\0';
-			strlcpy(things[num_things].devnode_hidraw, cur_dev->path, sizeof(things[num_things].devnode_hidraw));
+			strncpy(things[num_things].devnode_hidraw, cur_dev->path, sizeof(things[num_things].devnode_hidraw));
 
 			num_things++;
 		}
@@ -607,7 +607,7 @@ int cm108_inventory(struct thing_s *things, int max_things)
 		{
 			// I'm not happy with this but couldn't figure out how
 			// to get attributes from one level up from the pcmC?D?? node.
-			strlcpy(card_devpath, path, sizeof(card_devpath));
+			strncpy(card_devpath, path, sizeof(card_devpath));
 			pattrs_id = udev_device_get_sysattr_value(dev, "id");
 			pattrs_number = udev_device_get_sysattr_value(dev, "number");
 			// printf (" >card_devpath = %s\n", card_devpath);
@@ -639,7 +639,7 @@ int cm108_inventory(struct thing_s *things, int max_things)
 					SAFE_STRCPY(things[num_things].product, udev_device_get_sysattr_value(parentdev, "product"));
 					SAFE_STRCPY(things[num_things].devnode_sound, devnode);
 					SAFE_STRCPY(things[num_things].devnode_usb, udev_device_get_devnode(parentdev));
-					strlcpy(things[num_things].devpath, card_devpath, sizeof(things[num_things].devpath));
+					strncpy(things[num_things].devpath, card_devpath, sizeof(things[num_things].devpath));
 					num_things++;
 				}
 				udev_device_unref(parentdev);
@@ -786,7 +786,7 @@ void cm108_find_ptt(char *output_audio_device, char *ptt_device, int ptt_device_
 
 	// printf ("DEBUG: cm108_find_ptt('%s')\n", output_audio_device);
 
-	strlcpy(ptt_device, "", ptt_device_size);
+	strncpy(ptt_device, "", ptt_device_size);
 
 	// Possible improvement: Skip if inventory already taken.
 	num_things = cm108_inventory(things, MAXX_THINGS);
@@ -808,7 +808,7 @@ void cm108_find_ptt(char *output_audio_device, char *ptt_device, int ptt_device_
 		{
 			good_devices++;
 			// printf ("DEBUG: success! returning '%s'\n", things[i].devnode_hidraw);
-			strlcpy(ptt_device, things[i].devnode_hidraw, ptt_device_size);
+			strncpy(ptt_device, things[i].devnode_hidraw, ptt_device_size);
 		}
 	}
 
@@ -863,7 +863,7 @@ void cm108_find_ptt(char *output_audio_device, char *ptt_device, int ptt_device_
 		if (strcmp(num_or_name, things[i].card_name) == 0 || strcmp(num_or_name, things[i].card_number) == 0)
 		{
 			// printf ("DEBUG: success! returning '%s'\n", things[i].devnode_hidraw);
-			strlcpy(ptt_device, things[i].devnode_hidraw, ptt_device_size);
+			strncpy(ptt_device, things[i].devnode_hidraw, ptt_device_size);
 			if (!GOOD_DEVICE(things[i].vid, things[i].pid))
 			{
 
