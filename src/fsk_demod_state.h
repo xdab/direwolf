@@ -254,55 +254,44 @@ struct demodulator_state_s
 							*	Still a lot to do here.
 							*/
 
-	union
+	struct afsk_only_s
 	{
 
-		//////////////////////////////////////////////////////////////////////////////////
-		//										//
-		//			AFSK only - new method in 1.7				//
-		//										//
-		//////////////////////////////////////////////////////////////////////////////////
+		unsigned int m_osc_phase; // Phase for Mark local oscillator.
+		unsigned int m_osc_delta; // How much to change for each audio sample.
 
-		struct afsk_only_s
-		{
+		unsigned int s_osc_phase; // Phase for Space local oscillator.
+		unsigned int s_osc_delta; // How much to change for each audio sample.
 
-			unsigned int m_osc_phase; // Phase for Mark local oscillator.
-			unsigned int m_osc_delta; // How much to change for each audio sample.
+		unsigned int c_osc_phase; // Phase for Center frequency local oscillator.
+		unsigned int c_osc_delta; // How much to change for each audio sample.
 
-			unsigned int s_osc_phase; // Phase for Space local oscillator.
-			unsigned int s_osc_delta; // How much to change for each audio sample.
+		// Need two mixers for profile "A".
 
-			unsigned int c_osc_phase; // Phase for Center frequency local oscillator.
-			unsigned int c_osc_delta; // How much to change for each audio sample.
+		float m_I_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
+		float m_Q_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
 
-			// Need two mixers for profile "A".
+		float s_I_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
+		float s_Q_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
 
-			float m_I_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-			float m_Q_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
+		// Only need one mixer for profile "B".  Reuse the same storage?
 
-			float s_I_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-			float s_Q_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
+		// #define c_I_raw m_I_raw
+		// #define c_Q_raw m_Q_raw
+		float c_I_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
+		float c_Q_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
 
-			// Only need one mixer for profile "B".  Reuse the same storage?
+		int use_rrc; // Use RRC rather than generic low pass.
 
-			// #define c_I_raw m_I_raw
-			// #define c_Q_raw m_Q_raw
-			float c_I_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
-			float c_Q_raw[MAX_FILTER_SIZE] __attribute__((aligned(16)));
+		float rrc_width_sym; /* Width of RRC filter in number of symbols.  */
 
-			int use_rrc; // Use RRC rather than generic low pass.
+		float rrc_rolloff; /* Rolloff factor for RRC.  Between 0 and 1. */
 
-			float rrc_width_sym; /* Width of RRC filter in number of symbols.  */
+		float prev_phase; // To see phase shift between samples for FM demod.
 
-			float rrc_rolloff; /* Rolloff factor for RRC.  Between 0 and 1. */
+		float normalize_rpsam; // Normalize to -1 to +1 for expected tones.
 
-			float prev_phase; // To see phase shift between samples for FM demod.
-
-			float normalize_rpsam; // Normalize to -1 to +1 for expected tones.
-
-		} afsk;
-
-	} u; // end of union for different demodulator types.
+	} afsk;
 };
 
 /*-------------------------------------------------------------------

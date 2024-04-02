@@ -17,15 +17,6 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-// #define DEBUG1 1     /* display debugging info */
-
-// #define DEBUG3 1	/* print carrier detect changes. */
-
-// #define DEBUG4 1	/* capture AFSK demodulator output to log files */
-/* Can be used to make nice plots. */
-
-// #define DEBUG5 1	// Write just demodulated bit stream to file. */
-
 /*------------------------------------------------------------------
  *
  * Module:      demod_afsk.c
@@ -101,11 +92,11 @@ __attribute__((hot)) __attribute__((always_inline)) static inline float convolve
 	float sum = 0.0f;
 	int j;
 
-	// #pragma GCC ivdep				// ignored until gcc 4.9
 	for (j = 0; j < filter_taps; j++)
 	{
 		sum += filter[j] * data[j];
 	}
+
 	return (sum);
 }
 
@@ -142,21 +133,19 @@ __attribute__((hot)) __attribute__((always_inline)) static inline float agc(floa
 		*pvalley = in * slow_decay + *pvalley * (1.0f - slow_decay);
 	}
 
-#if 1
 	float x = in;
+
 	if (x > *ppeak)
 		x = *ppeak; // experiment: clip to envelope?
+
 	if (x < *pvalley)
 		x = *pvalley;
-#endif
+
 	if (*ppeak > *pvalley)
 	{
-
-		return ((x - 0.5f * (*ppeak + *pvalley)) / (*ppeak - *pvalley)); // my original AGC
-
-		// return (( x - 0.5f * (*ppeak + *pvalley )) * ( *ppeak - *pvalley )); // see note below.
-		// return (x - 0.5f * (*ppeak + *pvalley));	// not as good either.
+		return ((x - 0.5f * (*ppeak + *pvalley)) / (*ppeak - *pvalley));
 	}
+
 	return (0.0f);
 }
 
@@ -274,19 +263,19 @@ void demod_afsk_init(int samples_per_sec, int baud, int mark_freq,
 
 		// Local oscillators for Mark and Space tones.
 
-		D->u.afsk.m_osc_phase = 0;
-		D->u.afsk.m_osc_delta = round(pow(2., 32.) * (double)mark_freq / (double)samples_per_sec);
+		D->afsk.m_osc_phase = 0;
+		D->afsk.m_osc_delta = round(pow(2., 32.) * (double)mark_freq / (double)samples_per_sec);
 
-		D->u.afsk.s_osc_phase = 0;
-		D->u.afsk.s_osc_delta = round(pow(2., 32.) * (double)space_freq / (double)samples_per_sec);
+		D->afsk.s_osc_phase = 0;
+		D->afsk.s_osc_delta = round(pow(2., 32.) * (double)space_freq / (double)samples_per_sec);
 
-		D->u.afsk.use_rrc = 1;
-		TUNE("TUNE_USE_RRC", D->u.afsk.use_rrc, "use_rrc", "%d")
+		D->afsk.use_rrc = 1;
+		TUNE("TUNE_USE_RRC", D->afsk.use_rrc, "use_rrc", "%d")
 
-		if (D->u.afsk.use_rrc)
+		if (D->afsk.use_rrc)
 		{
-			D->u.afsk.rrc_width_sym = 2.80;
-			D->u.afsk.rrc_rolloff = 0.20;
+			D->afsk.rrc_width_sym = 2.80;
+			D->afsk.rrc_rolloff = 0.20;
 		}
 		else
 		{
@@ -337,16 +326,16 @@ void demod_afsk_init(int samples_per_sec, int baud, int mark_freq,
 
 		// Local oscillator for Center frequency.
 
-		D->u.afsk.c_osc_phase = 0;
-		D->u.afsk.c_osc_delta = round(pow(2., 32.) * 0.5 * (mark_freq + space_freq) / (double)samples_per_sec);
+		D->afsk.c_osc_phase = 0;
+		D->afsk.c_osc_delta = round(pow(2., 32.) * 0.5 * (mark_freq + space_freq) / (double)samples_per_sec);
 
-		D->u.afsk.use_rrc = 1;
-		TUNE("TUNE_USE_RRC", D->u.afsk.use_rrc, "use_rrc", "%d")
+		D->afsk.use_rrc = 1;
+		TUNE("TUNE_USE_RRC", D->afsk.use_rrc, "use_rrc", "%d")
 
-		if (D->u.afsk.use_rrc)
+		if (D->afsk.use_rrc)
 		{
-			D->u.afsk.rrc_width_sym = 2.00;
-			D->u.afsk.rrc_rolloff = 0.40;
+			D->afsk.rrc_width_sym = 2.00;
+			D->afsk.rrc_rolloff = 0.40;
 		}
 		else
 		{
@@ -356,7 +345,7 @@ void demod_afsk_init(int samples_per_sec, int baud, int mark_freq,
 		}
 
 		// For scaling phase shift into normallized -1 to +1 range for mark and space.
-		D->u.afsk.normalize_rpsam = 1.0 / (0.5 * abs(mark_freq - space_freq) * 2 * M_PI / samples_per_sec);
+		D->afsk.normalize_rpsam = 1.0 / (0.5 * abs(mark_freq - space_freq) * 2 * M_PI / samples_per_sec);
 
 		// New "B" demodulator does not use AGC but demod.c needs this to derive "quick" and
 		// "sluggish" values for overall signal amplitude.  That probably should be independent
@@ -383,8 +372,8 @@ void demod_afsk_init(int samples_per_sec, int baud, int mark_freq,
 	TUNE("TUNE_LPF_BAUD", D->lpf_baud, "lpf_baud", "%.3f")
 	TUNE("TUNE_LP_WINDOW", D->lp_window, "lp_window", "%d")
 
-	TUNE("TUNE_RRC_ROLLOFF", D->u.afsk.rrc_rolloff, "rrc_rolloff", "%.2f")
-	TUNE("TUNE_RRC_WIDTH_SYM", D->u.afsk.rrc_width_sym, "rrc_width_sym", "%.2f")
+	TUNE("TUNE_RRC_ROLLOFF", D->afsk.rrc_rolloff, "rrc_rolloff", "%.2f")
+	TUNE("TUNE_RRC_WIDTH_SYM", D->afsk.rrc_width_sym, "rrc_width_sym", "%.2f")
 
 	TUNE("TUNE_AGC_FAST", D->agc_fast_attack, "agc_fast_attack", "%.3f")
 	TUNE("TUNE_AGC_SLOW", D->agc_slow_decay, "agc_slow_decay", "%.6f")
@@ -401,14 +390,7 @@ void demod_afsk_init(int samples_per_sec, int baud, int mark_freq,
 	 *
 	 * A fraction if a Hz would make no difference for the filters.
 	 */
-	if (baud == 521)
-	{
-		D->pll_step_per_sample = (int)round((TICKS_PER_PLL_CYCLE * (double)520.83) / ((double)samples_per_sec));
-	}
-	else
-	{
-		D->pll_step_per_sample = (int)round((TICKS_PER_PLL_CYCLE * (double)baud) / ((double)samples_per_sec));
-	}
+	D->pll_step_per_sample = (int)round((TICKS_PER_PLL_CYCLE * (double)baud) / ((double)samples_per_sec));
 
 	/*
 	 * Optionally apply a bandpass ("pre") filter to attenuate
@@ -453,13 +435,13 @@ void demod_afsk_init(int samples_per_sec, int baud, int mark_freq,
 	 * In both cases, lp_filter and lp_filter_taps are used but the
 	 * contents will be generated differently.  Later code does not care.
 	 */
-	if (D->u.afsk.use_rrc)
+	if (D->afsk.use_rrc)
 	{
 
-		assert(D->u.afsk.rrc_width_sym >= 1 && D->u.afsk.rrc_width_sym <= 16);
-		assert(D->u.afsk.rrc_rolloff >= 0. && D->u.afsk.rrc_rolloff <= 1.);
+		assert(D->afsk.rrc_width_sym >= 1 && D->afsk.rrc_width_sym <= 16);
+		assert(D->afsk.rrc_rolloff >= 0. && D->afsk.rrc_rolloff <= 1.);
 
-		D->lp_filter_taps = ((int)(D->u.afsk.rrc_width_sym * (float)samples_per_sec / baud)) | 1; // odd works better
+		D->lp_filter_taps = ((int)(D->afsk.rrc_width_sym * (float)samples_per_sec / baud)) | 1; // odd works better
 
 		TUNE("TUNE_LP_FILTER_TAPS", D->lp_filter_taps, "lp_filter_taps (RRC)", "%d")
 
@@ -473,7 +455,7 @@ void demod_afsk_init(int samples_per_sec, int baud, int mark_freq,
 		}
 
 		assert(D->lp_filter_taps > 8 && D->lp_filter_taps <= MAX_FILTER_SIZE);
-		(void)gen_rrc_lowpass(D->lp_filter, D->lp_filter_taps, D->u.afsk.rrc_rolloff, (float)samples_per_sec / baud);
+		(void)gen_rrc_lowpass(D->lp_filter, D->lp_filter_taps, D->afsk.rrc_rolloff, (float)samples_per_sec / baud);
 	}
 	else
 	{
@@ -628,20 +610,20 @@ __attribute__((hot)) void demod_afsk_process_sample(int chan, int subchan, int s
 			fsam = convolve(D->raw_cb, D->pre_filter, D->pre_filter_taps);
 		}
 
-		push_sample(fsam * fcos256(D->u.afsk.m_osc_phase), D->u.afsk.m_I_raw, D->lp_filter_taps);
-		push_sample(fsam * fsin256(D->u.afsk.m_osc_phase), D->u.afsk.m_Q_raw, D->lp_filter_taps);
-		D->u.afsk.m_osc_phase += D->u.afsk.m_osc_delta;
+		push_sample(fsam * fcos256(D->afsk.m_osc_phase), D->afsk.m_I_raw, D->lp_filter_taps);
+		push_sample(fsam * fsin256(D->afsk.m_osc_phase), D->afsk.m_Q_raw, D->lp_filter_taps);
+		D->afsk.m_osc_phase += D->afsk.m_osc_delta;
 
-		push_sample(fsam * fcos256(D->u.afsk.s_osc_phase), D->u.afsk.s_I_raw, D->lp_filter_taps);
-		push_sample(fsam * fsin256(D->u.afsk.s_osc_phase), D->u.afsk.s_Q_raw, D->lp_filter_taps);
-		D->u.afsk.s_osc_phase += D->u.afsk.s_osc_delta;
+		push_sample(fsam * fcos256(D->afsk.s_osc_phase), D->afsk.s_I_raw, D->lp_filter_taps);
+		push_sample(fsam * fsin256(D->afsk.s_osc_phase), D->afsk.s_Q_raw, D->lp_filter_taps);
+		D->afsk.s_osc_phase += D->afsk.s_osc_delta;
 
-		float m_I = convolve(D->u.afsk.m_I_raw, D->lp_filter, D->lp_filter_taps);
-		float m_Q = convolve(D->u.afsk.m_Q_raw, D->lp_filter, D->lp_filter_taps);
+		float m_I = convolve(D->afsk.m_I_raw, D->lp_filter, D->lp_filter_taps);
+		float m_Q = convolve(D->afsk.m_Q_raw, D->lp_filter, D->lp_filter_taps);
 		float m_amp = fast_hypot(m_I, m_Q);
 
-		float s_I = convolve(D->u.afsk.s_I_raw, D->lp_filter, D->lp_filter_taps);
-		float s_Q = convolve(D->u.afsk.s_Q_raw, D->lp_filter, D->lp_filter_taps);
+		float s_I = convolve(D->afsk.s_I_raw, D->lp_filter, D->lp_filter_taps);
+		float s_Q = convolve(D->afsk.s_Q_raw, D->lp_filter, D->lp_filter_taps);
 		float s_amp = fast_hypot(s_I, s_Q);
 
 		/*
@@ -739,25 +721,25 @@ __attribute__((hot)) void demod_afsk_process_sample(int chan, int subchan, int s
 			fsam = convolve(D->raw_cb, D->pre_filter, D->pre_filter_taps);
 		}
 
-		push_sample(fsam * fcos256(D->u.afsk.c_osc_phase), D->u.afsk.c_I_raw, D->lp_filter_taps);
-		push_sample(fsam * fsin256(D->u.afsk.c_osc_phase), D->u.afsk.c_Q_raw, D->lp_filter_taps);
-		D->u.afsk.c_osc_phase += D->u.afsk.c_osc_delta;
+		push_sample(fsam * fcos256(D->afsk.c_osc_phase), D->afsk.c_I_raw, D->lp_filter_taps);
+		push_sample(fsam * fsin256(D->afsk.c_osc_phase), D->afsk.c_Q_raw, D->lp_filter_taps);
+		D->afsk.c_osc_phase += D->afsk.c_osc_delta;
 
-		float c_I = convolve(D->u.afsk.c_I_raw, D->lp_filter, D->lp_filter_taps);
-		float c_Q = convolve(D->u.afsk.c_Q_raw, D->lp_filter, D->lp_filter_taps);
+		float c_I = convolve(D->afsk.c_I_raw, D->lp_filter, D->lp_filter_taps);
+		float c_Q = convolve(D->afsk.c_Q_raw, D->lp_filter, D->lp_filter_taps);
 
 		float phase = atan2f(c_Q, c_I);
-		float rate = phase - D->u.afsk.prev_phase;
+		float rate = phase - D->afsk.prev_phase;
 		if (rate > M_PI)
 			rate -= 2 * M_PI;
 		else if (rate < -M_PI)
 			rate += 2 * M_PI;
-		D->u.afsk.prev_phase = phase;
+		D->afsk.prev_phase = phase;
 
 		// Rate is radians per audio sample interval or something like that.
 		// Scale scale that into -1 to +1 for expected tones.
 
-		float norm_rate = rate * D->u.afsk.normalize_rpsam;
+		float norm_rate = rate * D->afsk.normalize_rpsam;
 
 		// We really don't have mark and space amplitudes available in this case.
 
