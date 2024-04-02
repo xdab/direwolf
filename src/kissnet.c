@@ -167,10 +167,9 @@ same direwolf instance.
  * Linux:		Use the BSD socket interface.
  */
 
-#include "direwolf.h" // Sets _WIN32_WINNT for XP API level needed by ws2tcpip.h
-
 #if __WIN32__
 #include <winsock2.h>
+#include <windows.h>
 #include <ws2tcpip.h> // _WIN32_WINNT must be set to 0x0501 before including this
 #else
 #include <stdlib.h>

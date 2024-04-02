@@ -465,7 +465,7 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 			if (str) {
 				len = strlen(str);
 				cur_dev->path = (char*) calloc(len+1, sizeof(char));
-				strncpy(cur_dev->path, str, len+1);
+				strcpy(cur_dev->path, str);
 				cur_dev->path[len] = '\0';
 			}
 			else
@@ -886,7 +886,6 @@ int HID_API_EXPORT HID_API_CALL hid_get_feature_report(hid_device *dev, unsigned
 	bytes_returned++;
 
 	return bytes_returned;
-#endif
 }
 
 
@@ -927,7 +926,6 @@ int HID_API_EXPORT HID_API_CALL hid_get_input_report(hid_device *dev, unsigned c
 	bytes_returned++;
 
 	return bytes_returned;
-#endif
 }
 
 void HID_API_EXPORT HID_API_CALL hid_close(hid_device *dev)

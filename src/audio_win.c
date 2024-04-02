@@ -37,9 +37,6 @@
  *
  *---------------------------------------------------------------*/
 
-#include "direwolf.h" // Sets _WIN32_WINNT for XP API level needed by ws2tcpip.h
-// Also includes windows.h.
-
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -49,6 +46,8 @@
 #include <io.h>
 #include <fcntl.h>
 
+#include <winsock2.h>
+#include <windows.h>
 #include <mmsystem.h>
 
 #ifndef WAVE_FORMAT_96M16
@@ -56,7 +55,6 @@
 #define WAVE_FORMAT_96S16 0x80000
 #endif
 
-#include <winsock2.h>
 #include <ws2tcpip.h> // _WIN32_WINNT must be set to 0x0501 before including this
 
 #include "audio.h"

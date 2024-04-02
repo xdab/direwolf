@@ -3,6 +3,8 @@
 
 #if __WIN32__
 
+#include <windows.h>
+
 #define PTW32_STATIC_LIB
 
 // This enables definitions of localtime_r and gmtime_r in system time.h.
@@ -10,7 +12,9 @@
 #define _POSIX_C_SOURCE 1
 
 #else
+
 #include <pthread.h>
+
 #endif
 
 #ifdef __APPLE__
@@ -63,6 +67,9 @@ typedef CRITICAL_SECTION dw_mutex_t;
 
 #define dw_mutex_unlock(x) \
 	LeaveCriticalSection(x)
+
+typedef HANDLE dw_cond_t;
+
 
 #else
 

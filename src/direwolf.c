@@ -59,6 +59,7 @@
 #endif
 
 #if __WIN32__
+#include <windows.h>
 #include <stdio.h>
 #include <io.h>
 #else
@@ -103,7 +104,7 @@
 // static int idx_decoded = 0;
 
 #if __WIN32__
-static BOOL cleanup_win(int);
+static void cleanup_win(int);
 #else
 static void cleanup_linux(int);
 #endif
@@ -1138,7 +1139,7 @@ void app_process_rec_packet(int chan, int subchan, int slice, packet_t pp, aleve
 
 #if __WIN32__
 
-static BOOL cleanup_win(int ctrltype)
+static void cleanup_win(int ctrltype)
 {
 	if (ctrltype == CTRL_C_EVENT || ctrltype == CTRL_CLOSE_EVENT)
 	{
@@ -1147,7 +1148,6 @@ static BOOL cleanup_win(int ctrltype)
 		ptt_term();
 		ExitProcess(0);
 	}
-	return (TRUE);
 }
 
 #else

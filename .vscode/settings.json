@@ -36,6 +36,9 @@
         "assert.h": "c",
         "unistd.h": "c",
         "cm108.h": "c",
-        "direwolf.h": "c"
+        "direwolf.h": "c",
+        "windows.h": "c",
+        "dwthread.h": "c",
+        "stdio.h": "c"
     }
 }

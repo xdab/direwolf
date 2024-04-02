@@ -36,18 +36,17 @@
  *
  *---------------------------------------------------------------*/
 
-#include "direwolf.h"
 
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#if __WIN32__
-#else
+#if !__WIN32__
 #include <errno.h>
 #endif
 
+#include "dwthread.h"
 #include "ax25_pad.h"
 #include "audio.h"
 #include "dlq.h"
@@ -56,21 +55,17 @@
 
 static struct dlq_item_s *queue_head = NULL; /* Head of linked list for queue. */
 
+static dw_mutex_t dlq_mutex;
+
 #if __WIN32__
-
-// TODO1.2: use dw_mutex_t
-
-static CRITICAL_SECTION dlq_cs; /* Critical section for updating queues. */
 
 static HANDLE wake_up_event; /* Notify received packet processing thread when queue not empty. */
 
 #else
 
-static pthread_mutex_t dlq_mutex; /* Critical section for updating queues. */
-
 static pthread_cond_t wake_up_cond; /* Notify received packet processing thread when queue not empty. */
 
-static pthread_mutex_t wake_up_mutex; /* Required by cond_wait. */
+static dw_mutex_t wake_up_mutex; /* Required by cond_wait. */
 
 static volatile int recv_thread_is_waiting = 0;
 
@@ -115,19 +110,11 @@ void dlq_init(void)
 	printf("dlq_init: pthread_mutex_init...\n");
 #endif
 
-#if __WIN32__
-	InitializeCriticalSection(&dlq_cs);
-#else
+	dw_mutex_init(&dlq_mutex);
+
+#if !__WIN32__
 	int err;
 	err = pthread_mutex_init(&wake_up_mutex, NULL);
-	if (err != 0)
-	{
-
-		printf("dlq_init: pthread_mutex_init err=%d", err);
-		perror("");
-		exit(EXIT_FAILURE);
-	}
-	err = pthread_mutex_init(&dlq_mutex, NULL);
 	if (err != 0)
 	{
 
@@ -302,23 +289,11 @@ static void append_to_queue(struct dlq_item_s *pnew)
 
 	pnew->nextp = NULL;
 
-#if DEBUG1
-
+#if DEBUG
 	printf("dlq append_to_queue: enter critical section\n");
 #endif
-#if __WIN32__
-	EnterCriticalSection(&dlq_cs);
-#else
-	int err;
-	err = pthread_mutex_lock(&dlq_mutex);
-	if (err != 0)
-	{
 
-		printf("dlq append_to_queue: pthread_mutex_lock err=%d", err);
-		perror("");
-		exit(1);
-	}
-#endif
+	dw_mutex_lock(&dlq_mutex);
 
 	if (queue_head == NULL)
 	{
@@ -337,20 +312,9 @@ static void append_to_queue(struct dlq_item_s *pnew)
 		plast->nextp = pnew;
 	}
 
-#if __WIN32__
-	LeaveCriticalSection(&dlq_cs);
-#else
-	err = pthread_mutex_unlock(&dlq_mutex);
-	if (err != 0)
-	{
+	dw_mutex_unlock(&dlq_mutex);
 
-		printf("dlq append_to_queue: pthread_mutex_unlock err=%d", err);
-		perror("");
-		exit(1);
-	}
-#endif
-#if DEBUG1
-
+#if DEBUG
 	printf("dlq append_to_queue: left critical section\n");
 	printf("dlq append_to_queue (): about to wake up recv processing thread.\n");
 #endif
@@ -400,7 +364,6 @@ static void append_to_queue(struct dlq_item_s *pnew)
 
 	if (queue_length > 10)
 	{
-
 		printf("Received frame queue is out of control. Length=%d.\n", queue_length);
 		printf("Reader thread is probably frozen.\n");
 		printf("This can be caused by using a pseudo terminal (direwolf -p) where another\n");
@@ -412,15 +375,7 @@ static void append_to_queue(struct dlq_item_s *pnew)
 #else
 	if (recv_thread_is_waiting)
 	{
-
-		err = pthread_mutex_lock(&wake_up_mutex);
-		if (err != 0)
-		{
-
-			printf("dlq append_to_queue: pthread_mutex_lock wu err=%d", err);
-			perror("");
-			exit(1);
-		}
+		dw_mutex_lock(&wake_up_mutex);
 
 		err = pthread_cond_signal(&wake_up_cond);
 		if (err != 0)
@@ -431,14 +386,7 @@ static void append_to_queue(struct dlq_item_s *pnew)
 			exit(1);
 		}
 
-		err = pthread_mutex_unlock(&wake_up_mutex);
-		if (err != 0)
-		{
-
-			printf("dlq append_to_queue: pthread_mutex_unlock wu err=%d", err);
-			perror("");
-			exit(1);
-		}
+		dw_mutex_unlock(&wake_up_mutex);
 	}
 #endif
 
@@ -487,12 +435,8 @@ int dlq_wait_while_empty(double timeout)
 
 		if (timeout != 0.0)
 		{
-
-			DWORD ms = (timeout - dtime_now()) * 1000;
-			if (ms <= 0)
-				ms = 1;
+			DWORD ms = timeout * 1000;
 #if DEBUG
-
 			printf("WaitForSingleObject: timeout after %d ms\n", ms);
 #endif
 			if (WaitForSingleObject(wake_up_event, ms) == WAIT_TIMEOUT)
@@ -508,14 +452,7 @@ int dlq_wait_while_empty(double timeout)
 #else
 		int err;
 
-		err = pthread_mutex_lock(&wake_up_mutex);
-		if (err != 0)
-		{
-
-			printf("dlq_wait_while_empty: pthread_mutex_lock wu err=%d", err);
-			perror("");
-			exit(1);
-		}
+		dw_mutex_lock(&wake_up_mutex);
 
 		recv_thread_is_waiting = 1;
 		if (timeout != 0.0)
@@ -537,14 +474,7 @@ int dlq_wait_while_empty(double timeout)
 		}
 		recv_thread_is_waiting = 0;
 
-		err = pthread_mutex_unlock(&wake_up_mutex);
-		if (err != 0)
-		{
-
-			printf("dlq_wait_while_empty: pthread_mutex_unlock wu err=%d", err);
-			perror("");
-			exit(1);
-		}
+		dw_mutex_unlock(&wake_up_mutex);
 #endif
 	}
 
@@ -585,20 +515,7 @@ struct dlq_item_s *dlq_remove(void)
 		dlq_init();
 	}
 
-#if __WIN32__
-	EnterCriticalSection(&dlq_cs);
-#else
-	int err;
-
-	err = pthread_mutex_lock(&dlq_mutex);
-	if (err != 0)
-	{
-
-		printf("dlq_remove: pthread_mutex_lock err=%d", err);
-		perror("");
-		exit(1);
-	}
-#endif
+	dw_mutex_lock(&dlq_mutex);
 
 	if (queue_head != NULL)
 	{
@@ -606,18 +523,7 @@ struct dlq_item_s *dlq_remove(void)
 		queue_head = queue_head->nextp;
 	}
 
-#if __WIN32__
-	LeaveCriticalSection(&dlq_cs);
-#else
-	err = pthread_mutex_unlock(&dlq_mutex);
-	if (err != 0)
-	{
-
-		printf("dlq_remove: pthread_mutex_unlock err=%d", err);
-		perror("");
-		exit(1);
-	}
-#endif
+	dw_mutex_unlock(&dlq_mutex);
 
 #if DEBUG
 	printf("dlq_remove()  returns \n");

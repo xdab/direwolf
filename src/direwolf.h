@@ -10,29 +10,10 @@
 #ifndef DIREWOLF_H
 #define DIREWOLF_H 1
 
-/*
- * Support Windows XP and later.
- *
- * We need this before "#include <ws2tcpip.h>".
- *
- * Don't know what other impact it might have on others.
- */
+#include <stddef.h>
 
 #if __WIN32__
-
-#ifdef _WIN32_WINNT
-#error Include "direwolf.h" before any windows system files.
-#endif
-#ifdef WINVER
-#error Include "direwolf.h" before any windows system files.
-#endif
-
-#define _WIN32_WINNT 0x0501 /* Minimum OS version is XP. */
-#define WINVER 0x0501		/* Minimum OS version is XP. */
-
-#include <winsock2.h>
 #include <windows.h>
-
 #endif
 
 /*

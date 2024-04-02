@@ -135,8 +135,6 @@
 	We'd be starting from scratch to figure out how to do it.
 */
 
-#include "direwolf.h" // should be first.   This includes windows.h.
-
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -145,6 +143,7 @@
 #include <time.h>
 
 #if __WIN32__
+#include <windows.h>
 #else
 #include <sys/termios.h>
 #include <sys/ioctl.h>

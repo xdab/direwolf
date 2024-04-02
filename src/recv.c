@@ -79,9 +79,6 @@
  *
  *---------------------------------------------------------------*/
 
-// #define DEBUG 1
-
-#include "direwolf.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -90,6 +87,10 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <assert.h>
+
+#if __WIN32__
+#include <windows.h>
+#endif
 
 #ifdef __FreeBSD__
 #include <errno.h>

@@ -34,11 +34,10 @@
  *
  *---------------------------------------------------------------*/
 
-#include "direwolf.h" // Sets _WIN32_WINNT for XP API level needed by ws2tcpip.h
-
 #if __WIN32__
 
 #include <winsock2.h>
+#include <windows.h>
 #include <ws2tcpip.h> // _WIN32_WINNT must be set to 0x0501 before including this
 
 #else
@@ -52,7 +51,6 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <fcntl.h>
-// #include <termios.h>
 #include <errno.h>
 
 #endif
@@ -65,8 +63,6 @@
 #include <time.h>
 
 #include "dwsock.h"
-
-static void shuffle(struct addrinfo *host[], int nhosts);
 
 /*-------------------------------------------------------------------
  *
@@ -81,16 +77,6 @@ static void shuffle(struct addrinfo *host[], int nhosts);
  * Errors:	Message is printed.  I've never seen it fail.
  *
  * Description:	Doesn't do anything for Linux.
- *
- * TODO:	Use this instead of own copy in aclients.c
- * TODO:	Use this instead of own copy in appserver.c
- * TODO:	Use this instead of own copy in audio_win.c
- * TODO:	Use this instead of own copy in igate.c
- * TODO:	Use this instead of own copy in kissnet.c
- * TODO:	Use this instead of own copy in kissutil.c
- * TODO:	Use this instead of own copy in server.c
- * TODO:	Use this instead of own copy in tnctest.c
- * TODO:	Use this instead of own copy in ttcalc.c
  *
  *--------------------------------------------------------------------*/
 
@@ -120,211 +106,6 @@ int dwsock_init(void)
 
 } /* end dwsock_init */
 
-/*-------------------------------------------------------------------
- *
- * Name:        sock_connect
- *
- * Purpose:     Connect to given host / port.
- *
- * Inputs:	hostname	- Host name or IP address.
- *
- *		port		- TCP port as text string.
- *
- *		description	- Description of the remote server to be used in error message.
- *				  e.g.   "APRS-IS (Igate) Server" or "TCP KISS TNC".
- *
- *		allow_ipv6	- True to allow IPv6.  Otherwise only IPv4.
- *
- *		debug		- Print debugging information.
- *
- * Outputs:	ipaddr_str	- The IP address, in text form, is placed here in case
- *				  the caller wants it.  Should be DWSOCK_IPADDR_LEN bytes.
- *
- * Returns:	Socket Handle / file descriptor or -1 for error.
- *
- * Errors:	(1) Can't find address for given host name.
- *
- *			Print error and return -1.
- *
- *		(2) Can't connect to one of the address(es).
- *
- *		 	Silently try the next one.
- *
- *		(3) Can't connect to any of the address(es).
- *
- *		Nothing is printed for success.  The caller might do that
- *		to provide confirmation on what is happening.
- *
- *--------------------------------------------------------------------*/
-
-int dwsock_connect(char *hostname, char *port, char *description, int allow_ipv6, int debug, char ipaddr_str[DWSOCK_IPADDR_LEN])
-{
-#define MAX_HOSTS 50
-
-	struct addrinfo hints;
-	struct addrinfo *ai_head = NULL;
-	struct addrinfo *ai;
-	struct addrinfo *hosts[MAX_HOSTS];
-	int num_hosts, n;
-	int err;
-	int server_sock = -1;
-
-	strlcpy(ipaddr_str, "???", DWSOCK_IPADDR_LEN);
-	memset(&hints, 0, sizeof(hints));
-
-	hints.ai_family = AF_UNSPEC; /* Allow either IPv4 or IPv6. */
-	if (!allow_ipv6)
-	{
-		hints.ai_family = AF_INET; /* IPv4 only. */
-	}
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-
-	/*
-	 * First, we need to look up the DNS name to get IP address.
-	 * It is possible to have multiple addresses.
-	 */
-
-	ai_head = NULL;
-	err = getaddrinfo(hostname, port, &hints, &ai_head);
-	if (err != 0)
-	{
-
-#if __WIN32__
-		printf("Can't get address for %s, %s, err=%d\n",
-			   description, hostname, WSAGetLastError());
-#else
-		printf("Can't get address for %s, %s, %s\n",
-			   description, hostname, gai_strerror(err));
-#endif
-		freeaddrinfo(ai_head);
-		return (-1);
-	}
-
-	if (debug)
-	{
-
-		printf("getaddrinfo returns:\n");
-	}
-
-	num_hosts = 0;
-	for (ai = ai_head; ai != NULL; ai = ai->ai_next)
-	{
-
-		if (debug)
-		{
-
-			dwsock_ia_to_text(ai->ai_family, ai->ai_addr, ipaddr_str, DWSOCK_IPADDR_LEN);
-			printf("    %s\n", ipaddr_str);
-		}
-
-		hosts[num_hosts] = ai;
-		if (num_hosts < MAX_HOSTS)
-			num_hosts++;
-	}
-
-	shuffle(hosts, num_hosts);
-
-	if (debug)
-	{
-
-		printf("addresses for hostname:\n");
-		for (n = 0; n < num_hosts; n++)
-		{
-			dwsock_ia_to_text(hosts[n]->ai_family, hosts[n]->ai_addr, ipaddr_str, DWSOCK_IPADDR_LEN);
-			printf("    %s\n", ipaddr_str);
-		}
-	}
-
-	/*
-	 * Try each address until we find one that is successful.
-	 */
-	for (n = 0; n < num_hosts; n++)
-	{
-#if __WIN32__
-		SOCKET is;
-#else
-		int is;
-#endif
-		ai = hosts[n];
-
-		dwsock_ia_to_text(ai->ai_family, ai->ai_addr, ipaddr_str, DWSOCK_IPADDR_LEN);
-		is = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-#if __WIN32__
-		if (is == INVALID_SOCKET)
-		{
-			printf("Socket creation failed, err=%d", WSAGetLastError());
-			WSACleanup();
-			is = -1;
-			continue;
-		}
-#else
-		if (err != 0)
-		{
-			printf("Socket creation failed, err=%s", gai_strerror(err));
-			(void)close(is);
-			is = -1;
-			continue;
-		}
-#endif
-
-#ifndef DEBUG_DNS
-		err = connect(is, ai->ai_addr, (int)ai->ai_addrlen);
-#if __WIN32__
-		if (err == SOCKET_ERROR)
-		{
-#if DEBUG
-			printf("Connect to %s on %s (%s), port %s failed.\n",
-				   description, hostname, ipaddr_str, port);
-#endif
-			closesocket(is);
-			is = -1;
-			continue;
-		}
-#else
-		if (err != 0)
-		{
-#if DEBUG
-			printf("Connect to %s on %s (%s), port %s failed.\n",
-				   description, hostname, ipaddr_str, port);
-#endif
-			(void)close(is);
-			is = -1;
-			continue;
-		}
-
-		/* IGate documentation says to use no delay.  */
-		/* Does it really make a difference? */
-		int flag = 1;
-		err = setsockopt(is, IPPROTO_TCP, TCP_NODELAY, (void *)(long)(&flag), (socklen_t)sizeof(flag));
-		if (err < 0)
-		{
-			printf("setsockopt TCP_NODELAY failed.\n");
-		}
-#endif
-
-		/* Success. */
-
-		server_sock = is;
-#endif
-		break;
-	}
-
-	freeaddrinfo(ai_head);
-
-	// no, caller should handle this.
-	// function should be generally be silent unless debug option.
-
-	if (server_sock == -1)
-	{
-
-		printf("Unable to connect to %s at %s (%s), port %s\n",
-			   description, hostname, ipaddr_str, port);
-	}
-
-	return (server_sock);
-
-} /* end dwsock_connect */
 
 /*-------------------------------------------------------------------
  *
@@ -336,45 +117,11 @@ int dwsock_connect(char *hostname, char *port, char *description, int allow_ipv6
  *
  * TODO:	Use this instead of own copy in audio.c
  * TODO:	Use this instead of own copy in audio_portaudio.c
- * TODO:	Use this instead of own copy in audio_win.c
  * TODO:	Use this instead of own copy in kissnet.c
- * TODO:	Use this instead of own copy in server.c
  *
  *--------------------------------------------------------------------*/
 
 // Not implemented yet.
-
-/*
- * Addresses don't get mixed up very well.
- * IPv6 always shows up last so we'd probably never
- * end up using any of them for APRS-IS server.
- * Add our own shuffle.
- */
-
-static void shuffle(struct addrinfo *host[], int nhosts)
-{
-	int j, k;
-
-	assert(RAND_MAX >= nhosts); /* for % to work right */
-
-	if (nhosts < 2)
-		return;
-
-	srand(time(NULL));
-
-	for (j = 0; j < nhosts; j++)
-	{
-		k = rand() % nhosts;
-		assert(k >= 0 && k < nhosts);
-		if (j != k)
-		{
-			struct addrinfo *temp;
-			temp = host[j];
-			host[j] = host[k];
-			host[k] = temp;
-		}
-	}
-}
 
 /*-------------------------------------------------------------------
  *
@@ -395,12 +142,6 @@ static void shuffle(struct addrinfo *host[], int nhosts)
  * Description:	Can't use InetNtop because it is supported only on Windows Vista and later.
  * 		At one time Dire Wolf worked on Win XP.  Haven't tried it for years.
  * 		Maybe some other dependency on a newer OS version has crept in.
- *
- * TODO:	Use this instead of own copy in aclients.c
- * TODO:	Use this instead of own copy in appserver.c
- * TODO:	Use this instead of own copy in igate.c
- * TODO:	Use this instead of own copy in tnctest.c
- * TODO:	Use this instead of own copy in ttcalc.c
  *
  *--------------------------------------------------------------------*/
 
